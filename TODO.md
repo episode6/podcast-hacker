@@ -95,10 +95,10 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
       (Coil 3.5.0, `KtorNetworkFetcherFactory` sharing the graph's HttpClient via
       `setSingletonImageLoaderFactory`), add tile, unsubscribe via long-press dropdown,
       thin sync progress bar; leftover template `Platform`/`getPlatform` deleted
-- [ ] Verify: subscribe to 2–3 real podcasts on desktop + android emulator; artwork renders;
-      survives restart; unsubscribe works — android emulator verified end-to-end via adb
-      (real Radiolab feed: subscribe, artwork, restart persistence, long-press
-      unsubscribe); desktop needs a re-test with the side-effect fix in place
+- [x] Verify: subscribe to 2–3 real podcasts on desktop + android emulator; artwork renders;
+      survives restart; unsubscribe works (verified 2026-07-04 on both platforms after
+      fixing the SideEffectMiddleware subscription-contract bug that silently swallowed
+      all side-effect input)
 
 ## Stage 5 — Podcast detail + episode detail
 
