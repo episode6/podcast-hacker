@@ -165,7 +165,9 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 ## Risks
 
 1. **Metro + Kotlin 2.4.0** (highest): compiler plugin, version-locked to Kotlin. Check
-   before Stage 2; fallback kotlin-inject (+anvil) or pin Kotlin to Metro's supported version.
+   before Stage 2 (2.4 support is expected to be fine). If Metro doesn't support
+   Kotlin 2.4 yet, dropping the project back to Kotlin 2.3.21 is an acceptable fix;
+   kotlin-inject (+anvil) remains the fallback if neither works.
 2. **Room/KSP on `com.android.kotlin.multiplatform.library` (AGP 9)**: KSP wiring quirks;
    verify early in Stage 3. Escape hatch: SQLDelight (only if truly broken).
 3. **material3 1.11.0-alpha07**: alpha API churn — pin, don't chase upgrades mid-project.
