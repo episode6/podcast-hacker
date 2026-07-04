@@ -21,7 +21,7 @@ import com.episode6.podcasthacker.ui.util.stateOf
 internal fun NowPlayingScreen(navController: NavController) {
     val store = LocalAppGraph.current.appStore
     val nowPlaying by store.stateOf { nowPlaying }
-    PlaceholderScreen(title = "Now Playing", navController = navController) {
+    ScreenScaffold(title = "Now Playing", navController = navController) {
         val current = nowPlaying
         if (current == null) {
             Text(

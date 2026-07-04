@@ -46,7 +46,7 @@ internal fun AddPodcastScreen(navController: NavController) {
         navController.popBackStack()
     }
 
-    PlaceholderScreen(title = "Add Podcast", navController = navController) {
+    ScreenScaffold(title = "Add Podcast", navController = navController) {
         OutlinedTextField(
             value = state.query,
             onValueChange = { store.dispatch(SetQuery(it)) },

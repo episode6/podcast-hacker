@@ -102,11 +102,17 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 
 ## Stage 5 — Podcast detail + episode detail
 
-- [ ] PodcastDetail: header (artwork, title, description) + episode list from DB;
-      refresh-on-open + manual refresh via dispatched actions
-- [ ] EpisodeDetail: artwork, title, date/duration, scrollable show notes
-      (basic HTML → AnnotatedString), Play/Download button (stub until Stages 6–7)
-- [ ] Verify: browse real feeds end-to-end on android + desktop
+- [x] PodcastDetail: header (artwork, title, description) + episode list from DB
+      (`EpisodeRepository.observeEpisodes` collected in the composable); refresh-on-open
+      (`LaunchedEffect` dispatches `RefreshFeed`) + manual refresh button with per-feed
+      syncing spinner. `PlaceholderScreen` renamed `ScreenScaffold` (+ actions slot)
+- [x] EpisodeDetail: artwork, title, date/duration, scrollable show notes
+      (basic HTML → AnnotatedString: p/div/br, b/i/u, li bullets, clickable links,
+      entities — tolerant, never throws), Play/Download button (stub until Stages 6–7;
+      Play drives nowPlaying state so the mini player is exercisable)
+- [x] Verify: browse real feeds end-to-end on android + desktop — android verified via
+      adb against a real feed (detail header, formatted episode list, refresh, show
+      notes, play stub → NowPlaying → mini player); desktop launch smoke clean
 
 ## Stage 6 — Downloads via tacita
 
