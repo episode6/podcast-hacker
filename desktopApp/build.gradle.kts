@@ -23,15 +23,15 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "PodcastHacker"
             packageVersion = self.versions.name.get()
+            // jpackage requires MAJOR > 0 for the macOS app image/dmg and for msi;
+            // map 0.x.y -> 1.x.y there until we reach v1.0
+            val jpackageSafeVersion = self.versions.name.get()
+                .let { if (it.startsWith("0.")) "1." + it.substringAfter("0.") else it }
             macOS {
-                // jpackage requires MAJOR > 0 for dmg; map 0.x.y -> 1.x.y until v1.0
-                dmgPackageVersion = self.versions.name.get()
-                    .let { if (it.startsWith("0.")) "1." + it.substringAfter("0.") else it }
+                packageVersion = jpackageSafeVersion
             }
             windows {
-                // msi shares jpackage's MAJOR > 0 constraint
-                msiPackageVersion = self.versions.name.get()
-                    .let { if (it.startsWith("0.")) "1." + it.substringAfter("0.") else it }
+                msiPackageVersion = jpackageSafeVersion
             }
         }
     }
