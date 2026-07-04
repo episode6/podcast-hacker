@@ -25,10 +25,10 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 - [ ] iosApp Config.xcconfig MARKETING_VERSION=0.0.1 + `scripts/sync-ios-version.sh`
 - [ ] Shared Xcode scheme committed (`iosApp.xcodeproj/xcshareddata/xcschemes/iosApp.xcscheme`)
       so CI can run xcodebuild
-- [ ] `.github/workflows/build-installers.yml`: dmg/msi/deb matrix + debug APK, each
-      running `check` as a prereq (macos check includes iOS simulator tests; the macos
-      job also runs a full `xcodebuild` of the iOS app); artifacts attached to GitHub
-      release on `v*` tags
+- [ ] `.github/workflows/build-installers.yml`: dmg/msi/deb matrix + debug APK shard +
+      dedicated iOS shard (framework link, simulator tests, full `xcodebuild` app build),
+      each shard running `check` as a prereq for its own platform; artifacts attached to
+      GitHub release on `v*` tags (iOS shard is best-effort and doesn't gate releases)
 - [ ] Verify: draft PR with all jobs green; installer artifacts carry 0.0.1
 
 ## Stage 2 — Core scaffolding (deps, DI, redux, nav, theme)
