@@ -70,7 +70,9 @@ internal fun searchSideEffect(searchClient: ItunesSearchClient): SideEffect<AddP
                 result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
                 result.fold(
                     onSuccess = { found ->
-                        emit(SetResults(found.mapNotNull { it.toSearchResult() }))
+                        // itunes can return multiple entries pointing at the same feed;
+                        // feedUrl is the results list's compose key, so dedupe here
+                        emit(SetResults(found.mapNotNull { it.toSearchResult() }.distinctBy { it.feedUrl }))
                     },
                     onFailure = {
                         emit(SetSearchError("Search failed: ${it.message ?: it::class.simpleName}"))

@@ -72,7 +72,10 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
       fetching is mockable; re-syncs preserve per-episode downloadState/playbackPosition
 - [x] Repositories (plain injectable classes): Subscription / Feed / Episode
 - [x] Side effects for subscription + feed sync (action in → repo call → result actions);
-      Room is source of truth feeding AppState via observe side effect
+      Room is source of truth feeding AppState via observe side effect. Gotcha (found
+      2026-07-04, fixed in stage 4): SideEffectMiddleware relays no actions until EVERY
+      side effect subscribes to `context.actions` — an observe-only effect must merge in
+      `actions.filter { false }` or it starves all side effects of input
 - [x] Tests: fixture-feed parsing, side effects via redux test-support + mockk + assertk +
       ktor-client-mock, in-memory Room. Gotcha: RssParser's android impl needs kxml2 on
       the androidHostTest classpath (the host-test android.jar XmlPull classes are stubs)
@@ -93,8 +96,9 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
       `setSingletonImageLoaderFactory`), add tile, unsubscribe via long-press dropdown,
       thin sync progress bar; leftover template `Platform`/`getPlatform` deleted
 - [ ] Verify: subscribe to 2–3 real podcasts on desktop + android emulator; artwork renders;
-      survives restart; unsubscribe works — desktop launch smoke + store/side-effect tests
-      green; the real-feed manual pass is still pending
+      survives restart; unsubscribe works — android emulator verified end-to-end via adb
+      (real Radiolab feed: subscribe, artwork, restart persistence, long-press
+      unsubscribe); desktop needs a re-test with the side-effect fix in place
 
 ## Stage 5 — Podcast detail + episode detail
 

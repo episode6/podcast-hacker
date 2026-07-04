@@ -105,6 +105,25 @@ class AddPodcastStoreTest {
     }
 
     @Test
+    fun search_dedupesResultsSharingAFeedUrl() = runTest {
+        // itunes really does this (e.g. "planet money" returns several entries with the
+        // same npr feed); feedUrl is the compose list key so duplicates crash the UI
+        val json = """
+        {
+          "results": [
+            {"collectionName": "Planet Money", "feedUrl": "https://feeds.npr.org/510289/podcast.xml"},
+            {"collectionName": "Planet Money+", "feedUrl": "https://feeds.npr.org/510289/podcast.xml"}
+          ]
+        }
+        """.trimIndent()
+
+        val actions = searchSideEffect(searchClient(json = json)).output(SetQuery("planet money")).toList()
+
+        val results = actions.filterIsInstance<SetResults>().single().results
+        assertThat(results.map { it.feedUrl }).containsExactly("https://feeds.npr.org/510289/podcast.xml")
+    }
+
+    @Test
     fun searchFailure_emitsError() = runTest {
         val actions = searchSideEffect(searchClient(json = "not json")).output(SetQuery("test")).toList()
 
