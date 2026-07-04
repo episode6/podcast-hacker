@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Build and launch the PodcastHacker desktop app for the current platform.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+case "$(uname -s)" in
+    Darwin) PLATFORM=mac ;;
+    Linux)  PLATFORM=linux ;;
+    *) echo "Unsupported platform: $(uname -s) (expected macOS or Linux)" >&2; exit 1 ;;
+esac
+
+./gradlew :desktopApp:createDistributable
+
+APP_DIR="desktopApp/build/compose/binaries/main/app"
+case "$PLATFORM" in
+    mac)   open "$APP_DIR/PodcastHacker.app" ;;
+    linux) exec "$APP_DIR/PodcastHacker/bin/PodcastHacker" ;;
+esac
