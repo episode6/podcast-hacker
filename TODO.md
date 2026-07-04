@@ -58,19 +58,27 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 
 ## Stage 3 — Data layer (Room, network, RSS, repositories)
 
-- [ ] Room KMP: `PodcastEntity`, `EpisodeEntity` (guid, feedUrl, title, notes, audioUrl,
+- [x] Room KMP: `PodcastEntity`, `EpisodeEntity` (guid, feedUrl, title, notes, audioUrl,
       pubDate, duration, downloadState, playbackPosition), DAOs, per-platform builders
-      (⚠ bundled SQLite driver on jvm/ios; verify Room/KSP against AGP 9 KMP-library plugin)
-- [ ] HttpClient via Metro (okhttp android/jvm, darwin ios)
-- [ ] iTunes Search API client (`https://itunes.apple.com/search?media=podcast&term=`)
-      with kotlinx-serialization models
-- [ ] RSS: RSSParser wrapper → domain models (podcast meta + episodes, iTunes namespace)
-- [ ] Repositories (plain injectable classes): Subscription / Feed / Episode
-- [ ] Side effects for subscription + feed sync (action in → repo call → result actions);
+      (bundled SQLite driver on all platforms; Room 2.8.4 + KSP 2.3.9 work fine against
+      the AGP 9 KMP-library plugin). Gotcha: `Dispatchers.IO` isn't referencable from
+      commonMain (internal on native) — small `ioDispatcher` expect/actual instead
+- [x] HttpClient via Metro (okhttp android/jvm, darwin ios)
+- [x] iTunes Search API client (`https://itunes.apple.com/search?media=podcast&term=`)
+      with kotlinx-serialization models (decoded from text: apple serves
+      `text/javascript`, so no ContentNegotiation needed)
+- [x] RSS: RSSParser wrapper → domain models (podcast meta + episodes, iTunes namespace).
+      Feed XML is fetched with our own ktor client and handed to `RssParser.parse()`, so
+      fetching is mockable; re-syncs preserve per-episode downloadState/playbackPosition
+- [x] Repositories (plain injectable classes): Subscription / Feed / Episode
+- [x] Side effects for subscription + feed sync (action in → repo call → result actions);
       Room is source of truth feeding AppState via observe side effect
-- [ ] Tests: fixture-feed parsing, side effects via redux test-support + mockk + assertk +
-      ktor-client-mock, in-memory Room
+- [x] Tests: fixture-feed parsing, side effects via redux test-support + mockk + assertk +
+      ktor-client-mock, in-memory Room. Gotcha: RssParser's android impl needs kxml2 on
+      the androidHostTest classpath (the host-test android.jar XmlPull classes are stubs)
 - [ ] Verify: `:shared:jvmTest` + `:shared:testAndroidHostTest` green; CI green
+      — local tests + `check` + ios klib compile + desktop launch (db created on disk)
+      all green; CI pending
 
 ## Stage 4 — Subscribe flow + podcast grid
 
@@ -151,14 +159,14 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 | ktor-* | `io.ktor:ktor-client-{core,okhttp,darwin,content-negotiation,mock}`, `ktor-serialization-kotlinx-json` | 3.5.1 (match tacita) |
 | okio | `com.squareup.okio:okio` | 3.17.0 (match tacita) |
 | kotlinx-serialization | plugin `org.jetbrains.kotlin.plugin.serialization` + `kotlinx-serialization-json` | 2.4.0 / 1.11.0 |
-| kotlinx-datetime | `org.jetbrains.kotlinx:kotlinx-datetime` | 0.7.1 |
+| kotlinx-datetime | `org.jetbrains.kotlinx:kotlinx-datetime` | 0.8.0 |
 | metro | plugin + runtime `dev.zacsweers.metro` | 1.3.0 (tests against Kotlin 2.4.x) |
-| ksp | plugin `com.google.devtools.ksp` | ⚠ 2.4.0-x.y.z |
-| room | `androidx.room:room-{runtime,compiler}` + plugin `androidx.room` | ⚠ 2.8.x |
-| sqlite-bundled | `androidx.sqlite:sqlite-bundled` | ⚠ 2.6.x |
+| ksp | plugin `com.google.devtools.ksp` | 2.3.9 (standalone versioning, no longer Kotlin-prefixed) |
+| room | `androidx.room:room-{runtime,compiler}` + plugin `androidx.room` | 2.8.4 |
+| sqlite-bundled | `androidx.sqlite:sqlite-bundled` | 2.6.2 |
 | navigation | `org.jetbrains.androidx.navigation:navigation-compose` | 2.9.2 (works w/ CMP 1.11.1) |
 | coil | `io.coil-kt.coil3:{coil-compose,coil-network-ktor3}` | ⚠ 3.3.x |
-| rssparser | `com.prof18.rssparser:rssparser` | ⚠ 7.x (verify JVM target) |
+| rssparser | `com.prof18.rssparser:rssparser` | 6.1.6 (latest; jvm target confirmed) |
 | media3 | `androidx.media3:media3-{exoplayer,session}` | ⚠ 1.9.x (androidMain only) |
 | adaptive | `org.jetbrains.compose.material3.adaptive:adaptive` | ⚠ 1.2.x |
 | javafx-media | `org.openjfx:javafx-{base,graphics,media}` | ⚠ 25.x LTS (desktopApp only) |
@@ -171,8 +179,8 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 
 1. ~~**Metro + Kotlin 2.4.0** (highest)~~ RESOLVED 2026-07-04: Metro 1.3.0 tests against
    Kotlin 2.4.x; compiles, runs, and works with the configuration cache in Stage 2.
-2. **Room/KSP on `com.android.kotlin.multiplatform.library` (AGP 9)**: KSP wiring quirks;
-   verify early in Stage 3. Escape hatch: SQLDelight (only if truly broken).
+2. ~~**Room/KSP on `com.android.kotlin.multiplatform.library` (AGP 9)**~~ RESOLVED
+   2026-07-04: Room 2.8.4 + KSP 2.3.9 wire up cleanly (`kspAndroid` etc.) in Stage 3.
 3. **material3 1.11.0-alpha07**: alpha API churn — pin, don't chase upgrades mid-project.
 4. **jpackage version constraints**: dmg rejects MAJOR==0 (mapped 0.x.y→1.x.y); verify msi.
 5. **JavaFX Media inside jpackage installers**: needs a real pass on all 3 OSes in Stage 7;
