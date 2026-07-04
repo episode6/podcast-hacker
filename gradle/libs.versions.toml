@@ -14,12 +14,19 @@ composeMultiplatform = "1.11.1"
 junit = "4.13.2"
 kotlin = "2.4.0"
 kotlinx-coroutines = "1.11.0"
+kotlinx-datetime = "0.8.0"
 kotlinx-serialization = "1.11.0"
+ksp = "2.3.9"
+ktor = "3.5.1"
 material3 = "1.11.0-alpha07"
 metro = "1.3.0"
+mockk = "1.14.11"
 navigation = "2.9.2"
 okio = "3.17.0"
 redux = "1.1.6"
+room = "2.8.4"
+rssparser = "6.1.6"
+sqlite = "2.6.2"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -50,6 +57,17 @@ redux-sideEffects = { module = "com.episode6.redux:side-effects", version.ref = 
 redux-compose = { module = "com.episode6.redux:compose", version.ref = "redux" }
 redux-testSupport = { module = "com.episode6.redux:test-support", version.ref = "redux" }
 assertk = { module = "com.willowtreeapps.assertk:assertk", version.ref = "assertk" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+kxml2 = { module = "net.sf.kxml:kxml2", version = "2.3.0" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
+ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+rssparser = { module = "com.prof18.rssparser:rssparser", version.ref = "rssparser" }
+sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
@@ -59,4 +77,6 @@ composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "k
 kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
+room = { id = "androidx.room", version.ref = "room" }

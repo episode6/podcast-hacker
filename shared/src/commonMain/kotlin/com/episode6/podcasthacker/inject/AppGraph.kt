@@ -1,8 +1,16 @@
 package com.episode6.podcasthacker.inject
 
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.episode6.podcasthacker.AppDirs
 import com.episode6.podcasthacker.PlatformContext
 import com.episode6.podcasthacker.appDirs
+import com.episode6.podcasthacker.coroutines.ioDispatcher
+import com.episode6.podcasthacker.data.db.AppDatabase
+import com.episode6.podcasthacker.data.db.appDatabaseBuilder
+import com.episode6.podcasthacker.data.network.ItunesSearchClient
+import com.episode6.podcasthacker.data.network.platformHttpClient
+import com.episode6.podcasthacker.data.repo.EpisodeRepository
+import com.episode6.podcasthacker.data.repo.SubscriptionRepository
 import com.episode6.podcasthacker.store.AppState
 import com.episode6.podcasthacker.store.AppStore
 import com.episode6.podcasthacker.store.reduce
@@ -14,17 +22,37 @@ import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.createGraphFactory
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import okio.FileSystem
+import okio.SYSTEM
 
 @DependencyGraph(AppScope::class)
 interface AppGraph {
     val appStore: AppStore
     val appDirs: AppDirs
+    val itunesSearchClient: ItunesSearchClient
+    val subscriptionRepository: SubscriptionRepository
+    val episodeRepository: EpisodeRepository
 
     @Provides @SingleIn(AppScope::class)
     fun provideAppDirs(context: PlatformContext): AppDirs = context.appDirs()
+
+    @Provides @SingleIn(AppScope::class)
+    fun provideHttpClient(): HttpClient = platformHttpClient {
+        expectSuccess = true
+    }
+
+    @Provides @SingleIn(AppScope::class)
+    fun provideAppDatabase(context: PlatformContext, appDirs: AppDirs): AppDatabase {
+        FileSystem.SYSTEM.createDirectories(appDirs.dataDir)
+        return context.appDatabaseBuilder(appDirs.dataDir / AppDatabase.FILE_NAME)
+            .setDriver(BundledSQLiteDriver())
+            .setQueryCoroutineContext(ioDispatcher)
+            .build()
+    }
 
     @Provides @SingleIn(AppScope::class)
     fun provideAppCoroutineScope(): CoroutineScope =
