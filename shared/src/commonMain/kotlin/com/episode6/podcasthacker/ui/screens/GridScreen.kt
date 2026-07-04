@@ -46,7 +46,7 @@ internal fun GridScreen(navController: NavController) {
     val subscriptions by store.stateOf { subscriptions }
     val isSyncing by store.stateOf { feedSync.isSyncing }
 
-    PlaceholderScreen(title = "Podcasts", navController = navController) {
+    ScreenScaffold(title = "Podcasts", navController = navController) {
         if (isSyncing) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
         }

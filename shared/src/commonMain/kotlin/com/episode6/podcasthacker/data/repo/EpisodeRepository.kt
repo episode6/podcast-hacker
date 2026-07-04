@@ -18,6 +18,9 @@ class EpisodeRepository(private val db: AppDatabase) {
 
     suspend fun episode(guid: String): Episode? = db.episodeDao().get(guid)?.toDomain()
 
+    fun observeEpisode(guid: String): Flow<Episode?> =
+        db.episodeDao().observe(guid).map { it?.toDomain() }
+
     suspend fun setPlaybackPosition(guid: String, position: Duration) =
         db.episodeDao().setPlaybackPosition(guid, position.inWholeMilliseconds)
 }

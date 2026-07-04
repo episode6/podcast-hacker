@@ -16,6 +16,9 @@ interface EpisodeDao {
     @Query("SELECT * FROM episodes WHERE guid = :guid")
     suspend fun get(guid: String): EpisodeEntity?
 
+    @Query("SELECT * FROM episodes WHERE guid = :guid")
+    fun observe(guid: String): Flow<EpisodeEntity?>
+
     @Upsert
     suspend fun upsertAll(episodes: List<EpisodeEntity>)
 

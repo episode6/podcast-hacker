@@ -73,6 +73,15 @@ class FeedRepositoryTest {
     }
 
     @Test
+    fun observeEpisode_emitsMappedDomainModel() = runTest {
+        repo.sync(feedUrl)
+
+        val episode = EpisodeRepository(db).observeEpisode("ep-2").first()
+
+        assertThat(episode!!.title).isEqualTo("Episode Two")
+    }
+
+    @Test
     fun observeForPodcast_ordersByPubDateDescending() = runTest {
         repo.sync(feedUrl)
 
