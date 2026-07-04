@@ -1,12 +1,13 @@
 package com.episode6.podcasthacker
 
+import assertk.assertThat
+import assertk.assertions.isEqualTo
 import kotlin.test.Test
-import kotlin.test.assertEquals
 
 class SharedCommonTest {
 
     @Test
     fun example() {
-        assertEquals(3, 1 + 2)
+        assertThat(1 + 2).isEqualTo(3)
     }
 }

@@ -15,41 +15,46 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 - Package: `com.episode6.podcasthacker` · Version source of truth: `self.versions.toml` (v0.0.1)
 - Tests: mockk (jvm/android only) + assertk + redux test-support + ktor-client-mock
 
-## Stage 1 — CI + version centralization
+## ~~Stage 1 — CI + version centralization~~ (done 2026-07-04, PR #1)
 
-- [ ] `self.versions.toml` (`name = "0.0.1"`, `code = "1"`) registered as `self` catalog
+- [x] `self.versions.toml` (`name = "0.0.1"`, `code = "1"`) registered as `self` catalog
       in settings.gradle.kts
-- [ ] androidApp reads versionCode/versionName from `self`
-- [ ] desktopApp reads packageVersion from `self`; packageName → `PodcastHacker`;
+- [x] androidApp reads versionCode/versionName from `self`
+- [x] desktopApp reads packageVersion from `self`; packageName → `PodcastHacker`;
       dmg version mapped `0.x.y → 1.x.y` (jpackage rejects MAJOR==0 for dmg; check msi too)
-- [ ] iosApp Config.xcconfig MARKETING_VERSION=0.0.1 + `scripts/sync-ios-version.sh`
-- [ ] Shared Xcode scheme committed (`iosApp.xcodeproj/xcshareddata/xcschemes/iosApp.xcscheme`)
+- [x] iosApp Config.xcconfig MARKETING_VERSION=0.0.1 + `scripts/sync-ios-version.sh`
+- [x] Shared Xcode scheme committed (`iosApp.xcodeproj/xcshareddata/xcschemes/iosApp.xcscheme`)
       so CI can run xcodebuild
-- [ ] `.github/workflows/build-installers.yml`: dmg/msi/deb matrix + debug APK shard +
+- [x] `.github/workflows/build-installers.yml`: dmg/msi/deb matrix + debug APK shard +
       dedicated iOS shard (framework link, simulator tests, full `xcodebuild` app build),
       each shard running `check` as a prereq for its own platform; artifacts attached to
       GitHub release on `v*` tags (iOS shard is best-effort and doesn't gate releases)
-- [ ] Verify: draft PR with all jobs green; installer artifacts carry 0.0.1
+- [x] Verify: draft PR with all jobs green; installer artifacts carry 0.0.1
 
 ## Stage 2 — Core scaffolding (deps, DI, redux, nav, theme)
 
-- [ ] Add Stage-2 catalog entries (see dependency table); verify ⚠ Metro↔Kotlin 2.4.0
-      compat FIRST (fallback: kotlin-inject)
-- [ ] Metro: plugin on `:shared`, `AppGraph` + platform bindings (Android Application
-      context, desktop main, iOS MainViewController), graph exposed via CompositionLocal
-- [ ] Redux skeleton: `AppState` + actions + `AppState::reduce`; `AppStore` singleton via
+- [x] Add Stage-2 catalog entries (see dependency table); verify ⚠ Metro↔Kotlin 2.4.0
+      compat FIRST (fallback: kotlin-inject) — Metro 1.3.0 tests against Kotlin 2.4.x; no
+      fallback needed
+- [x] Metro: plugin on `:shared`, `AppGraph` + platform bindings (Android Application
+      context, desktop main, iOS MainViewController), graph exposed via CompositionLocal.
+      Gotcha: `actual typealias PlatformContext = Context` fails (expect class is final,
+      Context is abstract), so Android wraps the Context in an `actual class` instead
+- [x] Redux skeleton: `AppState` + actions + `AppState::reduce`; `AppStore` singleton via
       `StoreFlow(scope, initialValue, reducer, listOf(SideEffectMiddleware(sideEffects)))`
       with multibound `Set<SideEffect<AppState>>`; port `sideEffect {}` / `mapActions` /
       `stateOf { slice }` helpers from podcast-puller-2
-- [ ] Navigation skeleton: JetBrains navigation-compose, `@Serializable` routes
+- [x] Navigation skeleton: JetBrains navigation-compose, `@Serializable` routes
       (Grid, AddPodcast, PodcastDetail, EpisodeDetail, NowPlaying) + placeholder screens
-- [ ] Root layout: `Box { NavHost; MiniPlayerBar(align BottomCenter) }` — bar stub hidden
+- [x] Root layout: `Box { NavHost; MiniPlayerBar(align BottomCenter) }` — bar stub hidden
       on NowPlaying / when idle
-- [ ] Pocket-Casts-like dark-forward Material3 theme + typography
-- [ ] `AppDirs` expect/actual (okio Paths): Android filesDir/cacheDir, desktop
+- [x] Pocket-Casts-like dark-forward Material3 theme + typography
+- [x] `AppDirs` expect/actual (okio Paths): Android filesDir/cacheDir, desktop
       XDG/AppData/Application Support, iOS Documents
-- [ ] Swap template tests to assertk; add redux test-support
+- [x] Swap template tests to assertk; add redux test-support
 - [ ] Verify: android + desktop run and navigate all placeholders; CI green (incl. iOS)
+      — desktop verified locally (launch + jvm/android-host tests + `check` green);
+      android emulator pass + CI still pending
 
 ## Stage 3 — Data layer (Room, network, RSS, repositories)
 
@@ -142,16 +147,16 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 | Catalog entry | Coordinates | Version |
 |---|---|---|
 | tacita | `com.episode6.tacita:tacita` | 0.0.1 |
-| redux-* | `com.episode6.redux:{store-flow,side-effects,compose,test-support}` | 1.1.6 ⚠ (built pre-Kotlin-2.4 — confirm it resolves) |
+| redux-* | `com.episode6.redux:{store-flow,side-effects,compose,test-support}` | 1.1.6 (confirmed: resolves + tests pass under Kotlin 2.4.0) |
 | ktor-* | `io.ktor:ktor-client-{core,okhttp,darwin,content-negotiation,mock}`, `ktor-serialization-kotlinx-json` | 3.5.1 (match tacita) |
 | okio | `com.squareup.okio:okio` | 3.17.0 (match tacita) |
-| kotlinx-serialization | plugin `org.jetbrains.kotlin.plugin.serialization` + `kotlinx-serialization-json` | 2.4.0 / ⚠ 1.9.x |
+| kotlinx-serialization | plugin `org.jetbrains.kotlin.plugin.serialization` + `kotlinx-serialization-json` | 2.4.0 / 1.11.0 |
 | kotlinx-datetime | `org.jetbrains.kotlinx:kotlinx-datetime` | 0.7.1 |
-| metro | plugin + runtime `dev.zacsweers.metro` | ⚠ must support Kotlin 2.4.0 (compiler plugin; fallback kotlin-inject) |
+| metro | plugin + runtime `dev.zacsweers.metro` | 1.3.0 (tests against Kotlin 2.4.x) |
 | ksp | plugin `com.google.devtools.ksp` | ⚠ 2.4.0-x.y.z |
 | room | `androidx.room:room-{runtime,compiler}` + plugin `androidx.room` | ⚠ 2.8.x |
 | sqlite-bundled | `androidx.sqlite:sqlite-bundled` | ⚠ 2.6.x |
-| navigation | `org.jetbrains.androidx.navigation:navigation-compose` | ⚠ 2.9.x (latest compatible w/ CMP 1.11.1) |
+| navigation | `org.jetbrains.androidx.navigation:navigation-compose` | 2.9.2 (works w/ CMP 1.11.1) |
 | coil | `io.coil-kt.coil3:{coil-compose,coil-network-ktor3}` | ⚠ 3.3.x |
 | rssparser | `com.prof18.rssparser:rssparser` | ⚠ 7.x (verify JVM target) |
 | media3 | `androidx.media3:media3-{exoplayer,session}` | ⚠ 1.9.x (androidMain only) |
@@ -164,10 +169,8 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 
 ## Risks
 
-1. **Metro + Kotlin 2.4.0** (highest): compiler plugin, version-locked to Kotlin. Check
-   before Stage 2 (2.4 support is expected to be fine). If Metro doesn't support
-   Kotlin 2.4 yet, dropping the project back to Kotlin 2.3.21 is an acceptable fix;
-   kotlin-inject (+anvil) remains the fallback if neither works.
+1. ~~**Metro + Kotlin 2.4.0** (highest)~~ RESOLVED 2026-07-04: Metro 1.3.0 tests against
+   Kotlin 2.4.x; compiles, runs, and works with the configuration cache in Stage 2.
 2. **Room/KSP on `com.android.kotlin.multiplatform.library` (AGP 9)**: KSP wiring quirks;
    verify early in Stage 3. Escape hatch: SQLDelight (only if truly broken).
 3. **material3 1.11.0-alpha07**: alpha API churn — pin, don't chase upgrades mid-project.

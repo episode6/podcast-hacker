@@ -1,5 +1,8 @@
 package com.episode6.podcasthacker
 
 import androidx.compose.ui.window.ComposeUIViewController
+import com.episode6.podcasthacker.inject.createAppGraph
 
-fun MainViewController() = ComposeUIViewController { App() }
+private val appGraph by lazy { createAppGraph(PlatformContext()) }
+
+fun MainViewController() = ComposeUIViewController { App(appGraph) }
