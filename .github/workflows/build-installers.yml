@@ -8,7 +8,7 @@ on:
 env:
   GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false -Dkotlin.incremental=false"
 jobs:
-  package:
+  desktop-app:
     strategy:
       fail-fast: false
       matrix:
@@ -96,7 +96,7 @@ jobs:
             build
 
   release:
-    needs: [package, android-apk]
+    needs: [desktop-app, android-apk]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
