@@ -32,8 +32,21 @@ jobs:
           distribution: 'zulu'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
-      - name: Build installer
-        run: ./gradlew :desktopApp:${{ matrix.task }}
+      # check covers each host's tests (on macOS that includes the iOS
+      # simulator tests for :shared)
+      - name: Check and build installer
+        run: ./gradlew check :desktopApp:${{ matrix.task }}
+      - name: Build iOS app
+        if: runner.os == 'macOS'
+        run: |
+          xcodebuild \
+            -project iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
       # archive: false uploads the installer as-is (not wrapped in a zip).
       # Only a single file may be uploaded this way and its filename becomes
       # the artifact name.
@@ -55,8 +68,9 @@ jobs:
           distribution: 'zulu'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
-      - name: Build debug APK
-        run: ./gradlew :androidApp:assembleDebug
+      # check includes android lint + unit tests for :androidApp and :shared
+      - name: Check and build debug APK
+        run: ./gradlew check :androidApp:assembleDebug
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
         with:
