@@ -10,6 +10,7 @@ androidx-espresso = "3.7.0"
 androidx-lifecycle = "2.11.0-beta01"
 androidx-testExt = "1.3.0"
 assertk = "0.28.1"
+coil = "3.5.0"
 composeMultiplatform = "1.11.1"
 junit = "4.13.2"
 kotlin = "2.4.0"
@@ -57,6 +58,8 @@ redux-sideEffects = { module = "com.episode6.redux:side-effects", version.ref = 
 redux-compose = { module = "com.episode6.redux:compose", version.ref = "redux" }
 redux-testSupport = { module = "com.episode6.redux:test-support", version.ref = "redux" }
 assertk = { module = "com.willowtreeapps.assertk:assertk", version.ref = "assertk" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-networkKtor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kxml2 = { module = "net.sf.kxml:kxml2", version = "2.3.0" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }

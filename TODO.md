@@ -82,13 +82,19 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 
 ## Stage 4 — Subscribe flow + podcast grid
 
-- [ ] AddPodcast screen: screen-scoped StoreFlow (hosted in a ViewModel for config-change
-      survival); search field → iTunes results (artwork/title/author) + paste-URL row
-- [ ] Subscribe action → app-store side effect fetches feed + persists
-- [ ] Grid screen: `LazyVerticalGrid(GridCells.Adaptive(160.dp))` of subscription artwork
-      (Coil), add button, unsubscribe via long-press/overflow
+- [x] AddPodcast screen: screen-scoped StoreFlow (hosted in a ViewModel for config-change
+      survival); search field → iTunes results (artwork/title/author) + paste-URL row.
+      Search is debounced (400ms, min 2 chars) with `transformLatest` cancelling stale
+      requests; url-shaped queries show a direct subscribe row instead
+- [x] Subscribe action → app-store side effect fetches feed + persists (the Stage-3
+      `SubscribeToPodcast` side effect; result rows dispatch it and pop back)
+- [x] Grid screen: `LazyVerticalGrid(GridCells.Adaptive(160.dp))` of subscription artwork
+      (Coil 3.5.0, `KtorNetworkFetcherFactory` sharing the graph's HttpClient via
+      `setSingletonImageLoaderFactory`), add tile, unsubscribe via long-press dropdown,
+      thin sync progress bar; leftover template `Platform`/`getPlatform` deleted
 - [ ] Verify: subscribe to 2–3 real podcasts on desktop + android emulator; artwork renders;
-      survives restart; unsubscribe works
+      survives restart; unsubscribe works — desktop launch smoke + store/side-effect tests
+      green; the real-feed manual pass is still pending
 
 ## Stage 5 — Podcast detail + episode detail
 
@@ -165,7 +171,7 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 | room | `androidx.room:room-{runtime,compiler}` + plugin `androidx.room` | 2.8.4 |
 | sqlite-bundled | `androidx.sqlite:sqlite-bundled` | 2.6.2 |
 | navigation | `org.jetbrains.androidx.navigation:navigation-compose` | 2.9.2 (works w/ CMP 1.11.1) |
-| coil | `io.coil-kt.coil3:{coil-compose,coil-network-ktor3}` | ⚠ 3.3.x |
+| coil | `io.coil-kt.coil3:{coil-compose,coil-network-ktor3}` | 3.5.0 |
 | rssparser | `com.prof18.rssparser:rssparser` | 6.1.6 (latest; jvm target confirmed) |
 | media3 | `androidx.media3:media3-{exoplayer,session}` | ⚠ 1.9.x (androidMain only) |
 | adaptive | `org.jetbrains.compose.material3.adaptive:adaptive` | ⚠ 1.2.x |

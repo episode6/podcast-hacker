@@ -33,6 +33,7 @@ import okio.SYSTEM
 interface AppGraph {
     val appStore: AppStore
     val appDirs: AppDirs
+    val httpClient: HttpClient
     val itunesSearchClient: ItunesSearchClient
     val subscriptionRepository: SubscriptionRepository
     val episodeRepository: EpisodeRepository
