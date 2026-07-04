@@ -21,8 +21,18 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.episode6.podcasthacker"
-            packageVersion = "1.0.0"
+            packageName = "PodcastHacker"
+            packageVersion = self.versions.name.get()
+            macOS {
+                // jpackage requires MAJOR > 0 for dmg; map 0.x.y -> 1.x.y until v1.0
+                dmgPackageVersion = self.versions.name.get()
+                    .let { if (it.startsWith("0.")) "1." + it.substringAfter("0.") else it }
+            }
+            windows {
+                // msi shares jpackage's MAJOR > 0 constraint
+                msiPackageVersion = self.versions.name.get()
+                    .let { if (it.startsWith("0.")) "1." + it.substringAfter("0.") else it }
+            }
         }
     }
 }
