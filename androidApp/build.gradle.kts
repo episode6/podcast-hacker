@@ -28,8 +28,8 @@ android {
         applicationId = "com.episode6.podcasthacker"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = self.versions.code.get().toInt()
+        versionName = self.versions.name.get()
     }
     packaging {
         resources {

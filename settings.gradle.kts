@@ -26,6 +26,11 @@ dependencyResolutionManagement {
         }
         mavenCentral()
     }
+    versionCatalogs {
+        create("self") {
+            from(files("self.versions.toml"))
+        }
+    }
 }
 
 plugins {

@@ -21,8 +21,18 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.episode6.podcasthacker"
-            packageVersion = "1.0.0"
+            packageName = "PodcastHacker"
+            packageVersion = self.versions.name.get()
+            // jpackage requires MAJOR > 0 for the macOS app image/dmg and for msi;
+            // map 0.x.y -> 1.x.y there until we reach v1.0
+            val jpackageSafeVersion = self.versions.name.get()
+                .let { if (it.startsWith("0.")) "1." + it.substringAfter("0.") else it }
+            macOS {
+                packageVersion = jpackageSafeVersion
+            }
+            windows {
+                msiPackageVersion = jpackageSafeVersion
+            }
         }
     }
 }
