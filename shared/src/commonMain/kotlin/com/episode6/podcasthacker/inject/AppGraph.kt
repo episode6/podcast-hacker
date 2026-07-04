@@ -29,6 +29,16 @@ import kotlinx.coroutines.SupervisorJob
 import okio.FileSystem
 import okio.SYSTEM
 
+/**
+ * IO seams for tests: integration tests swap in a mock-engine [httpClient] and/or a
+ * temp-dir [appDirs] while the rest of the graph stays production. Production code
+ * passes no overrides.
+ */
+data class AppGraphOverrides(
+    val httpClient: HttpClient? = null,
+    val appDirs: AppDirs? = null,
+)
+
 @DependencyGraph(AppScope::class)
 interface AppGraph {
     val appStore: AppStore
@@ -39,12 +49,14 @@ interface AppGraph {
     val episodeRepository: EpisodeRepository
 
     @Provides @SingleIn(AppScope::class)
-    fun provideAppDirs(context: PlatformContext): AppDirs = context.appDirs()
+    fun provideAppDirs(context: PlatformContext, overrides: AppGraphOverrides): AppDirs =
+        overrides.appDirs ?: context.appDirs()
 
     @Provides @SingleIn(AppScope::class)
-    fun provideHttpClient(): HttpClient = platformHttpClient {
-        expectSuccess = true
-    }
+    fun provideHttpClient(overrides: AppGraphOverrides): HttpClient =
+        overrides.httpClient ?: platformHttpClient {
+            expectSuccess = true
+        }
 
     @Provides @SingleIn(AppScope::class)
     fun provideAppDatabase(context: PlatformContext, appDirs: AppDirs): AppDatabase {
@@ -71,10 +83,15 @@ interface AppGraph {
     )
 
     @DependencyGraph.Factory
-    fun interface Factory {
-        fun create(@Provides context: PlatformContext): AppGraph
+    interface Factory {
+        fun create(
+            @Provides context: PlatformContext,
+            @Provides overrides: AppGraphOverrides,
+        ): AppGraph
     }
 }
 
-fun createAppGraph(context: PlatformContext): AppGraph =
-    createGraphFactory<AppGraph.Factory>().create(context)
+fun createAppGraph(
+    context: PlatformContext,
+    overrides: AppGraphOverrides = AppGraphOverrides(),
+): AppGraph = createGraphFactory<AppGraph.Factory>().create(context, overrides)

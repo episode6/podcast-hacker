@@ -57,6 +57,10 @@ kotlin {
         }
         jvmTest.dependencies {
             implementation(libs.mockk)
+            // headless (offscreen-skiko) compose ui tests — no display needed, runs in CI
+            @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+            implementation(compose.uiTest)
+            implementation(compose.desktop.currentOs)
         }
         getByName("androidHostTest").dependencies {
             // real XmlPullParser for RssParser's android impl; the host-test android.jar
