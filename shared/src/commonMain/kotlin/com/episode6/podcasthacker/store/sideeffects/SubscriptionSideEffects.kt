@@ -17,16 +17,28 @@ import dev.zacsweers.metro.IntoSet
 import dev.zacsweers.metro.Provides
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.transform
 
 @ContributesTo(AppScope::class)
 interface SubscriptionSideEffects {
 
-    /** Room is the source of truth: subscriptions flow into AppState from the db. */
+    /**
+     * Room is the source of truth: subscriptions flow into AppState from the db.
+     *
+     * SideEffectMiddleware doesn't relay any actions until every side effect has
+     * subscribed to [com.episode6.redux.sideeffects.SideEffectContext.actions], so this
+     * observe-only effect must still subscribe (with an empty filter) or it silently
+     * starves all the other side effects of their input.
+     */
     @Provides @IntoSet fun observeSubscriptions(repo: SubscriptionRepository): SideEffect<AppState> =
         sideEffect {
-            repo.observeSubscriptions().mapActions { listOf(SetSubscriptions(it)) }
+            merge(
+                actions.filter { false },
+                repo.observeSubscriptions().mapActions { listOf(SetSubscriptions(it)) },
+            )
         }
 
     @Provides @IntoSet fun subscribe(repo: SubscriptionRepository): SideEffect<AppState> =

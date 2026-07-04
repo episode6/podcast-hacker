@@ -72,7 +72,10 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
       fetching is mockable; re-syncs preserve per-episode downloadState/playbackPosition
 - [x] Repositories (plain injectable classes): Subscription / Feed / Episode
 - [x] Side effects for subscription + feed sync (action in → repo call → result actions);
-      Room is source of truth feeding AppState via observe side effect
+      Room is source of truth feeding AppState via observe side effect. Gotcha (found
+      2026-07-04, fixed in stage 4): SideEffectMiddleware relays no actions until EVERY
+      side effect subscribes to `context.actions` — an observe-only effect must merge in
+      `actions.filter { false }` or it starves all side effects of input
 - [x] Tests: fixture-feed parsing, side effects via redux test-support + mockk + assertk +
       ktor-client-mock, in-memory Room. Gotcha: RssParser's android impl needs kxml2 on
       the androidHostTest classpath (the host-test android.jar XmlPull classes are stubs)
@@ -82,13 +85,20 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 
 ## Stage 4 — Subscribe flow + podcast grid
 
-- [ ] AddPodcast screen: screen-scoped StoreFlow (hosted in a ViewModel for config-change
-      survival); search field → iTunes results (artwork/title/author) + paste-URL row
-- [ ] Subscribe action → app-store side effect fetches feed + persists
-- [ ] Grid screen: `LazyVerticalGrid(GridCells.Adaptive(160.dp))` of subscription artwork
-      (Coil), add button, unsubscribe via long-press/overflow
-- [ ] Verify: subscribe to 2–3 real podcasts on desktop + android emulator; artwork renders;
-      survives restart; unsubscribe works
+- [x] AddPodcast screen: screen-scoped StoreFlow (hosted in a ViewModel for config-change
+      survival); search field → iTunes results (artwork/title/author) + paste-URL row.
+      Search is debounced (400ms, min 2 chars) with `transformLatest` cancelling stale
+      requests; url-shaped queries show a direct subscribe row instead
+- [x] Subscribe action → app-store side effect fetches feed + persists (the Stage-3
+      `SubscribeToPodcast` side effect; result rows dispatch it and pop back)
+- [x] Grid screen: `LazyVerticalGrid(GridCells.Adaptive(160.dp))` of subscription artwork
+      (Coil 3.5.0, `KtorNetworkFetcherFactory` sharing the graph's HttpClient via
+      `setSingletonImageLoaderFactory`), add tile, unsubscribe via long-press dropdown,
+      thin sync progress bar; leftover template `Platform`/`getPlatform` deleted
+- [x] Verify: subscribe to 2–3 real podcasts on desktop + android emulator; artwork renders;
+      survives restart; unsubscribe works (verified 2026-07-04 on both platforms after
+      fixing the SideEffectMiddleware subscription-contract bug that silently swallowed
+      all side-effect input)
 
 ## Stage 5 — Podcast detail + episode detail
 
@@ -165,7 +175,7 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 | room | `androidx.room:room-{runtime,compiler}` + plugin `androidx.room` | 2.8.4 |
 | sqlite-bundled | `androidx.sqlite:sqlite-bundled` | 2.6.2 |
 | navigation | `org.jetbrains.androidx.navigation:navigation-compose` | 2.9.2 (works w/ CMP 1.11.1) |
-| coil | `io.coil-kt.coil3:{coil-compose,coil-network-ktor3}` | ⚠ 3.3.x |
+| coil | `io.coil-kt.coil3:{coil-compose,coil-network-ktor3}` | 3.5.0 |
 | rssparser | `com.prof18.rssparser:rssparser` | 6.1.6 (latest; jvm target confirmed) |
 | media3 | `androidx.media3:media3-{exoplayer,session}` | ⚠ 1.9.x (androidMain only) |
 | adaptive | `org.jetbrains.compose.material3.adaptive:adaptive` | ⚠ 1.2.x |
