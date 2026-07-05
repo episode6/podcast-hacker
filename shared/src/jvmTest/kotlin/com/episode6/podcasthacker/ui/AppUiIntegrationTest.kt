@@ -1,15 +1,20 @@
 package com.episode6.podcasthacker.ui
 
+import androidx.compose.ui.test.ComposeTimeoutException
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.waitUntilExactlyOneExists
 import com.episode6.podcasthacker.App
@@ -127,20 +132,20 @@ class AppUiIntegrationTest {
         // grid → add podcast → search
         onNodeWithText("Add Podcast", substring = true).performClick()
         onNode(hasSetTextAction()).performTextInput("test")
-        waitUntilExactlyOneExists(hasText("Test Podcast"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 5_000)
 
         // tapping the result subscribes + pops back to the grid, where the tile appears
         onNodeWithText("Test Podcast").performClick()
-        waitUntilExactlyOneExists(hasText("Test Podcast"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
 
         // podcast detail: header + episodes from the synced feed
         onNodeWithText("Test Podcast").performClick()
-        waitUntilExactlyOneExists(hasText("Episode Two"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
         onNodeWithText("Test Author").assertExists()
 
         // episode detail: show notes rendered from the feed html
         onNodeWithText("Episode Two").performClick()
-        waitUntilExactlyOneExists(hasText("notes two"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("notes two"), timeoutMillis = 5_000)
     }
 
     @Test
@@ -150,17 +155,17 @@ class AppUiIntegrationTest {
         // subscribe + navigate to an episode
         onNodeWithText("Add Podcast", substring = true).performClick()
         onNode(hasSetTextAction()).performTextInput(FEED_URL)
-        waitUntilExactlyOneExists(hasText("Subscribe to RSS url"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Subscribe to RSS url"), timeoutMillis = 5_000)
         onNodeWithText("Subscribe to RSS url").performClick()
-        waitUntilExactlyOneExists(hasText("Test Podcast"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
         onNodeWithText("Test Podcast").performClick()
-        waitUntilExactlyOneExists(hasText("Episode Two"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
         onNodeWithText("Episode Two").performClick()
-        waitUntilExactlyOneExists(hasText("Download"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Download"), timeoutMillis = 5_000)
 
         // download runs through the real tacita pipeline against MockEngine bytes
         onNodeWithText("Download").performClick()
-        waitUntilExactlyOneExists(hasText("Delete Download"), timeoutMillis = 30_000)
+        waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 30_000)
 
         // play the downloaded episode → NowPlaying with live transport controls.
         // matchers are scoped by tag (text merges into the button node): the mini player
@@ -170,29 +175,29 @@ class AppUiIntegrationTest {
         val pausedOnNowPlaying = hasTestTag("playPauseButton") and hasText("▶")
         val pausedOnMiniBar = hasTestTag("miniPlayerPlayPause") and hasText("▶")
         onNodeWithText("Play").performClick()
-        waitUntilExactlyOneExists(playingOnNowPlaying, timeoutMillis = 10_000)
+        waitForExactlyOne(playingOnNowPlaying, timeoutMillis = 10_000)
         onNodeWithText("↺ 15").assertExists()
         onNode(playingOnNowPlaying).performClick() // pause
-        waitUntilExactlyOneExists(pausedOnNowPlaying, timeoutMillis = 10_000)
+        waitForExactlyOne(pausedOnNowPlaying, timeoutMillis = 10_000)
 
         // back to episode detail: the mini player bar carries the paused state; tapping
         // it returns to NowPlaying, where Stop clears playback + hides the bar
         onNodeWithText("← Back").performClick()
-        waitUntilExactlyOneExists(pausedOnMiniBar, timeoutMillis = 10_000)
+        waitForExactlyOne(pausedOnMiniBar, timeoutMillis = 10_000)
         onNodeWithTag("miniPlayerBar").performClick()
-        waitUntilExactlyOneExists(hasText("Stop"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Stop"), timeoutMillis = 10_000)
         onNodeWithText("Stop").performClick()
-        waitUntilExactlyOneExists(hasText("Delete Download"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 10_000)
 
         // the episode row now carries the downloaded marker
         onNodeWithText("← Back").performClick()
-        waitUntilExactlyOneExists(hasText("downloaded", substring = true), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("downloaded", substring = true), timeoutMillis = 5_000)
 
         // delete resets to downloadable
         onNodeWithText("Episode Two").performClick()
-        waitUntilExactlyOneExists(hasText("Delete Download"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 5_000)
         onNodeWithText("Delete Download").performClick()
-        waitUntilExactlyOneExists(hasText("Download"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Download"), timeoutMillis = 10_000)
     }
 
     @Test
@@ -202,14 +207,27 @@ class AppUiIntegrationTest {
         // paste a feed url → direct subscribe row instead of search results
         onNodeWithText("Add Podcast", substring = true).performClick()
         onNode(hasSetTextAction()).performTextInput(FEED_URL)
-        waitUntilExactlyOneExists(hasText("Subscribe to RSS url"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Subscribe to RSS url"), timeoutMillis = 5_000)
         onNodeWithText("Subscribe to RSS url").performClick()
-        waitUntilExactlyOneExists(hasText("Test Podcast"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
 
         // long-press the tile → dropdown → unsubscribe empties the grid
         onNodeWithText("Test Podcast").performTouchInput { longClick() }
-        waitUntilExactlyOneExists(hasText("Unsubscribe"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Unsubscribe"), timeoutMillis = 5_000)
         onNodeWithText("Unsubscribe").performClick()
-        waitUntilExactlyOneExists(hasText("No subscriptions yet"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("No subscriptions yet"), timeoutMillis = 10_000)
+    }
+
+    /** [waitUntilExactlyOneExists] but the failure says what the ui actually showed. */
+    private fun ComposeUiTest.waitForExactlyOne(matcher: SemanticsMatcher, timeoutMillis: Long = 10_000) {
+        try {
+            waitUntilExactlyOneExists(matcher, timeoutMillis)
+        } catch (e: ComposeTimeoutException) {
+            throw AssertionError(
+                "Timed out waiting for exactly one: ${matcher.description}\n--- semantics tree ---\n" +
+                    runCatching { onRoot().printToString() }.getOrElse { "unavailable: $it" },
+                e,
+            )
+        }
     }
 }
