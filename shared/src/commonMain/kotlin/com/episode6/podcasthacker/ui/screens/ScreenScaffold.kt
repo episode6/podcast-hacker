@@ -5,13 +5,17 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -24,6 +28,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.window.core.layout.WindowSizeClass
+import com.episode6.podcasthacker.ui.util.overlappedNavBarBottomPadding
 
 /**
  * Simple scaffold shared by all screens: a title row with an optional back affordance
@@ -45,10 +50,15 @@ internal fun ScreenScaffold(
     val screenPadding = if (isCompact) 16.dp else 24.dp
     val contentMaxWidth = if (constrainContentWidth && !isCompact) 840.dp else Dp.Unspecified
 
+    // Safe-content padding everywhere except the bottom, where the nav bar inset is
+    // deliberately overlapped so content isn't cut off high above the gesture pill.
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .safeContentPadding()
+            .windowInsetsPadding(
+                WindowInsets.safeContent.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
+            )
+            .padding(bottom = overlappedNavBarBottomPadding())
             .padding(screenPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

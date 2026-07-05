@@ -30,6 +30,7 @@ import coil3.compose.AsyncImage
 import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.TogglePlayPause
 import com.episode6.podcasthacker.ui.nav.NowPlayingRoute
+import com.episode6.podcasthacker.ui.util.overlappedNavBarBottomPadding
 import com.episode6.podcasthacker.ui.util.stateOf
 
 /**
@@ -50,11 +51,13 @@ internal fun MiniPlayerBar(navController: NavController, modifier: Modifier = Mo
     ) {
         Surface(
             onClick = { navController.navigate(NowPlayingRoute) },
-            modifier = Modifier.fillMaxWidth().height(64.dp).testTag("miniPlayerBar"),
+            modifier = Modifier.fillMaxWidth().testTag("miniPlayerBar"),
             color = MaterialTheme.colorScheme.surfaceVariant,
             tonalElevation = 3.dp,
         ) {
-            Column {
+            // Pad by the nav bar inset inside the surface so the bar's background
+            // extends behind the gesture area while its controls stay above it.
+            Column(modifier = Modifier.padding(bottom = overlappedNavBarBottomPadding()).height(64.dp)) {
                 val progress = current?.duration
                     ?.takeIf { it.isPositive() }
                     ?.let { ((current.position / it).toFloat()).coerceIn(0f, 1f) }
