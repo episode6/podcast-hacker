@@ -5,6 +5,7 @@ import assertk.assertions.containsExactly
 import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
+import com.episode6.podcasthacker.downloads.DownloadScheduler
 import com.episode6.podcasthacker.store.AppState
 import com.episode6.podcasthacker.store.DeleteDownload
 import com.episode6.podcasthacker.store.DownloadEpisode
@@ -19,6 +20,8 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
+import io.mockk.verifyOrder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -151,6 +154,63 @@ class DownloadSideEffectsTest {
 
         assertThat(actions).containsExactly(SetEpisodeDownloadStatus(guid, null))
         coVerify(exactly = 1) { downloadsRepo.deleteDownload(guid) }
+    }
+
+    @Test
+    fun scheduler_activatesOnFirstDownload_idlesWhenQueueEmpties() = runTest {
+        val scheduler = mockk<DownloadScheduler>(relaxUnitFun = true)
+        val context = mockk<SideEffectContext<AppState>> {
+            every { actions } returns flowOf(
+                DownloadEpisode("a"),
+                DownloadEpisode("b"), // second enqueue while active: no re-activation
+                SetEpisodeDownloadStatus("a", null),
+                SetEpisodeDownloadStatus("b", null),
+            )
+            coEvery { currentState() } returnsMany listOf(
+                AppState(downloads = mapOf("b" to EpisodeDownloadStatus.Queued)),
+                AppState(),
+            )
+        }
+
+        val effect = sideEffects.scheduleBackgroundDownloads(scheduler)
+        with(effect) { context.act() }.toList()
+
+        verifyOrder {
+            scheduler.onQueueActive()
+            scheduler.onQueueIdle()
+        }
+        verify(exactly = 1) { scheduler.onQueueActive() }
+        verify(exactly = 1) { scheduler.onQueueIdle() }
+    }
+
+    @Test
+    fun scheduler_treatsLingeringFailuresAsIdle() = runTest {
+        val scheduler = mockk<DownloadScheduler>(relaxUnitFun = true)
+        val failedState = AppState(downloads = mapOf("a" to EpisodeDownloadStatus.Failure("boom")))
+        val context = mockk<SideEffectContext<AppState>> {
+            every { actions } returns flowOf(
+                DownloadEpisode("a"),
+                SetEpisodeDownloadStatus("a", EpisodeDownloadStatus.Failure("boom")),
+            )
+            coEvery { currentState() } returns failedState
+        }
+
+        val effect = sideEffects.scheduleBackgroundDownloads(scheduler)
+        with(effect) { context.act() }.toList()
+
+        verify(exactly = 1) { scheduler.onQueueIdle() }
+    }
+
+    @Test
+    fun scheduler_ignoresStatusChangesWhileInactive() = runTest {
+        val scheduler = mockk<DownloadScheduler>(relaxUnitFun = true)
+
+        sideEffects.scheduleBackgroundDownloads(scheduler)
+            .output(SetEpisodeDownloadStatus("a", null))
+            .toList()
+
+        verify(exactly = 0) { scheduler.onQueueActive() }
+        verify(exactly = 0) { scheduler.onQueueIdle() }
     }
 
     private fun SideEffect<AppState>.output(vararg input: Action, state: AppState = AppState()): Flow<Action> {

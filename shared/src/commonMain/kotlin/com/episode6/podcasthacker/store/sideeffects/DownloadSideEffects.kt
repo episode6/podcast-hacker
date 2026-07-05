@@ -2,6 +2,7 @@ package com.episode6.podcasthacker.store.sideeffects
 
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
+import com.episode6.podcasthacker.downloads.DownloadScheduler
 import com.episode6.podcasthacker.store.AppState
 import com.episode6.podcasthacker.store.DeleteDownload
 import com.episode6.podcasthacker.store.DownloadEpisode
@@ -48,6 +49,34 @@ interface DownloadSideEffects {
             .flatMapConcat { action ->
                 flow { downloadEpisode(action.episodeGuid, tacita, episodeRepository, downloadsRepository) }
             }
+    }
+
+    /**
+     * Tells the platform when the download queue transitions between empty and
+     * non-empty so it can keep the process alive while downloads run (see
+     * [DownloadScheduler]). Failure entries linger in the downloads map awaiting a
+     * retry, so they don't count as active work.
+     */
+    @Provides @IntoSet fun scheduleBackgroundDownloads(
+        scheduler: DownloadScheduler,
+    ): SideEffect<AppState> = sideEffect {
+        var active = false
+        actions.transform { action ->
+            when {
+                action is DownloadEpisode && !active -> {
+                    active = true
+                    scheduler.onQueueActive()
+                }
+                action is SetEpisodeDownloadStatus && active -> {
+                    // actions reach side effects post-reduction, so this state is fresh
+                    val idle = currentState().downloads.values.all { it is EpisodeDownloadStatus.Failure }
+                    if (idle) {
+                        active = false
+                        scheduler.onQueueIdle()
+                    }
+                }
+            }
+        }
     }
 
     @Provides @IntoSet fun deleteDownloads(

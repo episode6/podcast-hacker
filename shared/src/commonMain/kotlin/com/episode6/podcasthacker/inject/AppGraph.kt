@@ -11,6 +11,8 @@ import com.episode6.podcasthacker.data.network.ItunesSearchClient
 import com.episode6.podcasthacker.data.network.platformHttpClient
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
 import com.episode6.podcasthacker.data.repo.SubscriptionRepository
+import com.episode6.podcasthacker.downloads.DownloadScheduler
+import com.episode6.podcasthacker.downloads.createDownloadScheduler
 import com.episode6.podcasthacker.playback.PodcastPlayer
 import com.episode6.podcasthacker.playback.createPodcastPlayer
 import com.episode6.podcasthacker.store.AppState
@@ -78,6 +80,10 @@ interface AppGraph {
     @Provides @SingleIn(AppScope::class)
     fun provideAppCoroutineScope(): CoroutineScope =
         CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    @Provides @SingleIn(AppScope::class)
+    fun provideDownloadScheduler(context: PlatformContext): DownloadScheduler =
+        context.createDownloadScheduler()
 
     @Provides @SingleIn(AppScope::class)
     fun providePodcastPlayer(
