@@ -279,12 +279,13 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
    bundled, THIRD_PARTY_LICENSES.md documents source + replaceability. Event-callback
    rule inherited from vlcj lore: never call back into libvlc from its event threads
    (time/length are read from the event union payload at offset 16).
-10. **Room KMP invalidation flow can go silent on JVM** (diagnosed 2026-07-05 from CI
-    flake artifacts): a `Flow` query occasionally never delivers rows that a completed
-    write definitely persisted — the intermittent
-    `AppUiIntegrationTest.downloadEpisode…` timeout showed two successful syncs
-    ("Feed sync: 2 episodes" logged, no errors) with the episode list staying empty for
-    10s. Mitigated app-side: detail screens restart their Room queries on redux state
-    transitions (sync finished / download-status changed) instead of trusting a single
-    collection. Revisit on Room upgrades (>2.8.4) — if fixed upstream, the keyed
-    LaunchedEffect re-queries can revert to plain collectAsState.
+10. **Room KMP flow queries started mid-session can go silent on JVM** (diagnosed
+    2026-07-05 from CI flake artifacts): a per-screen `Flow` query occasionally never
+    emits — not even its initial value — for rows a completed write definitely persisted
+    (two successful syncs logged "2 episodes", no errors, list empty 10s+). Restarting
+    the collection didn't help; notably the app-lifetime observers started at app boot
+    (observeSubscriptions) never failed once. Mitigation: episodes flow into AppState
+    via ONE app-lifetime `observeAllEpisodes` observer (grouped by feedUrl); screens
+    read AppState slices and hold no per-screen Room flows. Revisit on Room upgrades
+    (>2.8.4); suspicion is flow startup (invalidation-tracker registration) wedging
+    when it races active db traffic.

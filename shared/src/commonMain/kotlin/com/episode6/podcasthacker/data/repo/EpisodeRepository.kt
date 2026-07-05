@@ -16,6 +16,10 @@ class EpisodeRepository(private val db: AppDatabase) {
     fun observeEpisodes(feedUrl: String): Flow<List<Episode>> =
         db.episodeDao().observeForPodcast(feedUrl).map { episodes -> episodes.map { it.toDomain() } }
 
+    /** One app-lifetime observer feeding AppState (see TODO.md Risk 10). */
+    fun observeAllEpisodes(): Flow<List<Episode>> =
+        db.episodeDao().observeAll().map { episodes -> episodes.map { it.toDomain() } }
+
     suspend fun episode(guid: String): Episode? = db.episodeDao().get(guid)?.toDomain()
 
     fun observeEpisode(guid: String): Flow<Episode?> =

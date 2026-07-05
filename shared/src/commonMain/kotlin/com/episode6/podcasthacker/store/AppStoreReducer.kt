@@ -15,6 +15,7 @@ internal fun AppState.reduce(action: Action): AppState = when (action) {
 private fun AppState.reduceUpdateStateAction(action: UpdateStateAction): AppState = when (action) {
     is SetNowPlaying     -> copy(nowPlaying = action.nowPlaying)
     is SetSubscriptions  -> copy(subscriptions = action.subscriptions)
+    is SetEpisodes       -> copy(episodesByFeed = action.episodesByFeed)
     is SetFeedSyncing    -> copy(feedSync = feedSync.copy(
         syncing = if (action.syncing) feedSync.syncing + action.feedUrl else feedSync.syncing - action.feedUrl,
     ))

@@ -49,12 +49,7 @@ internal fun EpisodeDetailScreen(navController: NavController, route: EpisodeDet
     val store = graph.appStore
     val podcast by store.stateOf { subscriptions.firstOrNull { it.feedUrl == route.feedUrl } }
     val downloadStatus by store.stateOf { downloads[route.episodeGuid] }
-    // re-run the query on download-status transitions: room kmp's invalidation flow has
-    // been observed (rarely, on jvm) to go silent, and the downloaded flag lives in room
-    var episode by remember(route.episodeGuid) { mutableStateOf<Episode?>(null) }
-    LaunchedEffect(route.episodeGuid, downloadStatus) {
-        graph.episodeRepository.observeEpisode(route.episodeGuid).collect { episode = it }
-    }
+    val episode by store.stateOf { episode(route.episodeGuid) }
 
     ScreenScaffold(
         title = podcast?.title ?: "Episode",

@@ -10,6 +10,9 @@ interface EpisodeDao {
     @Query("SELECT * FROM episodes WHERE feedUrl = :feedUrl ORDER BY pubDateEpochMillis DESC")
     fun observeForPodcast(feedUrl: String): Flow<List<EpisodeEntity>>
 
+    @Query("SELECT * FROM episodes ORDER BY pubDateEpochMillis DESC")
+    fun observeAll(): Flow<List<EpisodeEntity>>
+
     @Query("SELECT * FROM episodes WHERE feedUrl = :feedUrl")
     suspend fun getAllForPodcast(feedUrl: String): List<EpisodeEntity>
 

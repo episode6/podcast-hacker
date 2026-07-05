@@ -46,13 +46,7 @@ internal fun PodcastDetailScreen(navController: NavController, route: PodcastDet
     val store = graph.appStore
     val podcast by store.stateOf { subscriptions.firstOrNull { it.feedUrl == route.feedUrl } }
     val syncing by store.stateOf { route.feedUrl in feedSync.syncing }
-    // room kmp's invalidation flow has been observed (rarely, on jvm) to go silent and
-    // never deliver rows a completed sync definitely wrote, so re-run the query whenever
-    // a sync of this feed finishes rather than trusting a single collection
-    var episodes by remember(route.feedUrl) { mutableStateOf(emptyList<Episode>()) }
-    LaunchedEffect(route.feedUrl, syncing) {
-        graph.episodeRepository.observeEpisodes(route.feedUrl).collect { episodes = it }
-    }
+    val episodes by store.stateOf { episodesByFeed[route.feedUrl].orEmpty() }
 
     LaunchedEffect(route.feedUrl) { store.dispatch(RefreshFeed(route.feedUrl)) }
 
