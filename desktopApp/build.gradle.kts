@@ -11,6 +11,7 @@ dependencies {
 
     implementation(compose.desktop.currentOs)
     implementation(libs.kotlinx.coroutinesSwing)
+    implementation(libs.okio)
 
     implementation(libs.compose.uiToolingPreview)
 }
@@ -29,9 +30,14 @@ compose.desktop {
                 .let { if (it.startsWith("0.")) "1." + it.substringAfter("0.") else it }
             macOS {
                 packageVersion = jpackageSafeVersion
+                iconFile.set(project.file("icons/PodcastHacker.icns"))
             }
             windows {
                 msiPackageVersion = jpackageSafeVersion
+                iconFile.set(project.file("icons/PodcastHacker.ico"))
+            }
+            linux {
+                iconFile.set(project.file("icons/PodcastHacker.png"))
             }
         }
     }

@@ -180,26 +180,29 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
       1.5× speed, +30s skip, position resume across force-stop, mini-bar → NowPlaying →
       Stop. A human ./start listen pass still worthwhile
 
-## Stage 8 — Platform polish
+## ~~Stage 8 — Platform polish~~ (done 2026-07-04)
 
-- [ ] Android background-download resilience: JobScheduler **user-initiated data transfer**
-      jobs on API 34+ (`JobInfo.setUserInitiated(true)`, `RUN_USER_INITIATED_JOBS`,
-      `setEstimatedNetworkBytes`, notification via `JobService.setNotification`);
-      `dataSync` foreground service fallback on API 24–33 (UIDT doesn't exist there;
-      WorkManager has no UIDT support) — both behind a small `DownloadScheduler` interface
-- [ ] Foldable pass: material3-adaptive / WindowSizeClass paddings; optional list-detail
-      pane on expanded widths; resizable-emulator test
-- [ ] iOS: Info.plist background-audio mode
-- [ ] Desktop: window size/position persistence; media keys if cheap
-- [ ] ~~Desktop: bundle libvlc into the jpackage installers~~ DECIDED 2026-07-04: skip
-      bundling for now; desktop playback simply requires an installed VLC (in-app error
-      explains this when missing). Document the requirement in the Stage 9 README. If
-      revisited later: fetch per-OS VLC 3.x libs in CI, lay them out in the app image,
-      point discovery at them (`jna.library.path` + `VLC_PLUGIN_PATH`, proven in the
-      Stage 7 probe); libvlc is LGPL 2.1+ so bundling is MIT-compatible with attribution
-      (vlcj's GPL v3 — Risk 9 — applies either way since vlcj ships in the app)
-- [ ] App icons for all platforms
-- [ ] Verify: CI green; manual foldable emulator pass
+- [x] Android background-download resilience: `DownloadScheduler` interface driven by a
+      queue-transition side effect (Failure entries don't count as active work); UIDT
+      job on API 34+ (`setUserInitiated`, `RUN_USER_INITIATED_JOBS`,
+      `setEstimatedNetworkBytes`, `JobService.setNotification`), `dataSync` FGS fallback
+      on 24–33, no-op elsewhere. Neither owns the work — the redux queue does; they just
+      pin the process + surface the notification, and `jobFinished` fires on queue-idle
+- [x] Foldable pass: material3-adaptive 1.2.0 (stable); ScreenScaffold pads 16→24dp on
+      medium+ windows and caps reading content at 840dp centered (grid opts out).
+      List-detail pane skipped for v0. Verified via `wm size 2208x1840` + `wm density
+      280` resize pass on the emulator
+- [x] iOS: Info.plist UIBackgroundModes audio
+- [x] Desktop: window size/position/maximized persisted (debounced) to
+      `window-state.properties` in dataDir, restored on launch — verified on a real
+      launch. Media keys skipped (needs JNativeHook-class global hooks; not cheap)
+- [x] App icons all platforms: generated podcast-waves-with-a-cut mark (PIL script) →
+      android adaptive (mipmap fg + color bg) + legacy mipmaps, ios 1024 asset,
+      desktop icns/ico/png wired into jpackage config
+- [x] Verify: check + all-target compiles green locally; emulator pass: UIDT job
+      scheduled on download w/ notification, screen-off download completed, job history
+      shows "app called jobFinished" on queue idle + notification cleared; adaptive
+      width verified on resized emulator; CI green pending on the stacked PR
 
 ## Stage 9 — Release v0.0.1
 
