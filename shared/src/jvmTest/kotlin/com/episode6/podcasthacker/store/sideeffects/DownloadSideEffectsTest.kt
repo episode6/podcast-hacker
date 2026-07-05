@@ -2,6 +2,7 @@ package com.episode6.podcasthacker.store.sideeffects
 
 import assertk.assertThat
 import assertk.assertions.containsExactly
+import com.episode6.podcasthacker.data.model.AdBoundary
 import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
@@ -14,10 +15,12 @@ import com.episode6.podcasthacker.store.SetEpisodeDownloadStatus
 import com.episode6.redux.Action
 import com.episode6.redux.sideeffects.SideEffect
 import com.episode6.redux.sideeffects.SideEffectContext
+import com.episode6.tacita.AdBoundaryCandidate
 import com.episode6.tacita.DownloadState
 import com.episode6.tacita.Tacita
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -81,7 +84,7 @@ class DownloadSideEffectsTest {
                 DownloadState.Downloading(outputFile, 0.75f),
                 DownloadState.Downloading(referenceFile, 0.5f), // reference copy
                 DownloadState.CuttingAds,
-                DownloadState.Complete,
+                DownloadState.Complete(),
             )
         }
 
@@ -102,13 +105,43 @@ class DownloadSideEffectsTest {
     }
 
     @Test
+    fun completedDownload_persistsAdBoundaryCandidates_beforeDownloadedFlag() = runTest {
+        val tacita = mockk<Tacita> {
+            every {
+                downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds)
+            } returns flowOf(
+                DownloadState.Complete(
+                    listOf(
+                        AdBoundaryCandidate(60_000L, AdBoundaryCandidate.Source.DIFF_CUT, AdBoundaryCandidate.Role.START),
+                        AdBoundaryCandidate(90_000L, AdBoundaryCandidate.Source.DAI_SLOT, AdBoundaryCandidate.Role.JOIN),
+                    ),
+                ),
+            )
+        }
+
+        sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+            .output(DownloadEpisode(guid)).toList()
+
+        coVerifyOrder {
+            downloadsRepo.saveAdBoundaryCandidates(
+                guid,
+                listOf(
+                    AdBoundary(60.seconds, AdBoundary.Source.DiffCut, AdBoundary.Role.Start),
+                    AdBoundary(90.seconds, AdBoundary.Source.DaiSlot, AdBoundary.Role.Join),
+                ),
+            )
+            downloadsRepo.markDownloaded(guid, true)
+        }
+    }
+
+    @Test
     fun existingFile_downloadsWithOverwrite() = runTest {
         every { downloadsRepo.downloadedFileExists(guid) } returns true
         val tacita = mockk<Tacita> {
             every {
                 downloadPodcast(audioUrl, outputFile, referenceFile, true, true, enclosureBytes, duration.inWholeSeconds)
             } returns flowOf(
-                DownloadState.Complete,
+                DownloadState.Complete(),
             )
         }
 
@@ -135,7 +168,7 @@ class DownloadSideEffectsTest {
                 throw RuntimeException("boom")
             }
             every { downloadPodcast(audioUrl, otherOutput, any(), any(), any(), any(), any()) } returns flowOf(
-                DownloadState.Complete,
+                DownloadState.Complete(),
             )
         }
 

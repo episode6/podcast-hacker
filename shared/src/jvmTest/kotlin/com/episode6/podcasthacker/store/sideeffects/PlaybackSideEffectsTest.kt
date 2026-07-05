@@ -3,6 +3,7 @@ package com.episode6.podcasthacker.store.sideeffects
 import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
+import com.episode6.podcasthacker.data.model.AdBoundary
 import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.data.model.Podcast
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
@@ -19,6 +20,8 @@ import com.episode6.podcasthacker.store.SeekTo
 import com.episode6.podcasthacker.store.SetNowPlaying
 import com.episode6.podcasthacker.store.SetPlaybackSpeed
 import com.episode6.podcasthacker.store.SetPlayerState
+import com.episode6.podcasthacker.store.SkipToNextAdBoundary
+import com.episode6.podcasthacker.store.SkipToPreviousAdBoundary
 import com.episode6.podcasthacker.store.StopPlayback
 import com.episode6.podcasthacker.store.TogglePlayPause
 import com.episode6.redux.Action
@@ -82,7 +85,10 @@ class PlaybackSideEffectsTest {
     private val downloadsRepository = mockk<DownloadsRepository> {
         every { downloadedFileExists(episode.guid) } returns true
         every { downloadFilePath(episode.guid) } returns downloadPath
+        coEvery { adBoundaryCandidates(episode.guid) } returns emptyList()
     }
+
+    private fun boundary(position: Duration) = AdBoundary(position, AdBoundary.Source.DiffCut, AdBoundary.Role.Start)
 
     @Test
     fun playEpisode_loadsDownloadedFileAtPersistedPosition() = runTest {
@@ -152,6 +158,73 @@ class PlaybackSideEffectsTest {
 
         verify(exactly = 1) { player.seekTo(40.seconds) }
         verify(exactly = 1) { player.seekTo(Duration.ZERO) }
+    }
+
+    @Test
+    fun playEpisode_loadsAdBoundariesIntoNowPlaying() = runTest {
+        val boundaries = listOf(boundary(5.minutes), boundary(15.minutes))
+        coEvery { downloadsRepository.adBoundaryCandidates(episode.guid) } returns boundaries
+
+        val actions = sideEffects.playEpisode(player, episodeRepository, downloadsRepository)
+            .output(PlayEpisode(episode.guid), state = AppState(subscriptions = listOf(podcast)))
+            .toList()
+
+        assertThat(actions).containsExactly(
+            SetNowPlaying(nowPlaying.copy(isLoading = true, adBoundaries = boundaries)),
+        )
+    }
+
+    @Test
+    fun skipToNextAdBoundary_seeksToFirstCandidateAfterPosition() = runTest {
+        val state = AppState(
+            nowPlaying = nowPlaying.copy(
+                position = 2.minutes,
+                adBoundaries = listOf(boundary(1.minutes), boundary(5.minutes)),
+            ),
+        )
+
+        sideEffects.playerCommands(player).output(SkipToNextAdBoundary, state = state).toList()
+
+        verify(exactly = 1) { player.seekTo(5.minutes) }
+    }
+
+    @Test
+    fun skipToPreviousAdBoundary_appliesGraceWindow() = runTest {
+        val boundaries = listOf(boundary(1.minutes), boundary(5.minutes))
+
+        // just past a boundary: the grace window sends us to the one before it
+        sideEffects.playerCommands(player)
+            .output(
+                SkipToPreviousAdBoundary,
+                state = AppState(nowPlaying = nowPlaying.copy(position = 5.minutes + 1.seconds, adBoundaries = boundaries)),
+            )
+            .toList()
+        verify(exactly = 1) { player.seekTo(1.minutes) }
+
+        // well past it: it's a normal previous target
+        sideEffects.playerCommands(player)
+            .output(
+                SkipToPreviousAdBoundary,
+                state = AppState(nowPlaying = nowPlaying.copy(position = 5.minutes + 30.seconds, adBoundaries = boundaries)),
+            )
+            .toList()
+        verify(exactly = 1) { player.seekTo(5.minutes) }
+    }
+
+    @Test
+    fun skipToAdBoundary_noCandidateInDirection_doesNothing() = runTest {
+        val state = AppState(
+            nowPlaying = nowPlaying.copy(
+                position = 2.minutes,
+                adBoundaries = listOf(boundary(2.minutes - 1.seconds)), // inside the back grace window, none ahead
+            ),
+        )
+
+        sideEffects.playerCommands(player)
+            .output(SkipToNextAdBoundary, SkipToPreviousAdBoundary, state = state)
+            .toList()
+
+        verify(exactly = 0) { player.seekTo(any()) }
     }
 
     @Test

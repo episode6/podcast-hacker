@@ -46,7 +46,26 @@ shows the mini player bar.
 - Gesture nav check: `adb shell settings get secure navigation_mode` (2 = gestures).
 - Landscape probe: `settings put system user_rotation 1` (and back to 0).
 
+## Ad-boundary fixtures
+
+To make tacita emit ad-boundary candidates through the real pipeline, serve a "stitched"
+episode: encode 2-3 segments separately at *different bitrates* and `cat` them together —
+each join surfaces as a SEGMENT_BOUNDARY candidate (a plain single-encode mp3 yields
+none, which is the empty-row case). Two gotchas:
+
+- ExoPlayer reads only the first segment's Xing header, so the concatenated file reports
+  the first segment's duration and playback ends early. Fix with a remux that rewrites
+  the global header but keeps the frames (joins survive): `ffmpeg -i cat.mp3 -c:a copy out.mp3`.
+- Short fixtures end and auto-restart under your fingers while you're reading
+  screenshots; pause playback before exercising the ⇤/⇥ skip buttons so positions hold
+  still between taps.
+
 ## Gotchas
+
+- **Check for a stale fixture server before starting one**: `python3 -m http.server 8888`
+  from a previous verify session may still be running (`ss -tlnp | grep 8888`), silently
+  serving the *old* feed — the subscribe flow then shows the wrong podcast. Kill it first,
+  and kill your own when done.
 
 - The feed's artwork URLs 404 by design — podcast tiles render as blank dark squares.
 - The fixture episode is 30s; playback ends quickly, after which the mini bar shows a

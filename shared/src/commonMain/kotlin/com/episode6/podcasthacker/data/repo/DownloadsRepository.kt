@@ -2,7 +2,10 @@ package com.episode6.podcasthacker.data.repo
 
 import com.episode6.podcasthacker.AppDirs
 import com.episode6.podcasthacker.data.db.AppDatabase
+import com.episode6.podcasthacker.data.model.AdBoundary
 import com.episode6.podcasthacker.data.model.DownloadState
+import com.episode6.podcasthacker.data.model.toDomain
+import com.episode6.podcasthacker.data.model.toEntity
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
@@ -54,7 +57,16 @@ class DownloadsRepository(
         fs.delete(downloadFilePath(episodeGuid), mustExist = false)
         deleteReferenceFile(episodeGuid)
         markDownloaded(episodeGuid, downloaded = false)
+        db.adBoundaryCandidateDao().deleteForEpisode(episodeGuid)
     }
+
+    /** Candidates describe the downloaded file's timeline, so a re-download replaces them. */
+    suspend fun saveAdBoundaryCandidates(episodeGuid: String, candidates: List<AdBoundary>) {
+        db.adBoundaryCandidateDao().replaceForEpisode(episodeGuid, candidates.map { it.toEntity(episodeGuid) })
+    }
+
+    suspend fun adBoundaryCandidates(episodeGuid: String): List<AdBoundary> =
+        db.adBoundaryCandidateDao().getForEpisode(episodeGuid).map { it.toDomain() }
 }
 
 private fun String.fileSafeHash(): String = encodeUtf8().sha256().hex()

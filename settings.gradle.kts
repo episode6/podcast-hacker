@@ -25,6 +25,13 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+        maven {
+            url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+            mavenContent {
+                includeGroup("com.episode6.tacita")
+                snapshotsOnly()
+            }
+        }
     }
     versionCatalogs {
         create("self") {

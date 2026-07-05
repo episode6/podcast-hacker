@@ -41,5 +41,11 @@ data class PlayEpisode(val episodeGuid: String) : AsyncAction
 data object TogglePlayPause : AsyncAction
 data class SeekTo(val position: Duration) : AsyncAction
 data class SeekBy(val offset: Duration) : AsyncAction
+
+/** User-initiated jump to an ad-boundary candidate; no-op when none exists in that
+ * direction. Only ever dispatched from a button press — candidates are unverified
+ * guesses and must never trigger an automatic skip. */
+data object SkipToNextAdBoundary : AsyncAction
+data object SkipToPreviousAdBoundary : AsyncAction
 data class SetPlaybackSpeed(val speed: Float) : AsyncAction
 data object StopPlayback : AsyncAction

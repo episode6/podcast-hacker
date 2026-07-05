@@ -8,9 +8,11 @@ import assertk.assertions.isFalse
 import assertk.assertions.isNotEqualTo
 import assertk.assertions.isTrue
 import assertk.assertions.matches
+import assertk.assertions.isEmpty
 import com.episode6.podcasthacker.AppDirs
 import com.episode6.podcasthacker.data.db.AppDatabase
 import com.episode6.podcasthacker.data.db.EpisodeEntity
+import com.episode6.podcasthacker.data.model.AdBoundary
 import com.episode6.podcasthacker.data.model.DownloadState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
@@ -20,6 +22,8 @@ import okio.SYSTEM
 import java.nio.file.Files
 import kotlin.test.AfterTest
 import kotlin.test.Test
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 class DownloadsRepositoryTest {
 
@@ -85,6 +89,49 @@ class DownloadsRepositoryTest {
         FileSystem.SYSTEM.write(repo.downloadFilePath(guid)) { writeUtf8("mp3") }
 
         assertThat(repo.downloadedFileExists(guid)).isTrue()
+    }
+
+    @Test
+    fun adBoundaryCandidates_roundTripSortedByPosition() = runTest {
+        db.episodeDao().upsertAll(listOf(episodeEntity()))
+        val unsorted = listOf(
+            AdBoundary(10.minutes, AdBoundary.Source.DaiSlot, AdBoundary.Role.Join),
+            AdBoundary(90.seconds, AdBoundary.Source.DiffCut, AdBoundary.Role.Start),
+            AdBoundary(2.minutes, AdBoundary.Source.Id3Chapter, AdBoundary.Role.End),
+        )
+
+        repo.saveAdBoundaryCandidates(guid, unsorted)
+
+        assertThat(repo.adBoundaryCandidates(guid)).isEqualTo(
+            listOf(unsorted[1], unsorted[2], unsorted[0]),
+        )
+    }
+
+    @Test
+    fun adBoundaryCandidates_resaveReplaces() = runTest {
+        db.episodeDao().upsertAll(listOf(episodeEntity()))
+        repo.saveAdBoundaryCandidates(
+            guid,
+            listOf(AdBoundary(1.minutes, AdBoundary.Source.SegmentBoundary, AdBoundary.Role.Join)),
+        )
+
+        val second = listOf(AdBoundary(3.minutes, AdBoundary.Source.DiffCut, AdBoundary.Role.End))
+        repo.saveAdBoundaryCandidates(guid, second)
+
+        assertThat(repo.adBoundaryCandidates(guid)).isEqualTo(second)
+    }
+
+    @Test
+    fun deleteDownload_clearsAdBoundaryCandidates() = runTest {
+        db.episodeDao().upsertAll(listOf(episodeEntity(downloadState = DownloadState.Downloaded.name)))
+        repo.saveAdBoundaryCandidates(
+            guid,
+            listOf(AdBoundary(1.minutes, AdBoundary.Source.DiffCut, AdBoundary.Role.Start)),
+        )
+
+        repo.deleteDownload(guid)
+
+        assertThat(repo.adBoundaryCandidates(guid)).isEmpty()
     }
 
     private fun episodeEntity(downloadState: String = DownloadState.NotDownloaded.name) = EpisodeEntity(
