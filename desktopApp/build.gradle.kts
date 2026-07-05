@@ -24,6 +24,9 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "PodcastHacker"
             packageVersion = self.versions.name.get()
+            // per-OS libvlc staged by scripts/fetch-libvlc.sh lands in the app image
+            // (gitignored; dev builds without it fall back to a system VLC)
+            appResourcesRootDir.set(project.layout.projectDirectory.dir("resources"))
             // jpackage requires MAJOR > 0 for the macOS app image/dmg and for msi;
             // map 0.x.y -> 1.x.y there until we reach v1.0
             val jpackageSafeVersion = self.versions.name.get()

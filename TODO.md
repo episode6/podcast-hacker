@@ -199,6 +199,12 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 - [x] App icons all platforms: generated podcast-waves-with-a-cut mark (PIL script) →
       android adaptive (mipmap fg + color bg) + legacy mipmaps, ios 1024 asset,
       desktop icns/ico/png wired into jpackage config
+- [x] Desktop: bundle libvlc into the installers — decided AGAINST 2026-07-04 (require
+      a VLC install instead), then REVERSED 2026-07-05 once vlcj was replaced by our
+      own MIT-compatible binding (Risk 9): with the GPL binding gone there was no reason
+      to keep the end-user VLC dependency. `scripts/fetch-libvlc.sh` (CI runs it before
+      packaging; output gitignored) stages per-OS libs into compose appResources;
+      discovery prefers the bundle and falls back to a system VLC for dev builds
 - [x] Verify: check + all-target compiles green locally; emulator pass: UIDT job
       scheduled on download w/ notification, screen-off download completed, job history
       shows "app called jobFinished" on queue idle + notification cleared; adaptive
@@ -210,7 +216,9 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
       RELEASE_CHECKLIST.md (incl. bump `name` + `code` in self.versions.toml together +
       ios version sync + the Risk 9 license gate)
 - [x] Confirm self.versions.toml 0.0.1 / code 1 (ios MARKETING_VERSION in sync)
-- [ ] Resolve Risk 9 (vlcj GPL v3) before tagging
+- [x] Resolve Risk 9 (vlcj GPL v3): in-repo JNA→libvlc binding + bundled libvlc
+      (2026-07-05); distributed binaries are MIT-compatible, THIRD_PARTY_LICENSES.md
+      covers the LGPL notice
 - [ ] Tag `v0.0.1` once the stage PRs are merged to main
 - [ ] Verify: GitHub release auto-created with deb/msi/dmg + APK attached;
       install deb locally; sideload APK
@@ -234,7 +242,7 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 | rssparser | `com.prof18.rssparser:rssparser` | 6.1.6 (latest; jvm target confirmed) |
 | media3 | `androidx.media3:media3-{exoplayer,session}` | 1.10.1 (androidMain only) |
 | adaptive | `org.jetbrains.compose.material3.adaptive:adaptive` | ⚠ 1.2.x |
-| vlcj | `uk.co.caprica:vlcj` | 4.12.1 (jvmMain; 4.x ↔ VLC 3.x, 5.x is for VLC 4) ⚠ GPL v3 — see Risk 9 |
+| jna | `net.java.dev.jna:jna` | 5.19.1 (jvmMain; Apache-2.0; drives our own libvlc binding — vlcj was GPL v3, see Risk 9) |
 | mockk | `io.mockk:mockk` | 1.14.11 (jvm/android test source sets only) |
 | assertk | `com.willowtreeapps.assertk:assertk` | 0.28.1 (commonTest) |
 | coroutines-test | `org.jetbrains.kotlinx:kotlinx-coroutines-test` | 1.11.0 |
@@ -250,21 +258,24 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 4. **jpackage version constraints**: dmg rejects MAJOR==0 (mapped 0.x.y→1.x.y); verify msi.
 5. ~~**JavaFX Media inside jpackage installers**~~ RESOLVED 2026-07-04 by not using it:
    JavaFX Media can't decode on current Linux (libavcodec ≤61 supported, distros ship
-   .62) — swapped to vlcj per the documented fallback. NEW: desktop playback requires
-   VLC installed on the user's machine (surfaced in-app as a nowPlaying error when
-   missing); document in the Stage 9 README.
+   .62) — swapped to vlcj per the documented fallback, later replaced by our own JNA
+   binding with libvlc bundled in the installers (see Risk 9); end users need nothing
+   installed, and a missing engine still surfaces as a nowPlaying error.
 6. **Configuration cache**: Metro/KSP/Room may lag on config-cache support; be ready to
    disable it (gradle.properties or `--no-configuration-cache` in CI).
 7. **rssparser JVM target** and **iosSimulatorArm64Test flakiness on GH runners**: both
    have fallbacks noted in their stages.
 8. **tacita on Android**: Android consumes tacita's jvm artifact (bundled okhttp — safe);
    confirm resolution from `:shared` androidMain in Stage 6.
-9. **vlcj is GPL v3** (found 2026-07-04, verified from its maven pom): libvlc itself is
-   LGPL 2.1+ (bundling with an MIT app is fine, see Stage 8), and JNA is Apache-2.0
-   dual-licensed, but the vlcj *binding* is GPL v3 — distributing binaries that include
-   vlcj places the combined work under GPL v3, so the app can't meaningfully stay MIT
-   while shipping it. Decide before the v0.0.1 release: (a) accept GPL terms for
-   distributed binaries, (b) replace vlcj with a small in-repo JNA binding straight to
-   libvlc — we only use a tiny API surface (new/load/play/pause/set_time/set_rate/stop +
-   time/length/end/error events), or (c) platform-split (JavaFX Media is
-   GPLv2+Classpath-Exception, MIT-safe, but is a dead end on Linux — see Risk 5).
+9. ~~**vlcj is GPL v3**~~ RESOLVED 2026-07-05 via option (b): vlcj replaced with an
+   in-repo JNA binding straight to libvlc (`LibVlc.kt` — ~15 functions + 1 event
+   callback; JNA is Apache-2.0 dual-licensed). libvlc (LGPL 2.1+) is now BUNDLED in the
+   desktop installers (decision reversed from Stage 8 once the GPL binding was gone):
+   `scripts/fetch-libvlc.sh` stages per-OS libs into compose appResources, discovery
+   prefers the bundle and falls back to a system VLC. Relocation gotchas: libvlccore
+   must be explicitly loaded before libvlc (soname-based DT_NEEDED resolution), and
+   VLC_PLUGIN_PATH must be set via libc setenv before libvlc_new (linux distro builds
+   bake an absolute plugin path). LGPL compliance: dynamically loaded, license text
+   bundled, THIRD_PARTY_LICENSES.md documents source + replaceability. Event-callback
+   rule inherited from vlcj lore: never call back into libvlc from its event threads
+   (time/length are read from the event union payload at offset 16).

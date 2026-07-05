@@ -36,6 +36,9 @@ jobs:
           distribution: 'zulu'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
+      - name: Fetch libvlc for bundling
+        shell: bash
+        run: ./scripts/fetch-libvlc.sh
       - name: Check and build installer
         run: ./gradlew check :desktopApp:${{ matrix.task }} ${{ matrix.extra-args }}
       - name: Upload test results on failure

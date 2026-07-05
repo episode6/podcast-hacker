@@ -53,7 +53,7 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.ktor.client.okhttp)
-            implementation(libs.vlcj)
+            implementation(libs.jna)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
