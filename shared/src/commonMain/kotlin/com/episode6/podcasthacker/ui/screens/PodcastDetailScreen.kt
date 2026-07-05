@@ -1,6 +1,7 @@
 package com.episode6.podcasthacker.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -27,6 +29,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -34,6 +38,9 @@ import coil3.compose.AsyncImage
 import com.episode6.podcasthacker.data.model.DownloadState
 import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.inject.LocalAppGraph
+import com.episode6.podcasthacker.store.DownloadEpisode
+import com.episode6.podcasthacker.store.EpisodeDownloadStatus
+import com.episode6.podcasthacker.store.PlayEpisode
 import com.episode6.podcasthacker.store.RefreshFeed
 import com.episode6.podcasthacker.ui.nav.EpisodeDetailRoute
 import com.episode6.podcasthacker.ui.nav.PodcastDetailRoute
@@ -93,13 +100,17 @@ internal fun PodcastDetailScreen(navController: NavController, route: PodcastDet
                 HorizontalDivider()
             }
             items(episodes, key = { it.guid }) { episode ->
+                val downloadStatus by store.stateOf { downloads[episode.guid] }
                 EpisodeRow(
                     episode = episode,
+                    downloadStatus = downloadStatus,
                     onClick = {
                         navController.navigate(
                             EpisodeDetailRoute(feedUrl = route.feedUrl, episodeGuid = episode.guid)
                         )
                     },
+                    onPlay = { store.dispatch(PlayEpisode(episode.guid)) },
+                    onDownload = { store.dispatch(DownloadEpisode(episode.guid)) },
                 )
                 HorizontalDivider()
             }
@@ -108,28 +119,99 @@ internal fun PodcastDetailScreen(navController: NavController, route: PodcastDet
 }
 
 @Composable
-private fun EpisodeRow(episode: Episode, onClick: () -> Unit) {
-    Column(
+private fun EpisodeRow(
+    episode: Episode,
+    downloadStatus: EpisodeDownloadStatus?,
+    onClick: () -> Unit,
+    onPlay: () -> Unit,
+    onDownload: () -> Unit,
+) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            episode.title,
-            style = MaterialTheme.typography.titleMedium,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        val subtitle = listOfNotNull(
-            episodeSubtitle(episode.pubDate, episode.duration),
-            "↓ downloaded".takeIf { episode.downloadState == DownloadState.Downloaded },
-        ).joinToString(" · ")
-        if (subtitle.isNotEmpty()) {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                episode.title,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            val subtitle = listOfNotNull(
+                episodeSubtitle(episode.pubDate, episode.duration),
+                "↓ downloaded".takeIf { episode.downloadState == DownloadState.Downloaded },
+            ).joinToString(" · ")
+            if (subtitle.isNotEmpty()) {
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        EpisodeRowAction(
+            episode = episode,
+            downloadStatus = downloadStatus,
+            onPlay = onPlay,
+            onDownload = onDownload,
+        )
+    }
+}
+
+/**
+ * Trailing control for an episode row: play (▶) when the episode is downloaded,
+ * download (↓) when it isn't (including after a failure, where it acts as retry), and
+ * a circular progress bar while a download is in flight — determinate with byte
+ * progress, indeterminate while queued/starting and while tacita is cutting ads.
+ * Glyph buttons rather than material icons, matching MiniPlayerBar.
+ */
+@Composable
+private fun EpisodeRowAction(
+    episode: Episode,
+    downloadStatus: EpisodeDownloadStatus?,
+    onPlay: () -> Unit,
+    onDownload: () -> Unit,
+) {
+    when (downloadStatus) {
+        EpisodeDownloadStatus.Queued,
+        EpisodeDownloadStatus.Starting,
+        EpisodeDownloadStatus.CuttingAds -> EpisodeRowProgress()
+        is EpisodeDownloadStatus.Downloading -> EpisodeRowProgress(downloadStatus.percentComplete)
+        is EpisodeDownloadStatus.Failure, null ->
+            if (episode.downloadState == DownloadState.Downloaded) {
+                EpisodeRowGlyphButton("▶", contentDescription = "Play", onClick = onPlay)
+            } else {
+                EpisodeRowGlyphButton("↓", contentDescription = "Download", onClick = onDownload)
+            }
+    }
+}
+
+@Composable
+private fun EpisodeRowGlyphButton(glyph: String, contentDescription: String, onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Text(
+            text = glyph,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.semantics { this.contentDescription = contentDescription },
+        )
+    }
+}
+
+@Composable
+private fun EpisodeRowProgress(percentComplete: Float? = null) {
+    // matches the buttons' min touch-target height so rows don't jump as states change
+    Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        if (percentComplete == null) {
+            CircularProgressIndicator(Modifier.size(24.dp))
+        } else {
+            CircularProgressIndicator(
+                progress = { percentComplete },
+                modifier = Modifier.size(24.dp),
             )
         }
     }
