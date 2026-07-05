@@ -47,7 +47,8 @@ case "$PLATFORM_DIR" in
     macos-arm64|macos-x64)
         curl -fsSL -o "$WORK/vlc.dmg" \
             "https://get.videolan.org/vlc/$VLC_VERSION/macosx/vlc-$VLC_VERSION-universal.dmg"
-        MOUNT="$(hdiutil attach "$WORK/vlc.dmg" -nobrowse -readonly | awk '/\/Volumes\// {print $NF; exit}')"
+        # volume name contains spaces ("/Volumes/VLC media player") — take the full tail
+        MOUNT="$(hdiutil attach "$WORK/vlc.dmg" -nobrowse -readonly | sed -n 's|.*\(/Volumes/.*\)|\1|p' | head -1)"
         # -L dereferences symlinks: plugins reference versioned dylib names via @loader_path
         cp -RL "$MOUNT/VLC.app/Contents/MacOS/lib" "$DEST/lib"
         cp -RL "$MOUNT/VLC.app/Contents/MacOS/plugins" "$DEST/plugins"
