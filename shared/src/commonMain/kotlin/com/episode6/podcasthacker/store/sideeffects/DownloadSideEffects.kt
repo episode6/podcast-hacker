@@ -1,0 +1,123 @@
+package com.episode6.podcasthacker.store.sideeffects
+
+import com.episode6.podcasthacker.data.repo.DownloadsRepository
+import com.episode6.podcasthacker.data.repo.EpisodeRepository
+import com.episode6.podcasthacker.store.AppState
+import com.episode6.podcasthacker.store.DeleteDownload
+import com.episode6.podcasthacker.store.DownloadEpisode
+import com.episode6.podcasthacker.store.EpisodeDownloadStatus
+import com.episode6.podcasthacker.store.SetEpisodeDownloadStatus
+import com.episode6.redux.Action
+import com.episode6.redux.sideeffects.SideEffect
+import com.episode6.tacita.DownloadState
+import com.episode6.tacita.Tacita
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.ContributesTo
+import dev.zacsweers.metro.IntoSet
+import dev.zacsweers.metro.Provides
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.flatMapConcat
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.transform
+
+@ContributesTo(AppScope::class)
+interface DownloadSideEffects {
+
+    /** Instant feedback: an episode reads as queued the moment it's requested, even
+     * while an earlier download holds the sequential queue below. */
+    @Provides @IntoSet fun enqueueDownloads(): SideEffect<AppState> = sideEffect {
+        actions.filterIsInstance<DownloadEpisode>()
+            .map { SetEpisodeDownloadStatus(it.episodeGuid, EpisodeDownloadStatus.Queued) }
+    }
+
+    /** Sequential download queue (v0): collect tacita's download flow per episode,
+     * mapping its states to in-flight status actions; the persisted downloaded flag
+     * lands in Room on completion and the ad-diff reference is cleaned up. A failed
+     * episode reports Failure without blocking the rest of the queue. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Provides @IntoSet fun downloadEpisodes(
+        tacita: Tacita,
+        episodeRepository: EpisodeRepository,
+        downloadsRepository: DownloadsRepository,
+    ): SideEffect<AppState> = sideEffect {
+        actions.filterIsInstance<DownloadEpisode>()
+            .flatMapConcat { action ->
+                flow { downloadEpisode(action.episodeGuid, tacita, episodeRepository, downloadsRepository) }
+            }
+    }
+
+    @Provides @IntoSet fun deleteDownloads(
+        downloadsRepository: DownloadsRepository,
+    ): SideEffect<AppState> = sideEffect {
+        actions.filterIsInstance<DeleteDownload>()
+            .transform { action ->
+                val result = runCatching { downloadsRepository.deleteDownload(action.episodeGuid) }
+                result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+                // clear any lingering in-flight entry (e.g. an old Failure)
+                emit(SetEpisodeDownloadStatus(action.episodeGuid, null))
+            }
+    }
+}
+
+private suspend fun FlowCollector<Action>.downloadEpisode(
+    episodeGuid: String,
+    tacita: Tacita,
+    episodeRepository: EpisodeRepository,
+    downloadsRepository: DownloadsRepository,
+) {
+    val audioUrl = episodeRepository.episode(episodeGuid)?.audioUrl
+    if (audioUrl == null) {
+        emit(SetEpisodeDownloadStatus(episodeGuid, EpisodeDownloadStatus.Failure("episode has no audio url")))
+        return
+    }
+    emit(SetEpisodeDownloadStatus(episodeGuid, EpisodeDownloadStatus.Starting))
+    val outputFile = downloadsRepository.downloadFilePath(episodeGuid)
+    downloadsRepository.prepareForDownload(episodeGuid)
+    val result = runCatching {
+        tacita.downloadPodcast(
+            url = audioUrl,
+            outputFile = outputFile,
+            referenceFile = downloadsRepository.referenceFilePath(episodeGuid),
+            // a leftover file (crash, or an explicit re-download) gets promoted to the
+            // ad-diff reference by tacita rather than blocking the download
+            overwrite = downloadsRepository.downloadedFileExists(episodeGuid),
+            cutAds = true,
+        ).collect { state ->
+            when (state) {
+                is DownloadState.Downloading -> emit(
+                    SetEpisodeDownloadStatus(
+                        episodeGuid = episodeGuid,
+                        // the second (reference) copy downloading is part of the ad-cut
+                        // pass as far as the user is concerned
+                        status = if (state.file == outputFile) {
+                            EpisodeDownloadStatus.Downloading(state.percentComplete)
+                        } else {
+                            EpisodeDownloadStatus.CuttingAds
+                        },
+                    )
+                )
+                DownloadState.CuttingAds -> emit(
+                    SetEpisodeDownloadStatus(episodeGuid, EpisodeDownloadStatus.CuttingAds)
+                )
+                DownloadState.Complete -> {
+                    downloadsRepository.markDownloaded(episodeGuid, downloaded = true)
+                    downloadsRepository.deleteReferenceFile(episodeGuid)
+                    emit(SetEpisodeDownloadStatus(episodeGuid, null))
+                }
+            }
+        }
+    }
+    result.exceptionOrNull()?.let {
+        if (it is CancellationException) throw it
+        emit(
+            SetEpisodeDownloadStatus(
+                episodeGuid = episodeGuid,
+                status = EpisodeDownloadStatus.Failure(it.message ?: it::class.simpleName ?: "download failed"),
+            )
+        )
+    }
+}

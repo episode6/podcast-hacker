@@ -12,7 +12,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -26,7 +28,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.episode6.podcasthacker.data.model.DownloadState
 import com.episode6.podcasthacker.inject.LocalAppGraph
+import com.episode6.podcasthacker.store.DeleteDownload
+import com.episode6.podcasthacker.store.DownloadEpisode
+import com.episode6.podcasthacker.store.EpisodeDownloadStatus
 import com.episode6.podcasthacker.store.NowPlayingState
 import com.episode6.podcasthacker.store.SetNowPlaying
 import com.episode6.podcasthacker.ui.nav.EpisodeDetailRoute
@@ -40,6 +46,7 @@ internal fun EpisodeDetailScreen(navController: NavController, route: EpisodeDet
     val graph = LocalAppGraph.current
     val store = graph.appStore
     val podcast by store.stateOf { subscriptions.firstOrNull { it.feedUrl == route.feedUrl } }
+    val downloadStatus by store.stateOf { downloads[route.episodeGuid] }
     val episode by remember(route.episodeGuid) { graph.episodeRepository.observeEpisode(route.episodeGuid) }
         .collectAsState(null)
 
@@ -92,9 +99,20 @@ internal fun EpisodeDetailScreen(navController: NavController, route: EpisodeDet
                     Text("Play")
                 }
                 Spacer(Modifier.width(8.dp))
-                OutlinedButton(onClick = {}, enabled = false) {
-                    Text("Download (Stage 6)")
-                }
+                DownloadControl(
+                    downloadStatus = downloadStatus,
+                    downloaded = current.downloadState == DownloadState.Downloaded,
+                    onDownload = { store.dispatch(DownloadEpisode(current.guid)) },
+                    onDelete = { store.dispatch(DeleteDownload(current.guid)) },
+                )
+            }
+            (downloadStatus as? EpisodeDownloadStatus.Failure)?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    it.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
             Spacer(Modifier.height(16.dp))
             HorizontalDivider()
@@ -110,6 +128,44 @@ internal fun EpisodeDetailScreen(navController: NavController, route: EpisodeDet
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+@Composable
+private fun DownloadControl(
+    downloadStatus: EpisodeDownloadStatus?,
+    downloaded: Boolean,
+    onDownload: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    when (downloadStatus) {
+        EpisodeDownloadStatus.Queued,
+        EpisodeDownloadStatus.Starting -> OutlinedButton(onClick = {}, enabled = false) {
+            CircularProgressIndicator(Modifier.size(16.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(if (downloadStatus == EpisodeDownloadStatus.Queued) "Queued" else "Starting…")
+        }
+        is EpisodeDownloadStatus.Downloading -> OutlinedButton(onClick = {}, enabled = false) {
+            LinearProgressIndicator(
+                progress = { downloadStatus.percentComplete },
+                modifier = Modifier.width(64.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("${(downloadStatus.percentComplete * 100).toInt()}%")
+        }
+        EpisodeDownloadStatus.CuttingAds -> OutlinedButton(onClick = {}, enabled = false) {
+            CircularProgressIndicator(Modifier.size(16.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Cutting ads…")
+        }
+        is EpisodeDownloadStatus.Failure -> OutlinedButton(onClick = onDownload) {
+            Text("Retry Download")
+        }
+        null -> if (downloaded) {
+            OutlinedButton(onClick = onDelete) { Text("Delete Download") }
+        } else {
+            OutlinedButton(onClick = onDownload) { Text("Download") }
         }
     }
 }

@@ -6,7 +6,18 @@ data class AppState(
     val nowPlaying: NowPlayingState? = null,
     val subscriptions: List<Podcast> = emptyList(),
     val feedSync: FeedSyncState = FeedSyncState(),
+    /** In-flight download status by episode guid; completed/deleted entries are removed
+     * (Room's persisted downloadState is the source of truth once a download settles). */
+    val downloads: Map<String, EpisodeDownloadStatus> = emptyMap(),
 )
+
+sealed interface EpisodeDownloadStatus {
+    data object Queued : EpisodeDownloadStatus
+    data object Starting : EpisodeDownloadStatus
+    data class Downloading(val percentComplete: Float) : EpisodeDownloadStatus
+    data object CuttingAds : EpisodeDownloadStatus
+    data class Failure(val message: String) : EpisodeDownloadStatus
+}
 
 data class NowPlayingState(
     val episodeTitle: String,

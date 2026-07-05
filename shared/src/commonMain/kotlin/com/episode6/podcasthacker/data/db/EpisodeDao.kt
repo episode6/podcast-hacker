@@ -25,6 +25,9 @@ interface EpisodeDao {
     @Query("UPDATE episodes SET playbackPositionMillis = :positionMillis WHERE guid = :guid")
     suspend fun setPlaybackPosition(guid: String, positionMillis: Long)
 
+    @Query("UPDATE episodes SET downloadState = :state WHERE guid = :guid")
+    suspend fun setDownloadState(guid: String, state: String)
+
     @Query("DELETE FROM episodes WHERE feedUrl = :feedUrl")
     suspend fun deleteForPodcast(feedUrl: String)
 }

@@ -1,0 +1,163 @@
+package com.episode6.podcasthacker.store.sideeffects
+
+import assertk.assertThat
+import assertk.assertions.containsExactly
+import com.episode6.podcasthacker.data.model.Episode
+import com.episode6.podcasthacker.data.repo.DownloadsRepository
+import com.episode6.podcasthacker.data.repo.EpisodeRepository
+import com.episode6.podcasthacker.store.AppState
+import com.episode6.podcasthacker.store.DeleteDownload
+import com.episode6.podcasthacker.store.DownloadEpisode
+import com.episode6.podcasthacker.store.EpisodeDownloadStatus
+import com.episode6.podcasthacker.store.SetEpisodeDownloadStatus
+import com.episode6.redux.Action
+import com.episode6.redux.sideeffects.SideEffect
+import com.episode6.redux.sideeffects.SideEffectContext
+import com.episode6.tacita.DownloadState
+import com.episode6.tacita.Tacita
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.runTest
+import okio.Path
+import okio.Path.Companion.toPath
+import kotlin.test.Test
+
+class DownloadSideEffectsTest {
+
+    private val guid = "episode-guid"
+    private val audioUrl = "https://example.com/ep.mp3"
+    private val outputFile: Path = "/downloads/hash.mp3".toPath()
+    private val referenceFile: Path = "/cache/hash.adref".toPath()
+
+    private val sideEffects = object : DownloadSideEffects {}
+
+    private val episodeRepo = mockk<EpisodeRepository> {
+        coEvery { episode(guid) } returns Episode(guid = guid, feedUrl = "feed", title = "Ep", audioUrl = audioUrl)
+    }
+    private val downloadsRepo = mockk<DownloadsRepository>(relaxUnitFun = true) {
+        every { downloadFilePath(guid) } returns outputFile
+        every { referenceFilePath(guid) } returns referenceFile
+        every { downloadedFileExists(guid) } returns false
+        coEvery { markDownloaded(any(), any()) } returns Unit
+        coEvery { deleteDownload(any()) } returns Unit
+    }
+
+    @Test
+    fun downloadRequest_readsAsQueuedImmediately() = runTest {
+        val actions = sideEffects.enqueueDownloads().output(DownloadEpisode(guid)).toList()
+
+        assertThat(actions).containsExactly(
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Queued),
+        )
+    }
+
+    @Test
+    fun mapsTacitaStates_toEpisodeStatuses() = runTest {
+        val tacita = mockk<Tacita> {
+            every { downloadPodcast(audioUrl, outputFile, referenceFile, false, true) } returns flowOf(
+                DownloadState.Downloading(outputFile, 0.25f),
+                DownloadState.Downloading(outputFile, 0.75f),
+                DownloadState.Downloading(referenceFile, 0.5f), // reference copy
+                DownloadState.CuttingAds,
+                DownloadState.Complete,
+            )
+        }
+
+        val actions = sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+            .output(DownloadEpisode(guid)).toList()
+
+        assertThat(actions).containsExactly(
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Starting),
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Downloading(0.25f)),
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Downloading(0.75f)),
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.CuttingAds),
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.CuttingAds),
+            SetEpisodeDownloadStatus(guid, null),
+        )
+        coVerify(exactly = 1) { downloadsRepo.markDownloaded(guid, true) }
+        coVerify(exactly = 1) { downloadsRepo.deleteReferenceFile(guid) }
+        coVerify(exactly = 1) { downloadsRepo.prepareForDownload(guid) }
+    }
+
+    @Test
+    fun existingFile_downloadsWithOverwrite() = runTest {
+        every { downloadsRepo.downloadedFileExists(guid) } returns true
+        val tacita = mockk<Tacita> {
+            every { downloadPodcast(audioUrl, outputFile, referenceFile, true, true) } returns flowOf(
+                DownloadState.Complete,
+            )
+        }
+
+        sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+            .output(DownloadEpisode(guid)).toList()
+
+        coVerify(exactly = 1) { tacita.downloadPodcast(audioUrl, outputFile, referenceFile, true, true) }
+    }
+
+    @Test
+    fun failedDownload_reportsFailure_withoutBlockingTheQueue() = runTest {
+        val otherGuid = "other-guid"
+        val otherOutput = "/downloads/other.mp3".toPath()
+        coEvery { episodeRepo.episode(otherGuid) } returns
+            Episode(guid = otherGuid, feedUrl = "feed", title = "Other", audioUrl = audioUrl)
+        every { downloadsRepo.downloadFilePath(otherGuid) } returns otherOutput
+        every { downloadsRepo.referenceFilePath(otherGuid) } returns referenceFile
+        every { downloadsRepo.downloadedFileExists(otherGuid) } returns false
+
+        val tacita = mockk<Tacita> {
+            every { downloadPodcast(audioUrl, outputFile, any(), any(), any()) } returns flow {
+                throw RuntimeException("boom")
+            }
+            every { downloadPodcast(audioUrl, otherOutput, any(), any(), any()) } returns flowOf(
+                DownloadState.Complete,
+            )
+        }
+
+        val actions = sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+            .output(DownloadEpisode(guid), DownloadEpisode(otherGuid)).toList()
+
+        assertThat(actions).containsExactly(
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Starting),
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Failure("boom")),
+            SetEpisodeDownloadStatus(otherGuid, EpisodeDownloadStatus.Starting),
+            SetEpisodeDownloadStatus(otherGuid, null),
+        )
+        coVerify(exactly = 1) { downloadsRepo.markDownloaded(otherGuid, true) }
+        coVerify(exactly = 0) { downloadsRepo.markDownloaded(guid, any()) }
+    }
+
+    @Test
+    fun episodeWithoutAudioUrl_reportsFailure() = runTest {
+        coEvery { episodeRepo.episode(guid) } returns
+            Episode(guid = guid, feedUrl = "feed", title = "Ep", audioUrl = null)
+
+        val actions = sideEffects.downloadEpisodes(mockk(), episodeRepo, downloadsRepo)
+            .output(DownloadEpisode(guid)).toList()
+
+        assertThat(actions).containsExactly(
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Failure("episode has no audio url")),
+        )
+    }
+
+    @Test
+    fun deleteDownload_deletesAndClearsStatus() = runTest {
+        val actions = sideEffects.deleteDownloads(downloadsRepo).output(DeleteDownload(guid)).toList()
+
+        assertThat(actions).containsExactly(SetEpisodeDownloadStatus(guid, null))
+        coVerify(exactly = 1) { downloadsRepo.deleteDownload(guid) }
+    }
+
+    private fun SideEffect<AppState>.output(vararg input: Action, state: AppState = AppState()): Flow<Action> {
+        val context = mockk<SideEffectContext<AppState>> {
+            every { actions } returns flowOf(*input)
+            coEvery { currentState() } returns state
+        }
+        return with(this) { context.act() }
+    }
+}

@@ -17,6 +17,7 @@ import com.episode6.podcasthacker.store.reduce
 import com.episode6.redux.StoreFlow
 import com.episode6.redux.sideeffects.SideEffect
 import com.episode6.redux.sideeffects.SideEffectMiddleware
+import com.episode6.tacita.Tacita
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.Provides
@@ -57,6 +58,10 @@ interface AppGraph {
         overrides.httpClient ?: platformHttpClient {
             expectSuccess = true
         }
+
+    @Provides @SingleIn(AppScope::class)
+    fun provideTacita(httpClient: HttpClient): Tacita =
+        Tacita.withClient(reuse = true) { httpClient }
 
     @Provides @SingleIn(AppScope::class)
     fun provideAppDatabase(context: PlatformContext, appDirs: AppDirs): AppDatabase {
