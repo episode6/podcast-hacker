@@ -173,12 +173,12 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
       `arg<T>(n)` inside mockk `answers` blocks — the raw underlying Long comes back and
       the cast throws; answers must avoid reading Duration args
 - [x] Verify: jvm + androidHost tests + `check` green; both ios klibs compile; desktop
-      engine pass (play/position/pause/seek/2×/end/restart/stop) via a probe against
-      user-local extracted VLC debs (this machine lacks VLC — `apt install vlc` for the
-      real app); android emulator full listen flow verified via adb: MediaStyle
-      notification, media-key pause, screen-off background playback, 1.5× speed, +30s
-      skip, position resume across force-stop, mini-bar → NowPlaying → Stop. A human
-      desktop pass via ./start still needs VLC installed
+      engine pass (play/position/pause/seek/2×/end/restart/stop) via probe — first
+      against extracted VLC debs, then re-verified against the system VLC 3.0.23 after
+      install (default discovery, no config); android emulator full listen flow verified
+      via adb: MediaStyle notification, media-key pause, screen-off background playback,
+      1.5× speed, +30s skip, position resume across force-stop, mini-bar → NowPlaying →
+      Stop. A human ./start listen pass still worthwhile
 
 ## Stage 8 — Platform polish
 
