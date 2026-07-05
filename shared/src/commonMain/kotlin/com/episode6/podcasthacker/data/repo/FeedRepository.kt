@@ -20,6 +20,7 @@ class FeedRepository(
      */
     suspend fun sync(feedUrl: String) {
         val feed = feedFetcher.fetch(feedUrl)
+        println("Feed sync $feedUrl: ${feed.episodes.size} episodes")
         db.podcastDao().upsert(feed.podcast.toEntity())
         val existing = db.episodeDao().getAllForPodcast(feedUrl).associateBy { it.guid }
         db.episodeDao().upsertAll(

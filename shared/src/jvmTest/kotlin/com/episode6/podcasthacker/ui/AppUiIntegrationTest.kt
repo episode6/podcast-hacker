@@ -1,13 +1,20 @@
 package com.episode6.podcasthacker.ui
 
+import androidx.compose.ui.test.ComposeTimeoutException
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.waitUntilExactlyOneExists
 import com.episode6.podcasthacker.App
@@ -17,6 +24,12 @@ import com.episode6.podcasthacker.data.TEST_FEED_XML
 import com.episode6.podcasthacker.inject.AppGraph
 import com.episode6.podcasthacker.inject.AppGraphOverrides
 import com.episode6.podcasthacker.inject.createAppGraph
+import com.episode6.podcasthacker.playback.PlaybackMetadata
+import com.episode6.podcasthacker.playback.PlayerState
+import com.episode6.podcasthacker.playback.PlayerStatus
+import com.episode6.podcasthacker.playback.PodcastPlayer
+import io.mockk.every
+import io.mockk.mockk
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -24,9 +37,12 @@ import io.ktor.client.engine.mock.respondError
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import okio.Path.Companion.toOkioPath
 import java.nio.file.Files
 import kotlin.test.Test
+import kotlin.time.Duration.Companion.minutes
 
 private const val FEED_URL = "https://example.com/feed.xml"
 
@@ -49,6 +65,32 @@ private val SEARCH_JSON = """
  */
 @OptIn(ExperimentalTestApi::class)
 class AppUiIntegrationTest {
+
+    /**
+     * Stateful mockk player: commands mutate a PlayerState flow the way a real media
+     * engine would, so the full redux loop (side effects, reducer merge, ui state) runs
+     * without initializing a real playback engine (JavaFX needs a display). Duration args
+     * are never read inside the answers — mockk hands over a value class's raw Long.
+     */
+    private fun fakePlayer(): PodcastPlayer {
+        val state = MutableStateFlow(PlayerState())
+        return mockk(relaxUnitFun = true) {
+            every { this@mockk.state } returns state
+            every { load(any(), any(), any(), any()) } answers {
+                val metadata = arg<PlaybackMetadata>(1)
+                state.value = PlayerState(
+                    episodeGuid = metadata.episodeGuid,
+                    status = PlayerStatus.Playing,
+                    duration = 30.minutes,
+                    speed = state.value.speed,
+                )
+            }
+            every { play() } answers { state.update { it.copy(status = PlayerStatus.Playing) } }
+            every { pause() } answers { state.update { it.copy(status = PlayerStatus.Paused) } }
+            every { setSpeed(any()) } answers { state.update { it.copy(speed = arg(0)) } }
+            every { stop() } answers { state.update { it.copy(status = PlayerStatus.Idle) } }
+        }
+    }
 
     private fun testGraph(): AppGraph {
         val tempDir = Files.createTempDirectory("podcasthacker-uitest").toOkioPath()
@@ -76,12 +118,13 @@ class AppUiIntegrationTest {
             overrides = AppGraphOverrides(
                 httpClient = client,
                 appDirs = AppDirs(dataDir = tempDir / "data", cacheDir = tempDir / "cache"),
+                podcastPlayer = fakePlayer(),
             ),
         )
     }
 
     @Test
-    fun subscribeViaSearch_browseToEpisode_playStub() = runComposeUiTest {
+    fun subscribeViaSearch_browseToEpisode() = runComposeUiTest {
         setContent { App(testGraph()) }
 
         onNodeWithText("No subscriptions yet").assertExists()
@@ -89,56 +132,72 @@ class AppUiIntegrationTest {
         // grid → add podcast → search
         onNodeWithText("Add Podcast", substring = true).performClick()
         onNode(hasSetTextAction()).performTextInput("test")
-        waitUntilExactlyOneExists(hasText("Test Podcast"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 5_000)
 
         // tapping the result subscribes + pops back to the grid, where the tile appears
         onNodeWithText("Test Podcast").performClick()
-        waitUntilExactlyOneExists(hasText("Test Podcast"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
 
         // podcast detail: header + episodes from the synced feed
         onNodeWithText("Test Podcast").performClick()
-        waitUntilExactlyOneExists(hasText("Episode Two"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
         onNodeWithText("Test Author").assertExists()
 
         // episode detail: show notes rendered from the feed html
         onNodeWithText("Episode Two").performClick()
-        waitUntilExactlyOneExists(hasText("notes two"), timeoutMillis = 5_000)
-
-        // play stub → now playing → back → mini player bar
-        onNodeWithText("Play").performClick()
-        waitUntilExactlyOneExists(hasText("Pause"), timeoutMillis = 5_000)
-        onNodeWithText("← Back").performClick()
-        waitUntilExactlyOneExists(hasText("❚❚"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("notes two"), timeoutMillis = 5_000)
     }
 
     @Test
-    fun downloadEpisode_throughRealTacita_thenDelete() = runComposeUiTest {
+    fun downloadEpisode_throughRealTacita_playThenDelete() = runComposeUiTest {
         setContent { App(testGraph()) }
 
         // subscribe + navigate to an episode
         onNodeWithText("Add Podcast", substring = true).performClick()
         onNode(hasSetTextAction()).performTextInput(FEED_URL)
-        waitUntilExactlyOneExists(hasText("Subscribe to RSS url"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Subscribe to RSS url"), timeoutMillis = 5_000)
         onNodeWithText("Subscribe to RSS url").performClick()
-        waitUntilExactlyOneExists(hasText("Test Podcast"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
         onNodeWithText("Test Podcast").performClick()
-        waitUntilExactlyOneExists(hasText("Episode Two"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
         onNodeWithText("Episode Two").performClick()
-        waitUntilExactlyOneExists(hasText("Download"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Download"), timeoutMillis = 5_000)
 
         // download runs through the real tacita pipeline against MockEngine bytes
         onNodeWithText("Download").performClick()
-        waitUntilExactlyOneExists(hasText("Delete Download"), timeoutMillis = 15_000)
+        waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 30_000)
+
+        // play the downloaded episode → NowPlaying with live transport controls.
+        // matchers are scoped by tag (text merges into the button node): the mini player
+        // bar can briefly coexist with the NowPlaying screen during navigation
+        // animations, so bare ❚❚/▶ text can transiently match two nodes
+        val playingOnNowPlaying = hasTestTag("playPauseButton") and hasText("❚❚")
+        val pausedOnNowPlaying = hasTestTag("playPauseButton") and hasText("▶")
+        val pausedOnMiniBar = hasTestTag("miniPlayerPlayPause") and hasText("▶")
+        onNodeWithText("Play").performClick()
+        waitForExactlyOne(playingOnNowPlaying, timeoutMillis = 10_000)
+        onNodeWithText("↺ 15").assertExists()
+        onNode(playingOnNowPlaying).performClick() // pause
+        waitForExactlyOne(pausedOnNowPlaying, timeoutMillis = 10_000)
+
+        // back to episode detail: the mini player bar carries the paused state; tapping
+        // it returns to NowPlaying, where Stop clears playback + hides the bar
+        onNodeWithText("← Back").performClick()
+        waitForExactlyOne(pausedOnMiniBar, timeoutMillis = 10_000)
+        onNodeWithTag("miniPlayerBar").performClick()
+        waitForExactlyOne(hasText("Stop"), timeoutMillis = 10_000)
+        onNodeWithText("Stop").performClick()
+        waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 10_000)
 
         // the episode row now carries the downloaded marker
         onNodeWithText("← Back").performClick()
-        waitUntilExactlyOneExists(hasText("downloaded", substring = true), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("downloaded", substring = true), timeoutMillis = 5_000)
 
         // delete resets to downloadable
         onNodeWithText("Episode Two").performClick()
-        waitUntilExactlyOneExists(hasText("Delete Download"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 5_000)
         onNodeWithText("Delete Download").performClick()
-        waitUntilExactlyOneExists(hasText("Download"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Download"), timeoutMillis = 10_000)
     }
 
     @Test
@@ -148,14 +207,27 @@ class AppUiIntegrationTest {
         // paste a feed url → direct subscribe row instead of search results
         onNodeWithText("Add Podcast", substring = true).performClick()
         onNode(hasSetTextAction()).performTextInput(FEED_URL)
-        waitUntilExactlyOneExists(hasText("Subscribe to RSS url"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Subscribe to RSS url"), timeoutMillis = 5_000)
         onNodeWithText("Subscribe to RSS url").performClick()
-        waitUntilExactlyOneExists(hasText("Test Podcast"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
 
         // long-press the tile → dropdown → unsubscribe empties the grid
         onNodeWithText("Test Podcast").performTouchInput { longClick() }
-        waitUntilExactlyOneExists(hasText("Unsubscribe"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Unsubscribe"), timeoutMillis = 5_000)
         onNodeWithText("Unsubscribe").performClick()
-        waitUntilExactlyOneExists(hasText("No subscriptions yet"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("No subscriptions yet"), timeoutMillis = 10_000)
+    }
+
+    /** [waitUntilExactlyOneExists] but the failure says what the ui actually showed. */
+    private fun ComposeUiTest.waitForExactlyOne(matcher: SemanticsMatcher, timeoutMillis: Long = 10_000) {
+        try {
+            waitUntilExactlyOneExists(matcher, timeoutMillis)
+        } catch (e: ComposeTimeoutException) {
+            throw AssertionError(
+                "Timed out waiting for exactly one: ${matcher.description}\n--- semantics tree ---\n" +
+                    runCatching { onRoot().printToString() }.getOrElse { "unavailable: $it" },
+                e,
+            )
+        }
     }
 }

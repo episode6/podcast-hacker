@@ -29,6 +29,17 @@ internal fun Duration.formatRuntime(): String = when {
     else -> "${inWholeSeconds}s"
 }
 
+/** Seek-bar style timestamp: `1:02:33` with hours, `12:33` without. */
+internal fun Duration.formatTimestamp(): String {
+    val hours = inWholeHours
+    val minutes = inWholeMinutes % 60
+    val seconds = inWholeSeconds % 60
+    return when {
+        hours > 0 -> "$hours:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
+        else -> "$minutes:${seconds.toString().padStart(2, '0')}"
+    }
+}
+
 /** `Jun 2, 2026 · 1h 2m` — either side optional; null when both are missing. */
 internal fun episodeSubtitle(pubDate: Instant?, duration: Duration?): String? =
     listOfNotNull(pubDate?.formatShortDate(), duration?.formatRuntime())

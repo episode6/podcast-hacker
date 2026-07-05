@@ -38,6 +38,13 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
       - name: Check and build installer
         run: ./gradlew check :desktopApp:${{ matrix.task }} ${{ matrix.extra-args }}
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-${{ matrix.os }}
+          path: shared/build/test-results/
+          if-no-files-found: ignore
       # archive: false uploads the installer as-is (not wrapped in a zip).
       # Only a single file may be uploaded this way and its filename becomes
       # the artifact name.
@@ -62,6 +69,13 @@ jobs:
       # check includes android lint + unit tests for :androidApp and :shared
       - name: Check and build debug APK
         run: ./gradlew check :androidApp:assembleDebug
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-android-job
+          path: shared/build/test-results/
+          if-no-files-found: ignore
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
         with:

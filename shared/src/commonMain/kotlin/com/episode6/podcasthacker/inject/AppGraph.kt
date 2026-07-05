@@ -11,6 +11,8 @@ import com.episode6.podcasthacker.data.network.ItunesSearchClient
 import com.episode6.podcasthacker.data.network.platformHttpClient
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
 import com.episode6.podcasthacker.data.repo.SubscriptionRepository
+import com.episode6.podcasthacker.playback.PodcastPlayer
+import com.episode6.podcasthacker.playback.createPodcastPlayer
 import com.episode6.podcasthacker.store.AppState
 import com.episode6.podcasthacker.store.AppStore
 import com.episode6.podcasthacker.store.reduce
@@ -38,6 +40,7 @@ import okio.SYSTEM
 data class AppGraphOverrides(
     val httpClient: HttpClient? = null,
     val appDirs: AppDirs? = null,
+    val podcastPlayer: PodcastPlayer? = null,
 )
 
 @DependencyGraph(AppScope::class)
@@ -75,6 +78,13 @@ interface AppGraph {
     @Provides @SingleIn(AppScope::class)
     fun provideAppCoroutineScope(): CoroutineScope =
         CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    @Provides @SingleIn(AppScope::class)
+    fun providePodcastPlayer(
+        context: PlatformContext,
+        scope: CoroutineScope,
+        overrides: AppGraphOverrides,
+    ): PodcastPlayer = overrides.podcastPlayer ?: context.createPodcastPlayer(scope)
 
     @Provides @SingleIn(AppScope::class)
     fun provideAppStore(

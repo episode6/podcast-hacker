@@ -1,7 +1,9 @@
 package com.episode6.podcasthacker.store
 
 import com.episode6.podcasthacker.data.model.Podcast
+import com.episode6.podcasthacker.playback.PlayerState
 import com.episode6.redux.Action
+import kotlin.time.Duration
 
 /**
  * Actions that directly mutate [AppState] in the reducer. All other action types are
@@ -20,6 +22,9 @@ data class SetEpisodeDownloadStatus(
     val status: EpisodeDownloadStatus?,
 ) : UpdateStateAction
 
+/** Merges live [PlayerState] into [NowPlayingState] (ignored while nothing is playing). */
+data class SetPlayerState(val playerState: PlayerState) : UpdateStateAction
+
 /**
  * Requests handled by side effects (repo call → result actions).
  */
@@ -30,3 +35,9 @@ data class UnsubscribeFromPodcast(val feedUrl: String) : AsyncAction
 data class RefreshFeed(val feedUrl: String) : AsyncAction
 data class DownloadEpisode(val episodeGuid: String) : AsyncAction
 data class DeleteDownload(val episodeGuid: String) : AsyncAction
+data class PlayEpisode(val episodeGuid: String) : AsyncAction
+data object TogglePlayPause : AsyncAction
+data class SeekTo(val position: Duration) : AsyncAction
+data class SeekBy(val offset: Duration) : AsyncAction
+data class SetPlaybackSpeed(val speed: Float) : AsyncAction
+data object StopPlayback : AsyncAction

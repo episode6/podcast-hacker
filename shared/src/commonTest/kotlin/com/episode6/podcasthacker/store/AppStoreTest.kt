@@ -18,7 +18,7 @@ class AppStoreTest {
 
     @Test
     fun dispatchSetNowPlaying_updatesStoreState() = runStoreTest(storeBuilder = { testStore() }) { store ->
-        val playing = NowPlayingState(episodeTitle = "test episode", isPlaying = true)
+        val playing = NowPlayingState(episodeGuid = "guid-1", episodeTitle = "test episode", isPlaying = true)
 
         store.dispatch(SetNowPlaying(playing))
 
@@ -27,7 +27,7 @@ class AppStoreTest {
 
     @Test
     fun dispatchSetNowPlayingNull_clearsStoreState() = runStoreTest(storeBuilder = { testStore() }) { store ->
-        store.dispatch(SetNowPlaying(NowPlayingState(episodeTitle = "test episode")))
+        store.dispatch(SetNowPlaying(NowPlayingState(episodeGuid = "guid-1", episodeTitle = "test episode")))
         store.dispatch(SetNowPlaying(null))
 
         assertThat(store.state.nowPlaying).isNull()
