@@ -18,6 +18,18 @@ dependencies {
 
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
+    // registers androidx.activity.ComponentActivity in the debug manifest so device
+    // tests can host App() with a test graph instead of launching MainActivity
+    debugImplementation(libs.androidx.compose.uiTestManifest)
+
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.compose.uiTestJunit4)
+    // ui-test-junit4 pulls espresso 3.5.0 transitively, which crashes on api 36+
+    // (removed InputManager.getInstance); force the newer pin
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.ktor.client.mock)
+    androidTestImplementation(libs.kotlin.testJunit)
+    androidTestImplementation(libs.okio)
 }
 
 android {
@@ -30,6 +42,7 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = self.versions.code.get().toInt()
         versionName = self.versions.name.get()
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     packaging {
         resources {
