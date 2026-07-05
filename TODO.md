@@ -116,16 +116,26 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 
 ## Stage 6 — Downloads via tacita
 
-- [ ] `DownloadSideEffects` (mirrors podcast-puller-2's `DownloadFilesSideEffects`):
+- [x] `DownloadSideEffects` (mirrors podcast-puller-2's `DownloadFilesSideEffects`):
       download actions → collect `tacita.downloadPodcast(...)` → progress actions in
-      AppState + status persisted to Room; sequential queue for v0
-- [ ] Reference `.adref` files in cache dir, cleaned after `Complete`
-- [ ] Episode UI: download button, progress, "cutting ads" state, delete download
-- [ ] iOS: add ktor-client-darwin so tacita has an engine
-- [ ] File naming by guid hash; handle overwrite/redownload
-- [ ] Tests: download side-effect state machine (redux test-support + mockk'd Tacita)
-- [ ] Verify: download a real episode on desktop + android; file plays in external player;
-      ad-cut pass completes
+      AppState + status persisted to Room; sequential queue for v0 (`flatMapConcat`,
+      with a separate instant-Queued side effect). Reference-copy download reports as
+      CuttingAds (pp2 semantics). Note: published tacita 0.0.1 predates `withClient`'s
+      `log` param; graph uses `Tacita.withClient(reuse = true) { httpClient }`
+- [x] Reference `.adref` files in cache dir, cleaned after `Complete`
+- [x] Episode UI: download button, progress, "cutting ads" state, delete download
+      (+ `↓ downloaded` marker on episode rows; failures show a retry button)
+- [x] iOS: add ktor-client-darwin so tacita has an engine (already present since Stage 3)
+- [x] File naming by guid hash (sha256 hex — guids are urls/arbitrary strings); existing
+      file → `overwrite = true`, which tacita promotes to the ad-diff reference
+- [x] Tests: download side-effect state machine (mockk'd Tacita, incl. per-episode
+      failure isolation + overwrite), DownloadsRepository on in-memory Room + temp fs,
+      and a headless UI test running the real tacita pipeline against MockEngine bytes
+- [x] Verify: download a real episode on desktop + android; file plays in external player;
+      ad-cut pass completes — android emulator verified via adb (real 18m episode:
+      Queued → progress → CuttingAds → done; ID3-tagged 24MB mp3 on disk, adref cleaned,
+      zero failures); desktop covered by the headless UI download test, a human
+      real-episode pass via ./start still worthwhile
 
 ## Stage 7 — Playback + now-playing
 

@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.episode6.podcasthacker.data.model.DownloadState
 import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.RefreshFeed
@@ -120,9 +121,13 @@ private fun EpisodeRow(episode: Episode, onClick: () -> Unit) {
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
-        episodeSubtitle(episode.pubDate, episode.duration)?.let {
+        val subtitle = listOfNotNull(
+            episodeSubtitle(episode.pubDate, episode.duration),
+            "↓ downloaded".takeIf { episode.downloadState == DownloadState.Downloaded },
+        ).joinToString(" · ")
+        if (subtitle.isNotEmpty()) {
             Text(
-                it,
+                subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -14,6 +14,12 @@ data class SetSubscriptions(val subscriptions: List<Podcast>) : UpdateStateActio
 data class SetFeedSyncing(val feedUrl: String, val syncing: Boolean) : UpdateStateAction
 data class SetFeedSyncError(val message: String?) : UpdateStateAction
 
+/** null [status] clears the episode's in-flight entry. */
+data class SetEpisodeDownloadStatus(
+    val episodeGuid: String,
+    val status: EpisodeDownloadStatus?,
+) : UpdateStateAction
+
 /**
  * Requests handled by side effects (repo call → result actions).
  */
@@ -22,3 +28,5 @@ sealed interface AsyncAction : Action
 data class SubscribeToPodcast(val feedUrl: String) : AsyncAction
 data class UnsubscribeFromPodcast(val feedUrl: String) : AsyncAction
 data class RefreshFeed(val feedUrl: String) : AsyncAction
+data class DownloadEpisode(val episodeGuid: String) : AsyncAction
+data class DeleteDownload(val episodeGuid: String) : AsyncAction

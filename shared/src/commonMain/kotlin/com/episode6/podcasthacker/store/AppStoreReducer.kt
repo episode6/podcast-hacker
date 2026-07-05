@@ -17,4 +17,8 @@ private fun AppState.reduceUpdateStateAction(action: UpdateStateAction): AppStat
         syncing = if (action.syncing) feedSync.syncing + action.feedUrl else feedSync.syncing - action.feedUrl,
     ))
     is SetFeedSyncError  -> copy(feedSync = feedSync.copy(lastError = action.message))
+    is SetEpisodeDownloadStatus -> copy(downloads = when (action.status) {
+        null -> downloads - action.episodeGuid
+        else -> downloads + (action.episodeGuid to action.status)
+    })
 }

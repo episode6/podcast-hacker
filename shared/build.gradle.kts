@@ -90,6 +90,7 @@ kotlin {
             implementation(libs.room.runtime)
             implementation(libs.rssparser)
             implementation(libs.sqlite.bundled)
+            implementation(libs.tacita)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
