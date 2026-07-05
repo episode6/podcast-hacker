@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.printToString
@@ -192,7 +193,9 @@ class AppDeviceIntegrationTest {
         compose.waitForExactlyOne(pausedOnMiniBar, timeoutMillis = 10_000)
         compose.onNodeWithTag("miniPlayerBar").performClick()
         compose.waitForExactlyOne(hasText("Stop"), timeoutMillis = 10_000)
-        compose.onNodeWithText("Stop").performClick()
+        // NowPlaying is a scrollable column; on short screens Stop composes below the
+        // fold, where a bare performClick taps thin air
+        compose.onNodeWithText("Stop").performScrollTo().performClick()
         compose.waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 10_000)
 
         // delete resets to downloadable

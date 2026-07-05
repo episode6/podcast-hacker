@@ -33,6 +33,8 @@ jobs:
           api-level: 36
           target: google_apis
           arch: x86_64
+          # the default AVD is a 320x640 relic; use a realistic phone screen
+          profile: pixel_6
           disable-animations: true
           script: ./gradlew :androidApp:connectedDebugAndroidTest
       - name: Upload test results on failure
