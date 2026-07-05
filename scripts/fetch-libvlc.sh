@@ -42,10 +42,10 @@ case "$PLATFORM_DIR" in
         cp "$WORK/root/usr/share/doc/libvlc5/copyright" "$DEST/COPYRIGHT.txt"
         # the debian copyright file references the LGPL rather than embedding it
         cp /usr/share/common-licenses/LGPL-2.1 "$DEST/COPYING.txt" 2>/dev/null \
-            || curl -fsSL -o "$DEST/COPYING.txt" "https://code.videolan.org/videolan/vlc/-/raw/$VLC_VERSION/COPYING.LIB"
+            || curl -fsSL --retry 4 --retry-all-errors -o "$DEST/COPYING.txt" "https://code.videolan.org/videolan/vlc/-/raw/$VLC_VERSION/COPYING.LIB"
         ;;
     macos-arm64|macos-x64)
-        curl -fsSL -o "$WORK/vlc.dmg" \
+        curl -fsSL --retry 4 --retry-all-errors -o "$WORK/vlc.dmg" \
             "https://get.videolan.org/vlc/$VLC_VERSION/macosx/vlc-$VLC_VERSION-universal.dmg"
         # volume name contains spaces ("/Volumes/VLC media player") — take the full tail
         MOUNT="$(hdiutil attach "$WORK/vlc.dmg" -nobrowse -readonly | sed -n 's|.*\(/Volumes/.*\)|\1|p' | head -1)"
@@ -54,11 +54,11 @@ case "$PLATFORM_DIR" in
         cp -RL "$MOUNT/VLC.app/Contents/MacOS/plugins" "$DEST/plugins"
         cp "$MOUNT/VLC.app/Contents/Resources/English.lproj/../../COPYING.txt" "$DEST/COPYING.txt" 2>/dev/null \
             || cp "$MOUNT/VLC.app/COPYING.txt" "$DEST/COPYING.txt" 2>/dev/null \
-            || curl -fsSL -o "$DEST/COPYING.txt" "https://code.videolan.org/videolan/vlc/-/raw/3.0.21/COPYING.LIB"
+            || curl -fsSL --retry 4 --retry-all-errors -o "$DEST/COPYING.txt" "https://code.videolan.org/videolan/vlc/-/raw/3.0.21/COPYING.LIB"
         hdiutil detach "$MOUNT" > /dev/null
         ;;
     windows-x64)
-        curl -fsSL -o "$WORK/vlc.zip" \
+        curl -fsSL --retry 4 --retry-all-errors -o "$WORK/vlc.zip" \
             "https://get.videolan.org/vlc/$VLC_VERSION/win64/vlc-$VLC_VERSION-win64.zip"
         unzip -q "$WORK/vlc.zip" -d "$WORK"
         SRC="$WORK/vlc-$VLC_VERSION"
