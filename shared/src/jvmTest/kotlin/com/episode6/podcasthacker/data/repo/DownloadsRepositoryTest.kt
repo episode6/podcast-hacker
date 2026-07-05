@@ -95,9 +95,9 @@ class DownloadsRepositoryTest {
     fun adBoundaryCandidates_roundTripSortedByPosition() = runTest {
         db.episodeDao().upsertAll(listOf(episodeEntity()))
         val unsorted = listOf(
-            AdBoundary(10.minutes, AdBoundary.Source.DaiSlot, AdBoundary.Role.Join),
-            AdBoundary(90.seconds, AdBoundary.Source.DiffCut, AdBoundary.Role.Start),
-            AdBoundary(2.minutes, AdBoundary.Source.Id3Chapter, AdBoundary.Role.End),
+            AdBoundary(10.minutes, AdBoundary.Source.DaiSlot, AdBoundary.Role.Join, confidence = 0.8f),
+            AdBoundary(90.seconds, AdBoundary.Source.DiffCut, AdBoundary.Role.Start, confidence = 0.9f),
+            AdBoundary(2.minutes, AdBoundary.Source.Id3Chapter, AdBoundary.Role.End, confidence = 0.3f),
         )
 
         repo.saveAdBoundaryCandidates(guid, unsorted)
@@ -112,10 +112,10 @@ class DownloadsRepositoryTest {
         db.episodeDao().upsertAll(listOf(episodeEntity()))
         repo.saveAdBoundaryCandidates(
             guid,
-            listOf(AdBoundary(1.minutes, AdBoundary.Source.SegmentBoundary, AdBoundary.Role.Join)),
+            listOf(AdBoundary(1.minutes, AdBoundary.Source.SegmentBoundary, AdBoundary.Role.Join, confidence = 0.4f)),
         )
 
-        val second = listOf(AdBoundary(3.minutes, AdBoundary.Source.DiffCut, AdBoundary.Role.End))
+        val second = listOf(AdBoundary(3.minutes, AdBoundary.Source.DiffCut, AdBoundary.Role.End, confidence = 0.65f))
         repo.saveAdBoundaryCandidates(guid, second)
 
         assertThat(repo.adBoundaryCandidates(guid)).isEqualTo(second)
@@ -126,7 +126,7 @@ class DownloadsRepositoryTest {
         db.episodeDao().upsertAll(listOf(episodeEntity(downloadState = DownloadState.Downloaded.name)))
         repo.saveAdBoundaryCandidates(
             guid,
-            listOf(AdBoundary(1.minutes, AdBoundary.Source.DiffCut, AdBoundary.Role.Start)),
+            listOf(AdBoundary(1.minutes, AdBoundary.Source.DiffCut, AdBoundary.Role.Start, confidence = 0.9f)),
         )
 
         repo.deleteDownload(guid)

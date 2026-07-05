@@ -101,7 +101,7 @@ class AppStoreReducerTest {
 
     @Test
     fun setPlayerState_preservesAdBoundaries() {
-        val boundaries = listOf(AdBoundary(60.seconds, AdBoundary.Source.DaiSlot, AdBoundary.Role.Join))
+        val boundaries = listOf(AdBoundary(60.seconds, AdBoundary.Source.DaiSlot, AdBoundary.Role.Join, confidence = 0.8f))
         val state = AppState(nowPlaying = playing.copy(adBoundaries = boundaries))
 
         val result = state.reduce(
@@ -109,6 +109,34 @@ class AppStoreReducerTest {
         )
 
         assertThat(result.nowPlaying?.adBoundaries).isEqualTo(boundaries)
+    }
+
+    @Test
+    fun setAdBoundaryConfidenceFilter_setsAndClamps() {
+        val state = AppState(nowPlaying = playing)
+
+        assertThat(state.reduce(SetAdBoundaryConfidenceFilter(0.7f)).nowPlaying?.adBoundaryConfidenceFilter)
+            .isEqualTo(0.7f)
+        assertThat(state.reduce(SetAdBoundaryConfidenceFilter(3f)).nowPlaying?.adBoundaryConfidenceFilter)
+            .isEqualTo(1f)
+        assertThat(state.reduce(SetAdBoundaryConfidenceFilter(-1f)).nowPlaying?.adBoundaryConfidenceFilter)
+            .isEqualTo(0f)
+    }
+
+    @Test
+    fun setAdBoundaryConfidenceFilter_ignoredWhileNothingPlaying() {
+        assertThat(AppState().reduce(SetAdBoundaryConfidenceFilter(0.7f)).nowPlaying).isNull()
+    }
+
+    @Test
+    fun setPlayerState_preservesConfidenceFilter() {
+        val state = AppState(nowPlaying = playing.copy(adBoundaryConfidenceFilter = 0.7f))
+
+        val result = state.reduce(
+            SetPlayerState(PlayerState(episodeGuid = "guid-1", status = PlayerStatus.Playing, position = 5.seconds))
+        )
+
+        assertThat(result.nowPlaying?.adBoundaryConfidenceFilter).isEqualTo(0.7f)
     }
 
     @Test

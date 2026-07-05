@@ -37,11 +37,13 @@ import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.NowPlayingState
 import com.episode6.podcasthacker.store.SeekBy
 import com.episode6.podcasthacker.store.SeekTo
+import com.episode6.podcasthacker.store.SetAdBoundaryConfidenceFilter
 import com.episode6.podcasthacker.store.SetPlaybackSpeed
 import com.episode6.podcasthacker.store.SkipToNextAdBoundary
 import com.episode6.podcasthacker.store.SkipToPreviousAdBoundary
 import com.episode6.podcasthacker.store.StopPlayback
 import com.episode6.podcasthacker.store.TogglePlayPause
+import com.episode6.podcasthacker.store.filteredAdBoundaries
 import com.episode6.podcasthacker.store.nextAdBoundary
 import com.episode6.podcasthacker.store.previousAdBoundary
 import com.episode6.podcasthacker.ui.util.formatTimestamp
@@ -114,6 +116,7 @@ internal fun NowPlayingScreen(navController: NavController) {
             }
             Spacer(Modifier.height(8.dp))
             AdBoundaryRow(current, onSkip = { store.dispatch(it) })
+            AdBoundaryFilterSlider(current, onFilterChange = { store.dispatch(SetAdBoundaryConfidenceFilter(it)) })
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SPEED_OPTIONS.forEach { speed ->
@@ -183,6 +186,32 @@ private fun AdBoundaryRow(nowPlaying: NowPlayingState, onSkip: (Action) -> Unit)
         ) {
             Text("⇥", style = MaterialTheme.typography.titleMedium)
         }
+    }
+}
+
+/**
+ * Confidence filter for the skip row: at 0 every boundary is a skip target, at 1 only the
+ * episode's top-confidence tier remains (see NowPlayingState.filteredAdBoundaries). The
+ * label shows how many boundaries survive so dragging gives immediate feedback.
+ */
+@Composable
+private fun AdBoundaryFilterSlider(nowPlaying: NowPlayingState, onFilterChange: (Float) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.widthIn(max = 320.dp),
+    ) {
+        Text(
+            text = "skips: ${nowPlaying.filteredAdBoundaries().size}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.width(12.dp))
+        Slider(
+            value = nowPlaying.adBoundaryConfidenceFilter,
+            onValueChange = onFilterChange,
+            enabled = nowPlaying.adBoundaries.isNotEmpty(),
+            modifier = Modifier.testTag("adBoundaryConfidenceFilter"),
+        )
     }
 }
 

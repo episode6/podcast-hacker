@@ -11,8 +11,8 @@ import kotlin.time.Duration.Companion.seconds
 
 class NowPlayingStateTest {
 
-    private fun boundary(position: Duration) =
-        AdBoundary(position, AdBoundary.Source.DiffCut, AdBoundary.Role.Start)
+    private fun boundary(position: Duration, confidence: Float = 0.5f) =
+        AdBoundary(position, AdBoundary.Source.DiffCut, AdBoundary.Role.Start, confidence)
 
     private fun state(position: Duration, boundaries: List<Duration> = emptyList()) = NowPlayingState(
         episodeGuid = "guid",
@@ -20,6 +20,55 @@ class NowPlayingStateTest {
         position = position,
         adBoundaries = boundaries.map { boundary(it) },
     )
+
+    private fun mixedConfidenceState(filter: Float) = NowPlayingState(
+        episodeGuid = "guid",
+        episodeTitle = "Ep",
+        position = Duration.ZERO,
+        adBoundaries = listOf(
+            boundary(1.minutes, confidence = 0.3f),
+            boundary(2.minutes, confidence = 0.65f),
+            boundary(3.minutes, confidence = 0.9f),
+        ),
+        adBoundaryConfidenceFilter = filter,
+    )
+
+    @Test
+    fun filterAtZero_keepsEveryBoundary() {
+        assertThat(mixedConfidenceState(filter = 0f).filteredAdBoundaries().map { it.confidence })
+            .isEqualTo(listOf(0.3f, 0.65f, 0.9f))
+    }
+
+    @Test
+    fun filterAtMax_keepsOnlyTheTopConfidenceTier() {
+        assertThat(mixedConfidenceState(filter = 1f).filteredAdBoundaries().map { it.confidence })
+            .isEqualTo(listOf(0.9f))
+    }
+
+    @Test
+    fun filterMidway_thresholdsAcrossTheObservedRange() {
+        // threshold = 0.3 + (0.9 - 0.3) * 0.5 = 0.6
+        assertThat(mixedConfidenceState(filter = 0.5f).filteredAdBoundaries().map { it.confidence })
+            .isEqualTo(listOf(0.65f, 0.9f))
+    }
+
+    @Test
+    fun uniformConfidences_filterKeepsEverythingAtEveryPosition() {
+        val state = state(Duration.ZERO, listOf(1.minutes, 5.minutes))
+            .copy(adBoundaryConfidenceFilter = 1f)
+
+        assertThat(state.filteredAdBoundaries()).isEqualTo(state.adBoundaries)
+    }
+
+    @Test
+    fun skipSelectors_respectTheConfidenceFilter() {
+        val state = mixedConfidenceState(filter = 1f).copy(position = 90.seconds)
+
+        // the 0.65 boundary at 2:00 is filtered out; next jumps straight to 3:00
+        assertThat(state.nextAdBoundary()).isEqualTo(boundary(3.minutes, confidence = 0.9f))
+        // the 0.3 boundary at 1:00 behind us is filtered out too
+        assertThat(state.previousAdBoundary()).isNull()
+    }
 
     @Test
     fun noBoundaries_bothDirectionsEmpty() {

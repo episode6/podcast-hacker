@@ -27,6 +27,9 @@ data class SetEpisodeDownloadStatus(
 /** Merges live [PlayerState] into [NowPlayingState] (ignored while nothing is playing). */
 data class SetPlayerState(val playerState: PlayerState) : UpdateStateAction
 
+/** Moves the ad-boundary confidence-filter slider; clamped to 0..1 in the reducer. */
+data class SetAdBoundaryConfidenceFilter(val filter: Float) : UpdateStateAction
+
 /**
  * Requests handled by side effects (repo call → result actions).
  */

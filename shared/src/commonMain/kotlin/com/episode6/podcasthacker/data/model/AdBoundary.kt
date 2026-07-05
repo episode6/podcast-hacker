@@ -12,6 +12,9 @@ data class AdBoundary(
     val position: Duration,
     val source: Source,
     val role: Role,
+    /** Tacita's heuristic 0..1 ranking of how ad-like this boundary is — ordering is
+     * meaningful, absolute values are not. Drives the Now Playing confidence filter. */
+    val confidence: Float,
 ) {
     /** Which detection signal produced the candidate. Mirrors tacita's Source. */
     enum class Source { SegmentBoundary, DiffCut, DaiSlot, Id3Chapter, Unknown }

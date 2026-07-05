@@ -25,6 +25,9 @@ private fun AppState.reduceUpdateStateAction(action: UpdateStateAction): AppStat
         else -> downloads + (action.episodeGuid to action.status)
     })
     is SetPlayerState -> copy(nowPlaying = nowPlaying?.mergedWith(action.playerState))
+    is SetAdBoundaryConfidenceFilter -> copy(
+        nowPlaying = nowPlaying?.copy(adBoundaryConfidenceFilter = action.filter.coerceIn(0f, 1f)),
+    )
 }
 
 /** Stale player states (a different or unloaded episode) leave the ui state untouched. */
