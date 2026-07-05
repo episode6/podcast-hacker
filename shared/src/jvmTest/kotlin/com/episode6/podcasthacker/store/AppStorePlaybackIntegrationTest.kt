@@ -68,6 +68,7 @@ class AppStorePlaybackIntegrationTest {
     private val downloadsRepository = mockk<DownloadsRepository> {
         every { downloadedFileExists(episode.guid) } returns true
         every { downloadFilePath(episode.guid) } returns "/downloads/abc.mp3".toPath()
+        coEvery { adBoundaryCandidates(episode.guid) } returns emptyList()
     }
 
     private fun CoroutineScope.playbackStore(): AppStore {

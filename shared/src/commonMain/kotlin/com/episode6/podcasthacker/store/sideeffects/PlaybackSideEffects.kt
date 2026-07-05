@@ -14,8 +14,12 @@ import com.episode6.podcasthacker.store.SeekTo
 import com.episode6.podcasthacker.store.SetNowPlaying
 import com.episode6.podcasthacker.store.SetPlaybackSpeed
 import com.episode6.podcasthacker.store.SetPlayerState
+import com.episode6.podcasthacker.store.SkipToNextAdBoundary
+import com.episode6.podcasthacker.store.SkipToPreviousAdBoundary
 import com.episode6.podcasthacker.store.StopPlayback
 import com.episode6.podcasthacker.store.TogglePlayPause
+import com.episode6.podcasthacker.store.nextAdBoundary
+import com.episode6.podcasthacker.store.previousAdBoundary
 import com.episode6.redux.sideeffects.SideEffect
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesTo
@@ -70,6 +74,7 @@ interface PlaybackSideEffects {
                 artworkUrl = podcast?.artworkUrl,
                 position = episode.playbackPosition,
                 duration = episode.duration,
+                adBoundaries = downloadsRepository.adBoundaryCandidates(episode.guid),
             )
             if (!downloadsRepository.downloadedFileExists(episode.guid)) {
                 emit(SetNowPlaying(nowPlaying.copy(error = "Episode isn't downloaded yet")))
@@ -105,6 +110,10 @@ interface PlaybackSideEffects {
                         TogglePlayPause -> if (nowPlaying?.isPlaying == true) player.pause() else player.play()
                         is SeekTo -> player.seekTo(action.position.clampedTo(nowPlaying))
                         is SeekBy -> nowPlaying?.let { player.seekTo((it.position + action.offset).clampedTo(it)) }
+                        SkipToNextAdBoundary -> nowPlaying?.nextAdBoundary()
+                            ?.let { player.seekTo(it.position.clampedTo(nowPlaying)) }
+                        SkipToPreviousAdBoundary -> nowPlaying?.previousAdBoundary()
+                            ?.let { player.seekTo(it.position.clampedTo(nowPlaying)) }
                         is SetPlaybackSpeed -> player.setSpeed(action.speed)
                         StopPlayback -> player.stop()
                         else -> {}

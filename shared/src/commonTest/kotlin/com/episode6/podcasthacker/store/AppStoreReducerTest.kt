@@ -5,6 +5,7 @@ import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
+import com.episode6.podcasthacker.data.model.AdBoundary
 import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.data.model.Podcast
 import com.episode6.podcasthacker.playback.PlayerState
@@ -96,6 +97,18 @@ class AppStoreReducerTest {
                 speed = 1.5f,
             )
         )
+    }
+
+    @Test
+    fun setPlayerState_preservesAdBoundaries() {
+        val boundaries = listOf(AdBoundary(60.seconds, AdBoundary.Source.DaiSlot, AdBoundary.Role.Join))
+        val state = AppState(nowPlaying = playing.copy(adBoundaries = boundaries))
+
+        val result = state.reduce(
+            SetPlayerState(PlayerState(episodeGuid = "guid-1", status = PlayerStatus.Playing, position = 5.seconds))
+        )
+
+        assertThat(result.nowPlaying?.adBoundaries).isEqualTo(boundaries)
     }
 
     @Test

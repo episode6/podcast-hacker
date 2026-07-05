@@ -1,5 +1,6 @@
 package com.episode6.podcasthacker.store.sideeffects
 
+import com.episode6.podcasthacker.data.model.toDomain
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
 import com.episode6.podcasthacker.downloads.DownloadScheduler
@@ -137,7 +138,13 @@ private suspend fun FlowCollector<Action>.downloadEpisode(
                 DownloadState.CuttingAds -> emit(
                     SetEpisodeDownloadStatus(episodeGuid, EpisodeDownloadStatus.CuttingAds)
                 )
-                DownloadState.Complete -> {
+                is DownloadState.Complete -> {
+                    // persisted before the downloaded flag so the flag never appears
+                    // without its candidates
+                    downloadsRepository.saveAdBoundaryCandidates(
+                        episodeGuid = episodeGuid,
+                        candidates = state.adBoundaryCandidates.map { it.toDomain() },
+                    )
                     downloadsRepository.markDownloaded(episodeGuid, downloaded = true)
                     downloadsRepository.deleteReferenceFile(episodeGuid)
                     emit(SetEpisodeDownloadStatus(episodeGuid, null))

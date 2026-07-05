@@ -7,14 +7,18 @@ import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 
 @Database(
-    entities = [PodcastEntity::class, EpisodeEntity::class],
-    version = 2,
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    entities = [PodcastEntity::class, EpisodeEntity::class, AdBoundaryCandidateEntity::class],
+    version = 3,
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2),
+        AutoMigration(from = 2, to = 3),
+    ],
 )
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun podcastDao(): PodcastDao
     abstract fun episodeDao(): EpisodeDao
+    abstract fun adBoundaryCandidateDao(): AdBoundaryCandidateDao
 
     companion object {
         const val FILE_NAME = "podcasthacker.db"

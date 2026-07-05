@@ -38,10 +38,15 @@ import com.episode6.podcasthacker.store.NowPlayingState
 import com.episode6.podcasthacker.store.SeekBy
 import com.episode6.podcasthacker.store.SeekTo
 import com.episode6.podcasthacker.store.SetPlaybackSpeed
+import com.episode6.podcasthacker.store.SkipToNextAdBoundary
+import com.episode6.podcasthacker.store.SkipToPreviousAdBoundary
 import com.episode6.podcasthacker.store.StopPlayback
 import com.episode6.podcasthacker.store.TogglePlayPause
+import com.episode6.podcasthacker.store.nextAdBoundary
+import com.episode6.podcasthacker.store.previousAdBoundary
 import com.episode6.podcasthacker.ui.util.formatTimestamp
 import com.episode6.podcasthacker.ui.util.stateOf
+import com.episode6.redux.Action
 import kotlin.time.Duration.Companion.seconds
 
 private val SPEED_OPTIONS = listOf(0.8f, 1f, 1.2f, 1.5f, 2f)
@@ -107,6 +112,8 @@ internal fun NowPlayingScreen(navController: NavController) {
                     Text("30 ↻", style = MaterialTheme.typography.titleMedium)
                 }
             }
+            Spacer(Modifier.height(8.dp))
+            AdBoundaryRow(current, onSkip = { store.dispatch(it) })
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SPEED_OPTIONS.forEach { speed ->
@@ -133,6 +140,48 @@ internal fun NowPlayingScreen(navController: NavController) {
             ) {
                 Text("Stop")
             }
+        }
+    }
+}
+
+/**
+ * Jump-to-ad-boundary controls with time since the previous candidate / until the next
+ * one. Candidates are tacita's unverified guesses, so skipping is strictly
+ * user-initiated; with no candidate in a direction the button disables and its label
+ * shows --:--. The row stays visible (disabled) for episodes with no candidates at all,
+ * e.g. anything downloaded before candidates existed.
+ */
+@Composable
+private fun AdBoundaryRow(nowPlaying: NowPlayingState, onSkip: (Action) -> Unit) {
+    // prev uses the same grace-windowed selector as the skip, so the label always
+    // describes where the button would land
+    val prev = nowPlaying.previousAdBoundary()
+    val next = nowPlaying.nextAdBoundary()
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        TextButton(
+            onClick = { onSkip(SkipToPreviousAdBoundary) },
+            enabled = prev != null,
+            modifier = Modifier.testTag("skipToPrevAdBoundary"),
+        ) {
+            Text("⇤", style = MaterialTheme.typography.titleMedium)
+        }
+        Text(
+            text = prev?.let { (nowPlaying.position - it.position).formatTimestamp() } ?: "--:--",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.width(24.dp))
+        Text(
+            text = next?.let { (it.position - nowPlaying.position).formatTimestamp() } ?: "--:--",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextButton(
+            onClick = { onSkip(SkipToNextAdBoundary) },
+            enabled = next != null,
+            modifier = Modifier.testTag("skipToNextAdBoundary"),
+        ) {
+            Text("⇥", style = MaterialTheme.typography.titleMedium)
         }
     }
 }
