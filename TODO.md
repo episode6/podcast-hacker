@@ -191,6 +191,13 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
       pane on expanded widths; resizable-emulator test
 - [ ] iOS: Info.plist background-audio mode
 - [ ] Desktop: window size/position persistence; media keys if cheap
+- [ ] Desktop: bundle libvlc into the jpackage installers to drop the "install VLC"
+      user requirement — fetch per-OS VLC 3.x libs in CI, lay them out in the app image,
+      point discovery at them (`jna.library.path` + `VLC_PLUGIN_PATH`, proven to work in
+      the Stage 7 probe). libvlc is LGPL 2.1+, which is fine to bundle with an MIT app:
+      keep it dynamically linked (it is), ship the LGPL text + attribution, and link to
+      the VLC source. ⚠ BLOCKED on Risk 9 (vlcj is GPL v3) — only worth doing if we keep
+      a libvlc-based player
 - [ ] App icons for all platforms
 - [ ] Verify: CI green; manual foldable emulator pass
 
@@ -221,7 +228,7 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 | rssparser | `com.prof18.rssparser:rssparser` | 6.1.6 (latest; jvm target confirmed) |
 | media3 | `androidx.media3:media3-{exoplayer,session}` | 1.10.1 (androidMain only) |
 | adaptive | `org.jetbrains.compose.material3.adaptive:adaptive` | ⚠ 1.2.x |
-| vlcj | `uk.co.caprica:vlcj` | 4.12.1 (jvmMain; 4.x ↔ VLC 3.x, 5.x is for VLC 4) |
+| vlcj | `uk.co.caprica:vlcj` | 4.12.1 (jvmMain; 4.x ↔ VLC 3.x, 5.x is for VLC 4) ⚠ GPL v3 — see Risk 9 |
 | mockk | `io.mockk:mockk` | 1.14.11 (jvm/android test source sets only) |
 | assertk | `com.willowtreeapps.assertk:assertk` | 0.28.1 (commonTest) |
 | coroutines-test | `org.jetbrains.kotlinx:kotlinx-coroutines-test` | 1.11.0 |
@@ -246,3 +253,12 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
    have fallbacks noted in their stages.
 8. **tacita on Android**: Android consumes tacita's jvm artifact (bundled okhttp — safe);
    confirm resolution from `:shared` androidMain in Stage 6.
+9. **vlcj is GPL v3** (found 2026-07-04, verified from its maven pom): libvlc itself is
+   LGPL 2.1+ (bundling with an MIT app is fine, see Stage 8), and JNA is Apache-2.0
+   dual-licensed, but the vlcj *binding* is GPL v3 — distributing binaries that include
+   vlcj places the combined work under GPL v3, so the app can't meaningfully stay MIT
+   while shipping it. Decide before the v0.0.1 release: (a) accept GPL terms for
+   distributed binaries, (b) replace vlcj with a small in-repo JNA binding straight to
+   libvlc — we only use a tiny API surface (new/load/play/pause/set_time/set_rate/stop +
+   time/length/end/error events), or (c) platform-split (JavaFX Media is
+   GPLv2+Classpath-Exception, MIT-safe, but is a dead end on Linux — see Risk 5).
