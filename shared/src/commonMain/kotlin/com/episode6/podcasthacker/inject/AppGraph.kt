@@ -66,7 +66,10 @@ interface AppGraph {
 
     @Provides @SingleIn(AppScope::class)
     fun provideTacita(httpClient: HttpClient): Tacita =
-        Tacita.withClient(reuse = true) { httpClient }
+        // tacita guards its internal passes (clean-source probes, the ad-boundary
+        // detector) and reports their failures only through this lambda — discard it and
+        // those passes fail invisibly
+        Tacita.withClient(reuse = true, log = { println("tacita: $it") }) { httpClient }
 
     @Provides @SingleIn(AppScope::class)
     fun provideAppDatabase(context: PlatformContext, appDirs: AppDirs): AppDatabase {
