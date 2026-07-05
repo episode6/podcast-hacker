@@ -19,9 +19,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.episode6.podcasthacker.data.model.DownloadState
+import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.DeleteDownload
 import com.episode6.podcasthacker.store.DownloadEpisode
@@ -46,8 +49,7 @@ internal fun EpisodeDetailScreen(navController: NavController, route: EpisodeDet
     val store = graph.appStore
     val podcast by store.stateOf { subscriptions.firstOrNull { it.feedUrl == route.feedUrl } }
     val downloadStatus by store.stateOf { downloads[route.episodeGuid] }
-    val episode by remember(route.episodeGuid) { graph.episodeRepository.observeEpisode(route.episodeGuid) }
-        .collectAsState(null)
+    val episode by store.stateOf { episode(route.episodeGuid) }
 
     ScreenScaffold(
         title = podcast?.title ?: "Episode",

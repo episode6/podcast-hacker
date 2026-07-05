@@ -5,6 +5,7 @@ import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
+import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.data.model.Podcast
 import com.episode6.podcasthacker.playback.PlayerState
 import com.episode6.podcasthacker.playback.PlayerStatus
@@ -47,6 +48,17 @@ class AppStoreReducerTest {
         val result = AppState().reduce(SetSubscriptions(podcasts))
 
         assertThat(result.subscriptions).isEqualTo(podcasts)
+    }
+
+    @Test
+    fun setEpisodes_replacesMap_andEpisodeLookupFindsByGuid() {
+        val episode = Episode(guid = "g1", feedUrl = "feed", title = "Ep One")
+
+        val result = AppState().reduce(SetEpisodes(mapOf("feed" to listOf(episode))))
+
+        assertThat(result.episodesByFeed).isEqualTo(mapOf("feed" to listOf(episode)))
+        assertThat(result.episode("g1")).isEqualTo(episode)
+        assertThat(result.episode("missing")).isNull()
     }
 
     @Test

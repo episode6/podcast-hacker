@@ -1,9 +1,11 @@
 package com.episode6.podcasthacker.store.sideeffects
 
+import com.episode6.podcasthacker.data.repo.EpisodeRepository
 import com.episode6.podcasthacker.data.repo.FeedRepository
 import com.episode6.podcasthacker.data.repo.SubscriptionRepository
 import com.episode6.podcasthacker.store.AppState
 import com.episode6.podcasthacker.store.RefreshFeed
+import com.episode6.podcasthacker.store.SetEpisodes
 import com.episode6.podcasthacker.store.SetFeedSyncError
 import com.episode6.podcasthacker.store.SetFeedSyncing
 import com.episode6.podcasthacker.store.SetSubscriptions
@@ -38,6 +40,18 @@ interface SubscriptionSideEffects {
             merge(
                 actions.filter { false },
                 repo.observeSubscriptions().mapActions { listOf(SetSubscriptions(it)) },
+            )
+        }
+
+    /** All episodes flow into AppState through one app-lifetime observer: per-screen
+     * Room flow collections proved unreliable (TODO.md Risk 10). */
+    @Provides @IntoSet fun observeEpisodes(repo: EpisodeRepository): SideEffect<AppState> =
+        sideEffect {
+            merge(
+                actions.filter { false },
+                repo.observeAllEpisodes().mapActions { episodes ->
+                    listOf(SetEpisodes(episodes.groupBy { it.feedUrl }))
+                },
             )
         }
 

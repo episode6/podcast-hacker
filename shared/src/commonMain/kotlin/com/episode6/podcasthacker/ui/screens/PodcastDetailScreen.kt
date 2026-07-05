@@ -20,9 +20,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,8 +46,7 @@ internal fun PodcastDetailScreen(navController: NavController, route: PodcastDet
     val store = graph.appStore
     val podcast by store.stateOf { subscriptions.firstOrNull { it.feedUrl == route.feedUrl } }
     val syncing by store.stateOf { route.feedUrl in feedSync.syncing }
-    val episodes by remember(route.feedUrl) { graph.episodeRepository.observeEpisodes(route.feedUrl) }
-        .collectAsState(emptyList())
+    val episodes by store.stateOf { episodesByFeed[route.feedUrl].orEmpty() }
 
     LaunchedEffect(route.feedUrl) { store.dispatch(RefreshFeed(route.feedUrl)) }
 

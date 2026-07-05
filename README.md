@@ -22,12 +22,15 @@ is no streaming.
 | Platform | Status | Playback engine |
 |---|---|---|
 | Android | first-class | Media3 ExoPlayer in a MediaSessionService |
-| Desktop (Linux/macOS/Windows) | first-class | vlcj/libvlc — **requires [VLC](https://www.videolan.org/) installed** |
+| Desktop (Linux/macOS/Windows) | first-class | libvlc (bundled) via an in-repo JNA binding |
 | iOS | kept compiling, best-effort | AVPlayer |
 
-Desktop playback needs a VLC installation on your machine; the app shows a clear error
-on the Now Playing screen if VLC isn't found. (JavaFX Media was the original plan but its
-Linux backend can't decode against current ffmpeg — see TODO.md for the archaeology.)
+Desktop installers bundle [libvlc](https://www.videolan.org/vlc/libvlc.html) (LGPL
+2.1+, dynamically loaded — see [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md)),
+so end users need nothing extra installed. Dev builds without the staged bundle
+(`scripts/fetch-libvlc.sh`) fall back to a system VLC installation. (JavaFX Media was
+the original plan but its Linux backend can't decode against current ffmpeg, and vlcj
+was rejected for being GPL v3 — see TODO.md for the archaeology.)
 
 ## Building & running
 

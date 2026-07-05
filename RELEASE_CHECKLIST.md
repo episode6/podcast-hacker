@@ -15,11 +15,12 @@
 2. **Green main** — all PRs for the release merged; CI green on main.
 
 3. **Sanity pass** — on at least android + desktop: subscribe, download (ads cut),
-   play/pause/seek/speed, position resumes after restart. Desktop machine needs VLC
-   installed.
+   play/pause/seek/speed, position resumes after restart. For the desktop pass use a
+   packaged build (`./scripts/fetch-libvlc.sh` + `./start`) so the bundled libvlc path
+   is what's exercised.
 
-4. **Licenses** — TODO.md Risk 9 (vlcj is GPL v3) must be resolved before shipping
-   binaries beyond personal use.
+4. **Licenses** — THIRD_PARTY_LICENSES.md must match what's actually bundled
+   (libvlc LGPL text ships inside the installers via fetch-libvlc.sh).
 
 5. **Tag** — `git tag v<name> && git push origin v<name>`. CI builds deb/msi/dmg + debug
    APK and attaches them to an auto-created GitHub release (the iOS shard is best-effort
