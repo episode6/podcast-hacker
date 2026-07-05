@@ -90,7 +90,10 @@ internal fun MiniPlayerBar(navController: NavController, modifier: Modifier = Mo
                         }
                     }
                     Spacer(Modifier.width(12.dp))
-                    IconButton(onClick = { store.dispatch(TogglePlayPause) }) {
+                    IconButton(
+                        onClick = { store.dispatch(TogglePlayPause) },
+                        modifier = Modifier.testTag("miniPlayerPlayPause"),
+                    ) {
                         Text(
                             text = if (current?.isPlaying == true) "❚❚" else "▶",
                             style = MaterialTheme.typography.titleMedium,

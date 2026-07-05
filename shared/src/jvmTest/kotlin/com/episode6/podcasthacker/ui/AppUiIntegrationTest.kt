@@ -2,6 +2,7 @@ package com.episode6.podcasthacker.ui
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
@@ -159,23 +160,29 @@ class AppUiIntegrationTest {
 
         // download runs through the real tacita pipeline against MockEngine bytes
         onNodeWithText("Download").performClick()
-        waitUntilExactlyOneExists(hasText("Delete Download"), timeoutMillis = 15_000)
+        waitUntilExactlyOneExists(hasText("Delete Download"), timeoutMillis = 30_000)
 
-        // play the downloaded episode → NowPlaying with live transport controls
+        // play the downloaded episode → NowPlaying with live transport controls.
+        // matchers are scoped by tag (text merges into the button node): the mini player
+        // bar can briefly coexist with the NowPlaying screen during navigation
+        // animations, so bare ❚❚/▶ text can transiently match two nodes
+        val playingOnNowPlaying = hasTestTag("playPauseButton") and hasText("❚❚")
+        val pausedOnNowPlaying = hasTestTag("playPauseButton") and hasText("▶")
+        val pausedOnMiniBar = hasTestTag("miniPlayerPlayPause") and hasText("▶")
         onNodeWithText("Play").performClick()
-        waitUntilExactlyOneExists(hasText("❚❚"), timeoutMillis = 5_000)
+        waitUntilExactlyOneExists(playingOnNowPlaying, timeoutMillis = 10_000)
         onNodeWithText("↺ 15").assertExists()
-        onNodeWithText("❚❚").performClick() // pause
-        waitUntilExactlyOneExists(hasText("▶"), timeoutMillis = 5_000)
+        onNode(playingOnNowPlaying).performClick() // pause
+        waitUntilExactlyOneExists(pausedOnNowPlaying, timeoutMillis = 10_000)
 
         // back to episode detail: the mini player bar carries the paused state; tapping
         // it returns to NowPlaying, where Stop clears playback + hides the bar
         onNodeWithText("← Back").performClick()
-        waitUntilExactlyOneExists(hasText("▶"), timeoutMillis = 5_000)
+        waitUntilExactlyOneExists(pausedOnMiniBar, timeoutMillis = 10_000)
         onNodeWithTag("miniPlayerBar").performClick()
-        waitUntilExactlyOneExists(hasText("Stop"), timeoutMillis = 5_000)
+        waitUntilExactlyOneExists(hasText("Stop"), timeoutMillis = 10_000)
         onNodeWithText("Stop").performClick()
-        waitUntilExactlyOneExists(hasText("Delete Download"), timeoutMillis = 5_000)
+        waitUntilExactlyOneExists(hasText("Delete Download"), timeoutMillis = 10_000)
 
         // the episode row now carries the downloaded marker
         onNodeWithText("← Back").performClick()

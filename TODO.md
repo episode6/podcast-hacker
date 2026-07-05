@@ -191,13 +191,13 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
       pane on expanded widths; resizable-emulator test
 - [ ] iOS: Info.plist background-audio mode
 - [ ] Desktop: window size/position persistence; media keys if cheap
-- [ ] Desktop: bundle libvlc into the jpackage installers to drop the "install VLC"
-      user requirement — fetch per-OS VLC 3.x libs in CI, lay them out in the app image,
-      point discovery at them (`jna.library.path` + `VLC_PLUGIN_PATH`, proven to work in
-      the Stage 7 probe). libvlc is LGPL 2.1+, which is fine to bundle with an MIT app:
-      keep it dynamically linked (it is), ship the LGPL text + attribution, and link to
-      the VLC source. ⚠ BLOCKED on Risk 9 (vlcj is GPL v3) — only worth doing if we keep
-      a libvlc-based player
+- [ ] ~~Desktop: bundle libvlc into the jpackage installers~~ DECIDED 2026-07-04: skip
+      bundling for now; desktop playback simply requires an installed VLC (in-app error
+      explains this when missing). Document the requirement in the Stage 9 README. If
+      revisited later: fetch per-OS VLC 3.x libs in CI, lay them out in the app image,
+      point discovery at them (`jna.library.path` + `VLC_PLUGIN_PATH`, proven in the
+      Stage 7 probe); libvlc is LGPL 2.1+ so bundling is MIT-compatible with attribution
+      (vlcj's GPL v3 — Risk 9 — applies either way since vlcj ships in the app)
 - [ ] App icons for all platforms
 - [ ] Verify: CI green; manual foldable emulator pass
 
