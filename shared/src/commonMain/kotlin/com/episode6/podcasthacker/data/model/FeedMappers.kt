@@ -34,6 +34,7 @@ private fun RssItem.toEpisode(feedUrl: String): Episode? {
         audioUrl = audioUrl,
         pubDate = parseRssDate(pubDate),
         duration = parseItunesDuration(itunesItemData?.duration),
+        enclosureBytes = rawEnclosure?.length?.takeIf { it > 0 },
     )
 }
 

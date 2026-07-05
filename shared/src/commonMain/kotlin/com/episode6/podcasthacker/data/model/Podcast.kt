@@ -19,6 +19,8 @@ data class Episode(
     val audioUrl: String? = null,
     val pubDate: Instant? = null,
     val duration: Duration? = null,
+    /** The feed's declared `enclosure length` — lets tacita verify a clean serving. */
+    val enclosureBytes: Long? = null,
     val downloadState: DownloadState = DownloadState.NotDownloaded,
     val playbackPosition: Duration = Duration.ZERO,
 )

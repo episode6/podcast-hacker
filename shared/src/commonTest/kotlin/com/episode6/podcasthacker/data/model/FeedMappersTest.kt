@@ -49,6 +49,7 @@ class FeedMappersTest {
                 audioUrl = "https://example.com/ep2.mp3",
                 pubDate = Instant.parse("2026-06-02T10:30:00Z"),
                 duration = 1.hours + 2.minutes + 3.seconds,
+                enclosureBytes = 123,
             )
         )
     }

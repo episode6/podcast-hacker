@@ -98,7 +98,8 @@ private suspend fun FlowCollector<Action>.downloadEpisode(
     episodeRepository: EpisodeRepository,
     downloadsRepository: DownloadsRepository,
 ) {
-    val audioUrl = episodeRepository.episode(episodeGuid)?.audioUrl
+    val episode = episodeRepository.episode(episodeGuid)
+    val audioUrl = episode?.audioUrl
     if (audioUrl == null) {
         emit(SetEpisodeDownloadStatus(episodeGuid, EpisodeDownloadStatus.Failure("episode has no audio url")))
         return
@@ -115,6 +116,10 @@ private suspend fun FlowCollector<Action>.downloadEpisode(
             // ad-diff reference by tacita rather than blocking the download
             overwrite = downloadsRepository.downloadedFileExists(episodeGuid),
             cutAds = true,
+            // feed-declared size/duration let tacita verify + serve a clean copy directly
+            // when the host injects sticky fill on every tier (blinding the ad-diff)
+            declaredEnclosureBytes = episode.enclosureBytes,
+            expectedDurationSeconds = episode.duration?.inWholeSeconds,
         ).collect { state ->
             when (state) {
                 is DownloadState.Downloading -> emit(

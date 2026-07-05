@@ -30,6 +30,7 @@ import kotlinx.coroutines.test.runTest
 import okio.Path
 import okio.Path.Companion.toPath
 import kotlin.test.Test
+import kotlin.time.Duration.Companion.seconds
 
 class DownloadSideEffectsTest {
 
@@ -40,8 +41,18 @@ class DownloadSideEffectsTest {
 
     private val sideEffects = object : DownloadSideEffects {}
 
+    private val enclosureBytes = 59_568_000L
+    private val duration = 3723.seconds
+
     private val episodeRepo = mockk<EpisodeRepository> {
-        coEvery { episode(guid) } returns Episode(guid = guid, feedUrl = "feed", title = "Ep", audioUrl = audioUrl)
+        coEvery { episode(guid) } returns Episode(
+            guid = guid,
+            feedUrl = "feed",
+            title = "Ep",
+            audioUrl = audioUrl,
+            duration = duration,
+            enclosureBytes = enclosureBytes,
+        )
     }
     private val downloadsRepo = mockk<DownloadsRepository>(relaxUnitFun = true) {
         every { downloadFilePath(guid) } returns outputFile
@@ -63,7 +74,9 @@ class DownloadSideEffectsTest {
     @Test
     fun mapsTacitaStates_toEpisodeStatuses() = runTest {
         val tacita = mockk<Tacita> {
-            every { downloadPodcast(audioUrl, outputFile, referenceFile, false, true) } returns flowOf(
+            every {
+                downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds)
+            } returns flowOf(
                 DownloadState.Downloading(outputFile, 0.25f),
                 DownloadState.Downloading(outputFile, 0.75f),
                 DownloadState.Downloading(referenceFile, 0.5f), // reference copy
@@ -92,7 +105,9 @@ class DownloadSideEffectsTest {
     fun existingFile_downloadsWithOverwrite() = runTest {
         every { downloadsRepo.downloadedFileExists(guid) } returns true
         val tacita = mockk<Tacita> {
-            every { downloadPodcast(audioUrl, outputFile, referenceFile, true, true) } returns flowOf(
+            every {
+                downloadPodcast(audioUrl, outputFile, referenceFile, true, true, enclosureBytes, duration.inWholeSeconds)
+            } returns flowOf(
                 DownloadState.Complete,
             )
         }
@@ -100,7 +115,9 @@ class DownloadSideEffectsTest {
         sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
             .output(DownloadEpisode(guid)).toList()
 
-        coVerify(exactly = 1) { tacita.downloadPodcast(audioUrl, outputFile, referenceFile, true, true) }
+        coVerify(exactly = 1) {
+            tacita.downloadPodcast(audioUrl, outputFile, referenceFile, true, true, enclosureBytes, duration.inWholeSeconds)
+        }
     }
 
     @Test
@@ -114,10 +131,10 @@ class DownloadSideEffectsTest {
         every { downloadsRepo.downloadedFileExists(otherGuid) } returns false
 
         val tacita = mockk<Tacita> {
-            every { downloadPodcast(audioUrl, outputFile, any(), any(), any()) } returns flow {
+            every { downloadPodcast(audioUrl, outputFile, any(), any(), any(), any(), any()) } returns flow {
                 throw RuntimeException("boom")
             }
-            every { downloadPodcast(audioUrl, otherOutput, any(), any(), any()) } returns flowOf(
+            every { downloadPodcast(audioUrl, otherOutput, any(), any(), any(), any(), any()) } returns flowOf(
                 DownloadState.Complete,
             )
         }

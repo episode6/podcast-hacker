@@ -1,5 +1,6 @@
 package com.episode6.podcasthacker.data.db
 
+import androidx.room.AutoMigration
 import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
@@ -7,7 +8,8 @@ import androidx.room.RoomDatabaseConstructor
 
 @Database(
     entities = [PodcastEntity::class, EpisodeEntity::class],
-    version = 1,
+    version = 2,
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
 )
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {

@@ -25,6 +25,7 @@ data class EpisodeEntity(
     val audioUrl: String?,
     val pubDateEpochMillis: Long?,
     val durationSeconds: Long?,
+    val enclosureBytes: Long?,
     val downloadState: String,
     val playbackPositionMillis: Long,
 )

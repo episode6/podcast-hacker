@@ -30,6 +30,7 @@ internal fun Episode.toEntity(): EpisodeEntity = EpisodeEntity(
     audioUrl = audioUrl,
     pubDateEpochMillis = pubDate?.toEpochMilliseconds(),
     durationSeconds = duration?.inWholeSeconds,
+    enclosureBytes = enclosureBytes,
     downloadState = downloadState.name,
     playbackPositionMillis = playbackPosition.inWholeMilliseconds,
 )
@@ -42,6 +43,7 @@ internal fun EpisodeEntity.toDomain(): Episode = Episode(
     audioUrl = audioUrl,
     pubDate = pubDateEpochMillis?.let { Instant.fromEpochMilliseconds(it) },
     duration = durationSeconds?.seconds,
+    enclosureBytes = enclosureBytes,
     downloadState = DownloadState.entries.firstOrNull { it.name == downloadState }
         ?: DownloadState.NotDownloaded,
     playbackPosition = playbackPositionMillis.milliseconds,

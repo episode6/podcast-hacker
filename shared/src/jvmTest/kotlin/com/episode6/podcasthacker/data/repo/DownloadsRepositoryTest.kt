@@ -95,6 +95,7 @@ class DownloadsRepositoryTest {
         audioUrl = null,
         pubDateEpochMillis = null,
         durationSeconds = null,
+        enclosureBytes = null,
         downloadState = downloadState,
         playbackPositionMillis = 0L,
     )

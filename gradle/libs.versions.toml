@@ -30,7 +30,7 @@ redux = "1.1.6"
 room = "2.8.4"
 rssparser = "6.1.6"
 sqlite = "2.6.2"
-tacita = "0.0.1"
+tacita = "0.0.2"
 # used only for our own libvlc binding (Apache-2.0 dual license); vlcj was rejected
 # for being GPL v3
 jna = "5.19.1"
