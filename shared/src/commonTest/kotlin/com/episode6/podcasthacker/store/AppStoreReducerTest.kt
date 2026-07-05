@@ -6,12 +6,16 @@ import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
 import com.episode6.podcasthacker.data.model.Podcast
+import com.episode6.podcasthacker.playback.PlayerState
+import com.episode6.podcasthacker.playback.PlayerStatus
 import com.episode6.redux.Action
 import kotlin.test.Test
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 class AppStoreReducerTest {
 
-    private val playing = NowPlayingState(episodeTitle = "test episode", isPlaying = true)
+    private val playing = NowPlayingState(episodeGuid = "guid-1", episodeTitle = "test episode", isPlaying = true)
 
     @Test
     fun setNowPlaying_updatesState() {
@@ -54,6 +58,63 @@ class AppStoreReducerTest {
 
         val done = syncing.reduce(SetFeedSyncing(feedUrl, false))
         assertThat(done.feedSync.syncing).isEmpty()
+    }
+
+    @Test
+    fun setPlayerState_mergesMatchingEpisode() {
+        val state = AppState(nowPlaying = playing)
+
+        val result = state.reduce(
+            SetPlayerState(
+                PlayerState(
+                    episodeGuid = "guid-1",
+                    status = PlayerStatus.Paused,
+                    position = 90.seconds,
+                    duration = 30.minutes,
+                    speed = 1.5f,
+                )
+            )
+        )
+
+        assertThat(result.nowPlaying).isEqualTo(
+            playing.copy(
+                isPlaying = false,
+                position = 90.seconds,
+                duration = 30.minutes,
+                speed = 1.5f,
+            )
+        )
+    }
+
+    @Test
+    fun setPlayerState_ignoresOtherEpisodes() {
+        val state = AppState(nowPlaying = playing)
+
+        val result = state.reduce(
+            SetPlayerState(PlayerState(episodeGuid = "other-guid", status = PlayerStatus.Playing, position = 5.seconds))
+        )
+
+        assertThat(result.nowPlaying).isEqualTo(playing)
+    }
+
+    @Test
+    fun setPlayerState_ignoredWhileNothingPlaying() {
+        val result = AppState().reduce(
+            SetPlayerState(PlayerState(episodeGuid = "guid-1", status = PlayerStatus.Playing))
+        )
+
+        assertThat(result.nowPlaying).isNull()
+    }
+
+    @Test
+    fun setPlayerState_surfacesErrors() {
+        val state = AppState(nowPlaying = playing)
+
+        val result = state.reduce(
+            SetPlayerState(PlayerState(episodeGuid = "guid-1", status = PlayerStatus.Error("boom")))
+        )
+
+        assertThat(result.nowPlaying?.error).isEqualTo("boom")
     }
 
     @Test

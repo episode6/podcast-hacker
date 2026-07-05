@@ -33,8 +33,7 @@ import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.DeleteDownload
 import com.episode6.podcasthacker.store.DownloadEpisode
 import com.episode6.podcasthacker.store.EpisodeDownloadStatus
-import com.episode6.podcasthacker.store.NowPlayingState
-import com.episode6.podcasthacker.store.SetNowPlaying
+import com.episode6.podcasthacker.store.PlayEpisode
 import com.episode6.podcasthacker.ui.nav.EpisodeDetailRoute
 import com.episode6.podcasthacker.ui.nav.NowPlayingRoute
 import com.episode6.podcasthacker.ui.util.basicHtmlToAnnotatedString
@@ -88,11 +87,12 @@ internal fun EpisodeDetailScreen(navController: NavController, route: EpisodeDet
             }
             Spacer(Modifier.height(16.dp))
             Row {
-                // playback lands in Stage 7; for now Play just drives the nowPlaying
-                // state so the mini player + NowPlaying screen can be exercised
+                // playback is download-first (tacita needs whole files), so Play waits
+                // for the episode to finish downloading
                 Button(
+                    enabled = current.downloadState == DownloadState.Downloaded,
                     onClick = {
-                        store.dispatch(SetNowPlaying(NowPlayingState(episodeTitle = current.title, isPlaying = true)))
+                        store.dispatch(PlayEpisode(current.guid))
                         navController.navigate(NowPlayingRoute)
                     },
                 ) {

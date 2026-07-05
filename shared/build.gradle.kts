@@ -48,9 +48,12 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.media3.exoplayer)
+            implementation(libs.media3.session)
         }
         jvmMain.dependencies {
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.vlcj)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)

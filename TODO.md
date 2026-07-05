@@ -137,22 +137,48 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
       zero failures); desktop covered by the headless UI download test, a human
       real-episode pass via ./start still worthwhile
 
-## Stage 7 — Playback + now-playing
+## ~~Stage 7 — Playback + now-playing~~ (done 2026-07-04)
 
-- [ ] `PodcastPlayer` expect/actual: load/play/pause/seekTo/setSpeed +
-      `StateFlow<PlayerState>`
-- [ ] Android: Media3 ExoPlayer + `MediaSessionService` (notification, lock screen,
-      audio focus, headset)
-- [ ] Desktop: JavaFX Media, headless `Platform.startup {}` (⚠ verify jpackage bundling
-      of JavaFX natives in dmg/msi/deb; fallback: vlcj)
-- [ ] iOS: AVPlayer + AVAudioSession(.playback) + MPNowPlayingInfoCenter /
-      MPRemoteCommandCenter (compile-verified only)
-- [ ] `PlaybackSideEffects`: player commands out of actions, `PlayerState` into AppState
-- [ ] NowPlaying screen: artwork, title, seekbar, ±15/30s skips, play/pause, speed
-- [ ] MiniPlayerBar wired for real (hidden on NowPlaying; tap → NowPlaying)
-- [ ] Persist playback position to Room (periodic + on pause)
-- [ ] Verify: full listen flow on android (incl. background + lock screen) and desktop
-      (seek + speed); position resumes after restart
+- [x] `PodcastPlayer` common interface (mockk-able) + `PlayerState`/`PlayerStatus` +
+      expect/actual `createPodcastPlayer`; `AppGraphOverrides.podcastPlayer` seam so ui
+      tests never touch a real media engine
+- [x] Android: Media3 1.10.1 ExoPlayer inside `PlaybackService` (MediaSessionService);
+      shared code drives it via MediaController (lazy async connect, main-thread
+      marshaled, 500ms position ticker); audio focus, becoming-noisy, 15/30s seek
+      increments, MediaStyle notification + POST_NOTIFICATIONS runtime request
+- [x] Desktop: ~~JavaFX Media~~ → **vlcj 4.12.1** (needs VLC installed). JavaFX Media is
+      a dead end on current Linux: its libav plugin supports libavcodec ≤60 (jfx 21) /
+      ≤61 (jfx 25) but current distros ship .62 (ffmpeg 8) — and jfx 24+ needs JDK 22
+      anyway (local is 21). vlcj was the documented fallback; a missing VLC surfaces as
+      a nowPlaying error, and native discovery is lazy (first load) so CI stays headless
+- [x] iOS: AVPlayer + AVAudioSession(.playback) + MPNowPlayingInfoCenter +
+      MPRemoteCommandCenter (play/pause/skip/scrub) — compile-verified only (ios klib
+      cross-compiles on linux). Gotcha: AVAudioSession lives in `platform.AVFAudio`, and
+      `player.currentTime()` needs an explicit `platform.AVFoundation.currentTime` import
+- [x] `PlaybackSideEffects`: PlayEpisode (download-first guard) / TogglePlayPause /
+      SeekTo / SeekBy / SetPlaybackSpeed / StopPlayback; player state observed into
+      `NowPlayingState` via reducer merge (stale-guid states ignored). Gotcha: a
+      SetNowPlaying action also re-syncs `player.state.value` — the player's post-load
+      emission can be reduced before SetNowPlaying is, and a StateFlow won't repeat
+      itself, which would leave the ui stuck on isLoading
+- [x] NowPlaying screen: artwork, titles, drag-aware seekbar + timestamps, ↺15 / ❚❚ /
+      30↻, speed row (0.8–2×), Stop; MiniPlayerBar wired for real (artwork, titles,
+      progress, play/pause toggle, tap → NowPlaying); EpisodeDetail Play enabled once
+      downloaded
+- [x] Persist playbackPosition to Room every ~10s of progress + on pause/stop/end
+      (`positionsToPersist`); next play resumes from it
+- [x] Tests: side-effect unit tests, reducer merge tests, store-level playback
+      integration test (regression for the dispatch race), ui play flow on a stateful
+      mockk player. Gotcha: value-class args (kotlin.time.Duration) can't be read via
+      `arg<T>(n)` inside mockk `answers` blocks — the raw underlying Long comes back and
+      the cast throws; answers must avoid reading Duration args
+- [x] Verify: jvm + androidHost tests + `check` green; both ios klibs compile; desktop
+      engine pass (play/position/pause/seek/2×/end/restart/stop) via a probe against
+      user-local extracted VLC debs (this machine lacks VLC — `apt install vlc` for the
+      real app); android emulator full listen flow verified via adb: MediaStyle
+      notification, media-key pause, screen-off background playback, 1.5× speed, +30s
+      skip, position resume across force-stop, mini-bar → NowPlaying → Stop. A human
+      desktop pass via ./start still needs VLC installed
 
 ## Stage 8 — Platform polish
 
@@ -193,9 +219,9 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 | navigation | `org.jetbrains.androidx.navigation:navigation-compose` | 2.9.2 (works w/ CMP 1.11.1) |
 | coil | `io.coil-kt.coil3:{coil-compose,coil-network-ktor3}` | 3.5.0 |
 | rssparser | `com.prof18.rssparser:rssparser` | 6.1.6 (latest; jvm target confirmed) |
-| media3 | `androidx.media3:media3-{exoplayer,session}` | ⚠ 1.9.x (androidMain only) |
+| media3 | `androidx.media3:media3-{exoplayer,session}` | 1.10.1 (androidMain only) |
 | adaptive | `org.jetbrains.compose.material3.adaptive:adaptive` | ⚠ 1.2.x |
-| javafx-media | `org.openjfx:javafx-{base,graphics,media}` | ⚠ 25.x LTS (desktopApp only) |
+| vlcj | `uk.co.caprica:vlcj` | 4.12.1 (jvmMain; 4.x ↔ VLC 3.x, 5.x is for VLC 4) |
 | mockk | `io.mockk:mockk` | 1.14.11 (jvm/android test source sets only) |
 | assertk | `com.willowtreeapps.assertk:assertk` | 0.28.1 (commonTest) |
 | coroutines-test | `org.jetbrains.kotlinx:kotlinx-coroutines-test` | 1.11.0 |
@@ -209,8 +235,11 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
    2026-07-04: Room 2.8.4 + KSP 2.3.9 wire up cleanly (`kspAndroid` etc.) in Stage 3.
 3. **material3 1.11.0-alpha07**: alpha API churn — pin, don't chase upgrades mid-project.
 4. **jpackage version constraints**: dmg rejects MAJOR==0 (mapped 0.x.y→1.x.y); verify msi.
-5. **JavaFX Media inside jpackage installers**: needs a real pass on all 3 OSes in Stage 7;
-   vlcj is the documented fallback.
+5. ~~**JavaFX Media inside jpackage installers**~~ RESOLVED 2026-07-04 by not using it:
+   JavaFX Media can't decode on current Linux (libavcodec ≤61 supported, distros ship
+   .62) — swapped to vlcj per the documented fallback. NEW: desktop playback requires
+   VLC installed on the user's machine (surfaced in-app as a nowPlaying error when
+   missing); document in the Stage 9 README.
 6. **Configuration cache**: Metro/KSP/Room may lag on config-cache support; be ready to
    disable it (gradle.properties or `--no-configuration-cache` in CI).
 7. **rssparser JVM target** and **iosSimulatorArm64Test flakiness on GH runners**: both

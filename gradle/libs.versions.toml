@@ -20,6 +20,7 @@ kotlinx-serialization = "1.11.0"
 ksp = "2.3.9"
 ktor = "3.5.1"
 material3 = "1.11.0-alpha07"
+media3 = "1.10.1"
 metro = "1.3.0"
 mockk = "1.14.11"
 navigation = "2.9.2"
@@ -29,6 +30,8 @@ room = "2.8.4"
 rssparser = "6.1.6"
 sqlite = "2.6.2"
 tacita = "0.0.1"
+# 4.x targets VLC 3.x (5.x is for the unreleased VLC 4)
+vlcj = "4.12.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -67,12 +70,15 @@ ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
+media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
+media3-session = { module = "androidx.media3:media3-session", version.ref = "media3" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 rssparser = { module = "com.prof18.rssparser:rssparser", version.ref = "rssparser" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 tacita = { module = "com.episode6.tacita:tacita", version.ref = "tacita" }
+vlcj = { module = "uk.co.caprica:vlcj", version.ref = "vlcj" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
