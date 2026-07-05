@@ -1,35 +1,58 @@
-This is a Kotlin Multiplatform project targeting Android, iOS, Desktop (JVM).
+# Podcast Hacker
 
-* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+A podcast app that cuts the injected ads out of your episodes.
 
-* [/shared](./shared/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./shared/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./shared/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./shared/src/jvmMain/kotlin)
-    folder is the appropriate location.
+Podcast Hacker is a Kotlin Multiplatform podcast player (Android + Desktop first-class,
+iOS best-effort) built around [tacita](https://github.com/episode6/tacita), which
+downloads each episode twice and diffs the copies to find and remove dynamically-inserted
+ads. Because tacita needs complete files to diff, playback is **download-first** — there
+is no streaming.
 
-### Running the apps
+## What it does
 
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
+- Subscribe to podcasts via iTunes search or a pasted RSS url
+- Download episodes through tacita's ad-cutting pipeline
+- Play them with the usual comforts: seek, ±15/30s skips, playback speed, lock-screen /
+  media-key controls, resume-from-position across restarts
+- Background-safe downloads on Android (user-initiated data transfer jobs on api 34+,
+  a foreground service on older versions)
+
+## Platform notes
+
+| Platform | Status | Playback engine |
+|---|---|---|
+| Android | first-class | Media3 ExoPlayer in a MediaSessionService |
+| Desktop (Linux/macOS/Windows) | first-class | vlcj/libvlc — **requires [VLC](https://www.videolan.org/) installed** |
+| iOS | kept compiling, best-effort | AVPlayer |
+
+Desktop playback needs a VLC installation on your machine; the app shows a clear error
+on the Now Playing screen if VLC isn't found. (JavaFX Media was the original plan but its
+Linux backend can't decode against current ffmpeg — see TODO.md for the archaeology.)
+
+## Building & running
 
 - Android app: `./gradlew :androidApp:assembleDebug`
-- Desktop app:
-  - Hot reload: `./gradlew :desktopApp:hotRun --auto`
-  - Standard run: `./gradlew :desktopApp:run`
-- iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+- Desktop app: `./start` (builds + launches the distributable), or
+  `./gradlew :desktopApp:run`
+- iOS app: `scripts/sync-ios-version.sh`, then open [/iosApp](./iosApp) in Xcode
+- Tests: `./gradlew check` (or per-target: `:shared:jvmTest`,
+  `:shared:testAndroidHostTest`, `:shared:iosSimulatorArm64Test`)
 
-### Running tests
+Installers (deb/msi/dmg) and a debug APK are built by CI and attached to GitHub releases
+on `v*` tags.
 
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
+## How it's built
 
-- Android tests: `./gradlew :shared:testAndroidHostTest`
-- Desktop tests: `./gradlew :shared:jvmTest`
-- iOS tests: `./gradlew :shared:iosSimulatorArm64Test`
+Shared Compose Multiplatform UI and business logic in [/shared](./shared/src), driven by
+[redux-store-flow](https://github.com/episode6/redux-store-flow) (an app-scoped store
+with side effects for all IO), Metro for DI, Room KMP for persistence, and ktor +
+RSSParser for feeds. Per-platform entry points live in
+[/androidApp](./androidApp), [/desktopApp](./desktopApp), and [/iosApp](./iosApp).
 
----
+The full build plan, per-stage implementation notes, and accumulated gotchas live in
+[TODO.md](./TODO.md).
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+## Credit
+
+The whole point of this app is [tacita](https://github.com/episode6/tacita)'s
+ad-cutting download pipeline; this is mostly a comfortable player wrapped around it.

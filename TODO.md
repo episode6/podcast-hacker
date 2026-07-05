@@ -206,9 +206,12 @@ file to diff out injected ads. Design language: Pocket Casts-ish.
 
 ## Stage 9 — Release v0.0.1
 
-- [ ] README rewrite (what/why/how, tacita credit); RELEASE_CHECKLIST.md
-      (incl. bump `name` + `code` in self.versions.toml together)
-- [ ] Confirm self.versions.toml 0.0.1 / code 1; tag `v0.0.1`
+- [x] README rewrite (what/why/how, tacita credit, desktop VLC requirement);
+      RELEASE_CHECKLIST.md (incl. bump `name` + `code` in self.versions.toml together +
+      ios version sync + the Risk 9 license gate)
+- [x] Confirm self.versions.toml 0.0.1 / code 1 (ios MARKETING_VERSION in sync)
+- [ ] Resolve Risk 9 (vlcj GPL v3) before tagging
+- [ ] Tag `v0.0.1` once the stage PRs are merged to main
 - [ ] Verify: GitHub release auto-created with deb/msi/dmg + APK attached;
       install deb locally; sideload APK
 
