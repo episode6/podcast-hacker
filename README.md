@@ -40,6 +40,8 @@ was rejected for being GPL v3 — see TODO.md for the archaeology.)
 - iOS app: `scripts/sync-ios-version.sh`, then open [/iosApp](./iosApp) in Xcode
 - Tests: `./gradlew check` (or per-target: `:shared:jvmTest`,
   `:shared:testAndroidHostTest`, `:shared:iosSimulatorArm64Test`)
+- On-device Android integration tests: `./gradlew :androidApp:connectedDebugAndroidTest`
+  (needs a running emulator or connected device; also run by CI on an emulator)
 
 Installers (deb/msi/dmg) and a debug APK are built by CI and attached to GitHub releases
 on `v*` tags.
