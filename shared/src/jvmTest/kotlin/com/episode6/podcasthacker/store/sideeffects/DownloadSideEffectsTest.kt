@@ -25,10 +25,13 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import io.mockk.verifyOrder
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import okio.Path
 import okio.Path.Companion.toPath
@@ -183,6 +186,42 @@ class DownloadSideEffectsTest {
         )
         coVerify(exactly = 1) { downloadsRepo.markDownloaded(otherGuid, true) }
         coVerify(exactly = 0) { downloadsRepo.markDownloaded(guid, any()) }
+    }
+
+    @Test
+    fun downloads_runConcurrently_cappedAtFour() = runTest {
+        val guids = (1..5).map { "guid-$it" }
+        val gates = guids.associateWith { CompletableDeferred<Unit>() }
+        val started = mutableListOf<String>()
+        val tacita = mockk<Tacita>()
+        guids.forEach { g ->
+            val output = "/downloads/$g.mp3".toPath()
+            coEvery { episodeRepo.episode(g) } returns
+                Episode(guid = g, feedUrl = "feed", title = g, audioUrl = audioUrl)
+            every { downloadsRepo.downloadFilePath(g) } returns output
+            every { downloadsRepo.referenceFilePath(g) } returns "/cache/$g.adref".toPath()
+            every { downloadsRepo.downloadedFileExists(g) } returns false
+            every { tacita.downloadPodcast(audioUrl, output, any(), any(), any(), any(), any()) } returns flow {
+                started += g
+                gates.getValue(g).await()
+                emit(DownloadState.Complete())
+            }
+        }
+
+        val collector = launch {
+            sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+                .output(*guids.map { DownloadEpisode(it) }.toTypedArray())
+                .toList()
+        }
+        runCurrent()
+        assertThat(started).containsExactly("guid-1", "guid-2", "guid-3", "guid-4")
+
+        gates.getValue("guid-1").complete(Unit)
+        runCurrent()
+        assertThat(started).containsExactly("guid-1", "guid-2", "guid-3", "guid-4", "guid-5")
+
+        guids.forEach { gates.getValue(it).complete(Unit) }
+        collector.join()
     }
 
     @Test

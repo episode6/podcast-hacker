@@ -21,25 +21,30 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.flatMapConcat
+import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transform
+
+/** How many episodes may download simultaneously (matches podcast-puller-2's default). */
+internal const val MAX_CONCURRENT_DOWNLOADS = 4
 
 @ContributesTo(AppScope::class)
 interface DownloadSideEffects {
 
     /** Instant feedback: an episode reads as queued the moment it's requested, even
-     * while an earlier download holds the sequential queue below. */
+     * while earlier downloads hold all the download slots below. */
     @Provides @IntoSet fun enqueueDownloads(): SideEffect<AppState> = sideEffect {
         actions.filterIsInstance<DownloadEpisode>()
             .map { SetEpisodeDownloadStatus(it.episodeGuid, EpisodeDownloadStatus.Queued) }
     }
 
-    /** Sequential download queue (v0): collect tacita's download flow per episode,
-     * mapping its states to in-flight status actions; the persisted downloaded flag
-     * lands in Room on completion and the ad-diff reference is cleaned up. A failed
-     * episode reports Failure without blocking the rest of the queue. */
+    /** Download queue running up to [MAX_CONCURRENT_DOWNLOADS] episodes at once
+     * (podcast-puller-2's maxDownloadThreads pattern); further requests stay Queued
+     * until a slot frees. Collects tacita's download flow per episode, mapping its
+     * states to in-flight status actions; the persisted downloaded flag lands in Room
+     * on completion and the ad-diff reference is cleaned up. A failed episode reports
+     * Failure without blocking the rest of the queue. */
     @OptIn(ExperimentalCoroutinesApi::class)
     @Provides @IntoSet fun downloadEpisodes(
         tacita: Tacita,
@@ -47,7 +52,7 @@ interface DownloadSideEffects {
         downloadsRepository: DownloadsRepository,
     ): SideEffect<AppState> = sideEffect {
         actions.filterIsInstance<DownloadEpisode>()
-            .flatMapConcat { action ->
+            .flatMapMerge(concurrency = MAX_CONCURRENT_DOWNLOADS) { action ->
                 flow { downloadEpisode(action.episodeGuid, tacita, episodeRepository, downloadsRepository) }
             }
     }
