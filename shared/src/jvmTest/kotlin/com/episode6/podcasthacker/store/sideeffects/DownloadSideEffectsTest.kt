@@ -112,8 +112,8 @@ class DownloadSideEffectsTest {
             } returns flowOf(
                 DownloadState.Complete(
                     listOf(
-                        AdBoundaryCandidate(60_000L, AdBoundaryCandidate.Source.DIFF_CUT, AdBoundaryCandidate.Role.START),
-                        AdBoundaryCandidate(90_000L, AdBoundaryCandidate.Source.DAI_SLOT, AdBoundaryCandidate.Role.JOIN),
+                        AdBoundaryCandidate(60_000L, AdBoundaryCandidate.Source.DIFF_CUT, AdBoundaryCandidate.Role.START, confidence = 0.65f),
+                        AdBoundaryCandidate(90_000L, AdBoundaryCandidate.Source.DAI_SLOT, AdBoundaryCandidate.Role.JOIN, confidence = 0.8f),
                     ),
                 ),
             )
@@ -126,8 +126,8 @@ class DownloadSideEffectsTest {
             downloadsRepo.saveAdBoundaryCandidates(
                 guid,
                 listOf(
-                    AdBoundary(60.seconds, AdBoundary.Source.DiffCut, AdBoundary.Role.Start),
-                    AdBoundary(90.seconds, AdBoundary.Source.DaiSlot, AdBoundary.Role.Join),
+                    AdBoundary(60.seconds, AdBoundary.Source.DiffCut, AdBoundary.Role.Start, confidence = 0.65f),
+                    AdBoundary(90.seconds, AdBoundary.Source.DaiSlot, AdBoundary.Role.Join, confidence = 0.8f),
                 ),
             )
             downloadsRepo.markDownloaded(guid, true)

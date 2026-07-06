@@ -88,7 +88,8 @@ class PlaybackSideEffectsTest {
         coEvery { adBoundaryCandidates(episode.guid) } returns emptyList()
     }
 
-    private fun boundary(position: Duration) = AdBoundary(position, AdBoundary.Source.DiffCut, AdBoundary.Role.Start)
+    private fun boundary(position: Duration, confidence: Float = 0.5f) =
+        AdBoundary(position, AdBoundary.Source.DiffCut, AdBoundary.Role.Start, confidence)
 
     @Test
     fun playEpisode_loadsDownloadedFileAtPersistedPosition() = runTest {
@@ -185,6 +186,22 @@ class PlaybackSideEffectsTest {
 
         sideEffects.playerCommands(player).output(SkipToNextAdBoundary, state = state).toList()
 
+        verify(exactly = 1) { player.seekTo(5.minutes) }
+    }
+
+    @Test
+    fun skipToNextAdBoundary_respectsConfidenceFilter() = runTest {
+        val state = AppState(
+            nowPlaying = nowPlaying.copy(
+                position = 2.minutes,
+                adBoundaries = listOf(boundary(3.minutes, confidence = 0.3f), boundary(5.minutes, confidence = 0.9f)),
+                adBoundaryConfidenceFilter = 1f,
+            ),
+        )
+
+        sideEffects.playerCommands(player).output(SkipToNextAdBoundary, state = state).toList()
+
+        // the low-confidence 3:00 boundary is filtered out of the skip list
         verify(exactly = 1) { player.seekTo(5.minutes) }
     }
 

@@ -44,17 +44,32 @@ data class NowPlayingState(
     /** Tacita's unverified ad-boundary guesses for this episode, sorted by position.
      * User-skippable markers only — never auto-skip on them. */
     val adBoundaries: List<AdBoundary> = emptyList(),
+    /** 0..1 position of the confidence-filter slider: 0 keeps every boundary, 1 keeps
+     * only this episode's top-confidence tier. Thresholds across the episode's observed
+     * confidence range, so the max position always leaves at least one boundary. */
+    val adBoundaryConfidenceFilter: Float = 0f,
 )
 
 /** A previous boundary must sit at least this far behind the playhead, so repeated
  * back-presses walk backward instead of re-landing on the boundary just seeked to. */
 val SKIP_BACK_GRACE: Duration = 2.seconds
 
+/** [NowPlayingState.adBoundaries] surviving the confidence filter; skip targets and the
+ * Now Playing labels both come from this list so the UI always matches the buttons. */
+fun NowPlayingState.filteredAdBoundaries(): List<AdBoundary> {
+    if (adBoundaries.isEmpty() || adBoundaryConfidenceFilter <= 0f) return adBoundaries
+    val min = adBoundaries.minOf { it.confidence }
+    val max = adBoundaries.maxOf { it.confidence }
+    // coerce guards float drift at filter=1 so the top tier itself always survives
+    val threshold = (min + (max - min) * adBoundaryConfidenceFilter).coerceAtMost(max)
+    return adBoundaries.filter { it.confidence >= threshold }
+}
+
 fun NowPlayingState.nextAdBoundary(): AdBoundary? =
-    adBoundaries.firstOrNull { it.position > position }
+    filteredAdBoundaries().firstOrNull { it.position > position }
 
 fun NowPlayingState.previousAdBoundary(): AdBoundary? =
-    adBoundaries.lastOrNull { it.position <= position - SKIP_BACK_GRACE }
+    filteredAdBoundaries().lastOrNull { it.position <= position - SKIP_BACK_GRACE }
 
 data class FeedSyncState(
     val syncing: Set<String> = emptySet(),

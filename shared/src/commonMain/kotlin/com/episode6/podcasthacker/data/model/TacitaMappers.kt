@@ -5,6 +5,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 internal fun AdBoundaryCandidate.toDomain(): AdBoundary = AdBoundary(
     position = timeMs.milliseconds,
+    confidence = confidence,
     source = when (source) {
         AdBoundaryCandidate.Source.SEGMENT_BOUNDARY -> AdBoundary.Source.SegmentBoundary
         AdBoundaryCandidate.Source.DIFF_CUT -> AdBoundary.Source.DiffCut

@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.printToString
@@ -186,7 +187,8 @@ class AppUiIntegrationTest {
         waitForExactlyOne(pausedOnMiniBar, timeoutMillis = 10_000)
         onNodeWithTag("miniPlayerBar").performClick()
         waitForExactlyOne(hasText("Stop"), timeoutMillis = 10_000)
-        onNodeWithText("Stop").performClick()
+        // the boundary-filter slider pushed Stop below the fold at this window size
+        onNodeWithText("Stop").performScrollTo().performClick()
         waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 10_000)
 
         // the episode row now carries the downloaded marker

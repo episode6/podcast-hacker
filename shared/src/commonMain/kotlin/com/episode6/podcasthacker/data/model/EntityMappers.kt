@@ -56,6 +56,7 @@ internal fun EpisodeEntity.toDomain(): Episode = Episode(
 internal fun AdBoundary.toEntity(episodeGuid: String): AdBoundaryCandidateEntity = AdBoundaryCandidateEntity(
     episodeGuid = episodeGuid,
     timeMs = position.inWholeMilliseconds,
+    confidence = confidence,
     source = when (source) {
         AdBoundary.Source.SegmentBoundary -> "SEGMENT_BOUNDARY"
         AdBoundary.Source.DiffCut -> "DIFF_CUT"
@@ -73,6 +74,7 @@ internal fun AdBoundary.toEntity(episodeGuid: String): AdBoundaryCandidateEntity
 
 internal fun AdBoundaryCandidateEntity.toDomain(): AdBoundary = AdBoundary(
     position = timeMs.milliseconds,
+    confidence = confidence.coerceIn(0f, 1f),
     source = when (source) {
         "SEGMENT_BOUNDARY" -> AdBoundary.Source.SegmentBoundary
         "DIFF_CUT" -> AdBoundary.Source.DiffCut

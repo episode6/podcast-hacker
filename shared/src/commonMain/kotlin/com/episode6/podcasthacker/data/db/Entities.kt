@@ -1,5 +1,6 @@
 package com.episode6.podcasthacker.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -51,4 +52,6 @@ data class AdBoundaryCandidateEntity(
     val timeMs: Long,
     val source: String,
     val role: String,
+    // rows written before confidence existed migrate to the mid value
+    @ColumnInfo(defaultValue = "0.5") val confidence: Float = 0.5f,
 )
