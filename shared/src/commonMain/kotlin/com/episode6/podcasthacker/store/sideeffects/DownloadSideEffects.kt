@@ -110,7 +110,17 @@ private suspend fun FlowCollector<Action>.downloadEpisode(
         emit(SetEpisodeDownloadStatus(episodeGuid, EpisodeDownloadStatus.Failure("episode has no audio url")))
         return
     }
-    emit(SetEpisodeDownloadStatus(episodeGuid, EpisodeDownloadStatus.Starting))
+    // Tacita reports progress once per 8KB chunk (thousands of emissions per episode);
+    // dispatching each one floods the store's side-effect relay and stalls delivery of
+    // every other action (e.g. a newly tapped DownloadEpisode). Quantizing to whole
+    // percents + dropping repeats keeps it to ~100 actions per download.
+    var lastStatus: EpisodeDownloadStatus? = null
+    suspend fun emitStatus(status: EpisodeDownloadStatus) {
+        if (status == lastStatus) return
+        lastStatus = status
+        emit(SetEpisodeDownloadStatus(episodeGuid, status))
+    }
+    emitStatus(EpisodeDownloadStatus.Starting)
     val outputFile = downloadsRepository.downloadFilePath(episodeGuid)
     downloadsRepository.prepareForDownload(episodeGuid)
     val result = runCatching {
@@ -128,21 +138,16 @@ private suspend fun FlowCollector<Action>.downloadEpisode(
             expectedDurationSeconds = episode.duration?.inWholeSeconds,
         ).collect { state ->
             when (state) {
-                is DownloadState.Downloading -> emit(
-                    SetEpisodeDownloadStatus(
-                        episodeGuid = episodeGuid,
-                        // the second (reference) copy downloading is part of the ad-cut
-                        // pass as far as the user is concerned
-                        status = if (state.file == outputFile) {
-                            EpisodeDownloadStatus.Downloading(state.percentComplete)
-                        } else {
-                            EpisodeDownloadStatus.CuttingAds
-                        },
-                    )
+                is DownloadState.Downloading -> emitStatus(
+                    // the second (reference) copy downloading is part of the ad-cut
+                    // pass as far as the user is concerned
+                    if (state.file == outputFile) {
+                        EpisodeDownloadStatus.Downloading(state.percentComplete.quantizedToWholePercent())
+                    } else {
+                        EpisodeDownloadStatus.CuttingAds
+                    },
                 )
-                DownloadState.CuttingAds -> emit(
-                    SetEpisodeDownloadStatus(episodeGuid, EpisodeDownloadStatus.CuttingAds)
-                )
+                DownloadState.CuttingAds -> emitStatus(EpisodeDownloadStatus.CuttingAds)
                 is DownloadState.Complete -> {
                     // persisted before the downloaded flag so the flag never appears
                     // without its candidates
@@ -167,3 +172,5 @@ private suspend fun FlowCollector<Action>.downloadEpisode(
         )
     }
 }
+
+private fun Float.quantizedToWholePercent(): Float = (this * 100).toInt() / 100f

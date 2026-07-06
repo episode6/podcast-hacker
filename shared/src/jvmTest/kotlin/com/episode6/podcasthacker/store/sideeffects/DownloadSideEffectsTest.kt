@@ -98,13 +98,47 @@ class DownloadSideEffectsTest {
             SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Starting),
             SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Downloading(0.25f)),
             SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Downloading(0.75f)),
-            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.CuttingAds),
+            // reference-copy Downloading and CuttingAds collapse into one status
             SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.CuttingAds),
             SetEpisodeDownloadStatus(guid, null),
         )
         coVerify(exactly = 1) { downloadsRepo.markDownloaded(guid, true) }
         coVerify(exactly = 1) { downloadsRepo.deleteReferenceFile(guid) }
         coVerify(exactly = 1) { downloadsRepo.prepareForDownload(guid) }
+    }
+
+    /** Tacita emits progress per 8KB chunk; unthrottled, those actions flood the store's
+     * side-effect relay and stall every other action behind them. */
+    @Test
+    fun progressUpdates_quantizedToWholePercents_andDeduped() = runTest {
+        val tacita = mockk<Tacita> {
+            every {
+                downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds)
+            } returns flowOf(
+                DownloadState.Downloading(outputFile, 0.0f),
+                DownloadState.Downloading(outputFile, 0.001f),
+                DownloadState.Downloading(outputFile, 0.011f),
+                DownloadState.Downloading(outputFile, 0.014f),
+                DownloadState.Downloading(outputFile, 0.019f),
+                DownloadState.Downloading(outputFile, 0.021f),
+                DownloadState.Downloading(referenceFile, 0.5f), // reference copy
+                DownloadState.Downloading(referenceFile, 0.9f), // reference copy
+                DownloadState.CuttingAds,
+                DownloadState.Complete(),
+            )
+        }
+
+        val actions = sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+            .output(DownloadEpisode(guid)).toList()
+
+        assertThat(actions).containsExactly(
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Starting),
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Downloading(0.0f)),
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Downloading(0.01f)),
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Downloading(0.02f)),
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.CuttingAds),
+            SetEpisodeDownloadStatus(guid, null),
+        )
     }
 
     @Test
