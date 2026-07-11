@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.episode6.podcasthacker.data.model.DownloadState
@@ -164,9 +165,10 @@ private fun EpisodeRow(
 
 /**
  * Trailing control for an episode row: play (▶) when the episode is downloaded,
- * download (↓) when it isn't (including after a failure, where it acts as retry), and
- * a circular progress bar while a download is in flight — determinate with byte
- * progress, indeterminate while queued/starting and while tacita is cutting ads.
+ * download (↓) when it isn't (including after a failure, where it acts as retry), an
+ * inert clock glyph (◷) while the episode waits for a download slot, and a circular
+ * progress bar while a download is in flight — determinate with byte progress,
+ * indeterminate while starting and while tacita is cutting ads.
  * Glyph buttons rather than material icons, matching MiniPlayerBar.
  */
 @Composable
@@ -177,7 +179,7 @@ private fun EpisodeRowAction(
     onDownload: () -> Unit,
 ) {
     when (downloadStatus) {
-        EpisodeDownloadStatus.Queued,
+        EpisodeDownloadStatus.Queued -> EpisodeRowQueuedIcon()
         EpisodeDownloadStatus.Starting,
         EpisodeDownloadStatus.CuttingAds -> EpisodeRowProgress()
         is EpisodeDownloadStatus.Downloading -> EpisodeRowProgress(downloadStatus.percentComplete)
@@ -198,6 +200,24 @@ private fun EpisodeRowGlyphButton(glyph: String, contentDescription: String, onC
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.semantics { this.contentDescription = contentDescription },
+        )
+    }
+}
+
+/** Deliberately not a button: a queued episode has no action yet, the icon just marks
+ * it as waiting for one of the download slots. Sized like the buttons so rows don't
+ * jump as states change. The clock glyph's font metrics draw much smaller than the
+ * play/download glyphs at the same text style, so its font size is bumped to
+ * visually match them. */
+@Composable
+private fun EpisodeRowQueuedIcon() {
+    Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        Text(
+            text = "◷",
+            style = MaterialTheme.typography.titleMedium,
+            fontSize = 24.sp,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.semantics { this.contentDescription = "Queued" },
         )
     }
 }

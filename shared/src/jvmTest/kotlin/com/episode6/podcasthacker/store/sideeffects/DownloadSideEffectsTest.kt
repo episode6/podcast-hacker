@@ -25,10 +25,13 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import io.mockk.verifyOrder
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import okio.Path
 import okio.Path.Companion.toPath
@@ -95,13 +98,47 @@ class DownloadSideEffectsTest {
             SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Starting),
             SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Downloading(0.25f)),
             SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Downloading(0.75f)),
-            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.CuttingAds),
+            // reference-copy Downloading and CuttingAds collapse into one status
             SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.CuttingAds),
             SetEpisodeDownloadStatus(guid, null),
         )
         coVerify(exactly = 1) { downloadsRepo.markDownloaded(guid, true) }
         coVerify(exactly = 1) { downloadsRepo.deleteReferenceFile(guid) }
         coVerify(exactly = 1) { downloadsRepo.prepareForDownload(guid) }
+    }
+
+    /** Tacita emits progress per 8KB chunk; unthrottled, those actions flood the store's
+     * side-effect relay and stall every other action behind them. */
+    @Test
+    fun progressUpdates_quantizedToWholePercents_andDeduped() = runTest {
+        val tacita = mockk<Tacita> {
+            every {
+                downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds)
+            } returns flowOf(
+                DownloadState.Downloading(outputFile, 0.0f),
+                DownloadState.Downloading(outputFile, 0.001f),
+                DownloadState.Downloading(outputFile, 0.011f),
+                DownloadState.Downloading(outputFile, 0.014f),
+                DownloadState.Downloading(outputFile, 0.019f),
+                DownloadState.Downloading(outputFile, 0.021f),
+                DownloadState.Downloading(referenceFile, 0.5f), // reference copy
+                DownloadState.Downloading(referenceFile, 0.9f), // reference copy
+                DownloadState.CuttingAds,
+                DownloadState.Complete(),
+            )
+        }
+
+        val actions = sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+            .output(DownloadEpisode(guid)).toList()
+
+        assertThat(actions).containsExactly(
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Starting),
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Downloading(0.0f)),
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Downloading(0.01f)),
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Downloading(0.02f)),
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.CuttingAds),
+            SetEpisodeDownloadStatus(guid, null),
+        )
     }
 
     @Test
@@ -186,6 +223,90 @@ class DownloadSideEffectsTest {
     }
 
     @Test
+    fun downloads_runConcurrently_cappedAtFour() = runTest {
+        val guids = (1..5).map { "guid-$it" }
+        val gates = guids.associateWith { CompletableDeferred<Unit>() }
+        val started = mutableListOf<String>()
+        val tacita = mockk<Tacita>()
+        guids.forEach { g ->
+            val output = "/downloads/$g.mp3".toPath()
+            coEvery { episodeRepo.episode(g) } returns
+                Episode(guid = g, feedUrl = "feed", title = g, audioUrl = audioUrl)
+            every { downloadsRepo.downloadFilePath(g) } returns output
+            every { downloadsRepo.referenceFilePath(g) } returns "/cache/$g.adref".toPath()
+            every { downloadsRepo.downloadedFileExists(g) } returns false
+            every { tacita.downloadPodcast(audioUrl, output, any(), any(), any(), any(), any()) } returns flow {
+                started += g
+                gates.getValue(g).await()
+                emit(DownloadState.Complete())
+            }
+        }
+
+        val collector = launch {
+            sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+                .output(*guids.map { DownloadEpisode(it) }.toTypedArray())
+                .toList()
+        }
+        runCurrent()
+        assertThat(started).containsExactly("guid-1", "guid-2", "guid-3", "guid-4")
+
+        gates.getValue("guid-1").complete(Unit)
+        runCurrent()
+        assertThat(started).containsExactly("guid-1", "guid-2", "guid-3", "guid-4", "guid-5")
+
+        guids.forEach { gates.getValue(it).complete(Unit) }
+        collector.join()
+    }
+
+    /** The middleware relays actions through a zero-buffer shared flow: an emit only
+     * completes once every side effect has accepted it, so a side effect that suspends
+     * mid-collect stalls action delivery to the whole app. A saturated download queue
+     * must keep accepting actions — taps beyond the first queued episode used to go
+     * dead until a slot freed. */
+    @Test
+    fun saturatedQueue_keepsAcceptingActions() = runTest {
+        val guids = (1..6).map { "guid-$it" }
+        val gates = guids.associateWith { CompletableDeferred<Unit>() }
+        val started = mutableListOf<String>()
+        val tacita = mockk<Tacita>()
+        guids.forEach { g ->
+            val output = "/downloads/$g.mp3".toPath()
+            coEvery { episodeRepo.episode(g) } returns
+                Episode(guid = g, feedUrl = "feed", title = g, audioUrl = audioUrl)
+            every { downloadsRepo.downloadFilePath(g) } returns output
+            every { downloadsRepo.referenceFilePath(g) } returns "/cache/$g.adref".toPath()
+            every { downloadsRepo.downloadedFileExists(g) } returns false
+            every { tacita.downloadPodcast(audioUrl, output, any(), any(), any(), any(), any()) } returns flow {
+                started += g
+                gates.getValue(g).await()
+                emit(DownloadState.Complete())
+            }
+        }
+        // mimics the relay: emit(action) suspends until the side effect's collector takes it
+        val accepted = mutableListOf<String>()
+        val context = mockk<SideEffectContext<AppState>> {
+            every { actions } returns flow {
+                guids.forEach { g ->
+                    emit(DownloadEpisode(g))
+                    accepted += g
+                }
+            }
+            coEvery { currentState() } returns AppState()
+        }
+        val effect = sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+
+        val collector = launch { with(effect) { context.act() }.toList() }
+        runCurrent()
+
+        // all six requests accepted off the relay even though only four download slots exist
+        assertThat(accepted).containsExactly(*guids.toTypedArray())
+        assertThat(started).containsExactly("guid-1", "guid-2", "guid-3", "guid-4")
+
+        guids.forEach { gates.getValue(it).complete(Unit) }
+        collector.join()
+    }
+
+    @Test
     fun episodeWithoutAudioUrl_reportsFailure() = runTest {
         coEvery { episodeRepo.episode(guid) } returns
             Episode(guid = guid, feedUrl = "feed", title = "Ep", audioUrl = null)
@@ -204,6 +325,29 @@ class DownloadSideEffectsTest {
 
         assertThat(actions).containsExactly(SetEpisodeDownloadStatus(guid, null))
         coVerify(exactly = 1) { downloadsRepo.deleteDownload(guid) }
+    }
+
+    /** A slow file delete must not hold up the action-collection path (same
+     * relay-stall class as the saturated download queue above). */
+    @Test
+    fun deleteDownload_slowDelete_doesNotBlockOtherDeletes() = runTest {
+        val otherGuid = "other-guid"
+        val gate = CompletableDeferred<Unit>()
+        val started = mutableListOf<String>()
+        coEvery { downloadsRepo.deleteDownload(any()) } coAnswers {
+            val g = firstArg<String>()
+            started += g
+            if (g == guid) gate.await()
+        }
+
+        val collector = launch {
+            sideEffects.deleteDownloads(downloadsRepo).output(DeleteDownload(guid), DeleteDownload(otherGuid)).toList()
+        }
+        runCurrent()
+        assertThat(started).containsExactly(guid, otherGuid)
+
+        gate.complete(Unit)
+        collector.join()
     }
 
     @Test

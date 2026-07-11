@@ -2,10 +2,12 @@ package com.episode6.podcasthacker.store.sideeffects
 
 import assertk.assertThat
 import assertk.assertions.containsExactly
+import assertk.assertions.isEmpty
 import com.episode6.podcasthacker.data.model.Podcast
 import com.episode6.podcasthacker.data.repo.FeedRepository
 import com.episode6.podcasthacker.data.repo.SubscriptionRepository
 import com.episode6.podcasthacker.store.AppState
+import com.episode6.podcasthacker.store.FeedSyncState
 import com.episode6.podcasthacker.store.RefreshFeed
 import com.episode6.podcasthacker.store.SetFeedSyncError
 import com.episode6.podcasthacker.store.SetFeedSyncing
@@ -19,9 +21,12 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 
@@ -100,6 +105,43 @@ class SubscriptionSideEffectsTest {
             SetFeedSyncing(feedUrl, false),
         )
         coVerify(exactly = 1) { repo.sync(feedUrl) }
+    }
+
+    /** A slow sync must not hold up the action-collection path (it would starve the
+     * middleware's zero-buffer relay and stall every other side effect). */
+    @Test
+    fun refreshFeed_slowSync_doesNotBlockOtherRefreshes() = runTest {
+        val otherFeed = "https://example.com/other.xml"
+        val gate = CompletableDeferred<Unit>()
+        val started = mutableListOf<String>()
+        val repo = mockk<FeedRepository> {
+            coEvery { sync(any()) } coAnswers {
+                val url = firstArg<String>()
+                started += url
+                if (url == feedUrl) gate.await()
+            }
+        }
+
+        val collector = launch {
+            sideEffects.refreshFeed(repo).output(RefreshFeed(feedUrl), RefreshFeed(otherFeed)).toList()
+        }
+        runCurrent()
+        assertThat(started).containsExactly(feedUrl, otherFeed)
+
+        gate.complete(Unit)
+        collector.join()
+    }
+
+    @Test
+    fun refreshFeed_skipsFeedAlreadySyncing() = runTest {
+        val repo = mockk<FeedRepository>()
+
+        val actions = sideEffects.refreshFeed(repo)
+            .output(RefreshFeed(feedUrl), state = AppState(feedSync = FeedSyncState(syncing = setOf(feedUrl))))
+            .toList()
+
+        assertThat(actions).isEmpty()
+        coVerify(exactly = 0) { repo.sync(any()) }
     }
 
     private fun SideEffect<AppState>.output(vararg input: Action, state: AppState = AppState()): Flow<Action> {
