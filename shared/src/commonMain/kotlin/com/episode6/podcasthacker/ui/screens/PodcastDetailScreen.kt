@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.episode6.podcasthacker.data.model.DownloadState
@@ -205,14 +206,17 @@ private fun EpisodeRowGlyphButton(glyph: String, contentDescription: String, onC
 
 /** Deliberately not a button: a queued episode has no action yet, the icon just marks
  * it as waiting for one of the download slots. Sized like the buttons so rows don't
- * jump as states change. */
+ * jump as states change. The clock glyph's font metrics draw much smaller than the
+ * play/download glyphs at the same text style, so its font size is bumped to
+ * visually match them. */
 @Composable
 private fun EpisodeRowQueuedIcon() {
     Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
         Text(
             text = "◷",
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 24.sp,
+            color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.semantics { this.contentDescription = "Queued" },
         )
     }
