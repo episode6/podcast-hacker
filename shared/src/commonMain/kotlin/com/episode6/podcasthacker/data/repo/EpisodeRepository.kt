@@ -8,7 +8,9 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Instant
 
 @Inject
 @SingleIn(AppScope::class)
@@ -27,4 +29,8 @@ class EpisodeRepository(private val db: AppDatabase) {
 
     suspend fun setPlaybackPosition(guid: String, position: Duration) =
         db.episodeDao().setPlaybackPosition(guid, position.inWholeMilliseconds)
+
+    /** Stamps the episode as played now; feeds the Recently Played screen. */
+    suspend fun markPlayed(guid: String, at: Instant = Clock.System.now()) =
+        db.episodeDao().setLastPlayed(guid, at.toEpochMilliseconds())
 }

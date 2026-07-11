@@ -34,6 +34,7 @@ internal fun Episode.toEntity(): EpisodeEntity = EpisodeEntity(
     enclosureBytes = enclosureBytes,
     downloadState = downloadState.name,
     playbackPositionMillis = playbackPosition.inWholeMilliseconds,
+    lastPlayedEpochMillis = lastPlayed?.toEpochMilliseconds(),
 )
 
 internal fun EpisodeEntity.toDomain(): Episode = Episode(
@@ -48,6 +49,7 @@ internal fun EpisodeEntity.toDomain(): Episode = Episode(
     downloadState = DownloadState.entries.firstOrNull { it.name == downloadState }
         ?: DownloadState.NotDownloaded,
     playbackPosition = playbackPositionMillis.milliseconds,
+    lastPlayed = lastPlayedEpochMillis?.let { Instant.fromEpochMilliseconds(it) },
 )
 
 // ad boundary source/role are stored as tacita's SCREAMING_SNAKE enum names (the wire

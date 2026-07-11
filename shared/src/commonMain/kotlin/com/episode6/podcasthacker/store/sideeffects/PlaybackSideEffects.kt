@@ -96,7 +96,11 @@ interface PlaybackSideEffects {
             result.exceptionOrNull()?.let {
                 if (it is CancellationException) throw it
                 emit(SetNowPlaying(nowPlaying.copy(error = it.message ?: "failed to start playback")))
+                return@transform
             }
+            // stamped only after a successful load so failed attempts don't pollute
+            // the Recently Played list
+            episodeRepository.markPlayed(episode.guid)
         }
     }
 

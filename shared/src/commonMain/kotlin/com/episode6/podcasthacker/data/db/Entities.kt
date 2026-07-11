@@ -30,6 +30,8 @@ data class EpisodeEntity(
     val enclosureBytes: Long?,
     val downloadState: String,
     val playbackPositionMillis: Long,
+    /** Null until the episode is first played; drives the Recently Played screen. */
+    val lastPlayedEpochMillis: Long? = null,
 )
 
 @Entity(

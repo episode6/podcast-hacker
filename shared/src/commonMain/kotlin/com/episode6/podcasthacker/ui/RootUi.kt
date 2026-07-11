@@ -16,11 +16,13 @@ import com.episode6.podcasthacker.ui.nav.EpisodeDetailRoute
 import com.episode6.podcasthacker.ui.nav.GridRoute
 import com.episode6.podcasthacker.ui.nav.NowPlayingRoute
 import com.episode6.podcasthacker.ui.nav.PodcastDetailRoute
+import com.episode6.podcasthacker.ui.nav.RecentlyPlayedRoute
 import com.episode6.podcasthacker.ui.screens.AddPodcastScreen
 import com.episode6.podcasthacker.ui.screens.EpisodeDetailScreen
 import com.episode6.podcasthacker.ui.screens.GridScreen
 import com.episode6.podcasthacker.ui.screens.NowPlayingScreen
 import com.episode6.podcasthacker.ui.screens.PodcastDetailScreen
+import com.episode6.podcasthacker.ui.screens.RecentlyPlayedScreen
 
 @Composable
 internal fun RootUi() {
@@ -40,6 +42,7 @@ internal fun RootUi() {
                 composable<PodcastDetailRoute> { PodcastDetailScreen(navController, it.toRoute()) }
                 composable<EpisodeDetailRoute> { EpisodeDetailScreen(navController, it.toRoute()) }
                 composable<NowPlayingRoute> { NowPlayingScreen(navController) }
+                composable<RecentlyPlayedRoute> { RecentlyPlayedScreen(navController) }
             }
             MiniPlayerBar(
                 navController = navController,

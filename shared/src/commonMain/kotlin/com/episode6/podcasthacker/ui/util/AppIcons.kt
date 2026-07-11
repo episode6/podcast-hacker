@@ -42,6 +42,29 @@ internal object AppIcons {
         }
     }
 
+    /** Material "delete" (filled trash can). */
+    val Delete: ImageVector by lazy {
+        materialIcon("Delete") {
+            moveTo(6f, 19f)
+            curveToRelative(0f, 1.1f, 0.9f, 2f, 2f, 2f)
+            horizontalLineToRelative(8f)
+            curveToRelative(1.1f, 0f, 2f, -0.9f, 2f, -2f)
+            verticalLineTo(7f)
+            horizontalLineTo(6f)
+            verticalLineToRelative(12f)
+            close()
+            moveTo(19f, 4f)
+            horizontalLineToRelative(-3.5f)
+            lineToRelative(-1f, -1f)
+            horizontalLineToRelative(-5f)
+            lineToRelative(-1f, 1f)
+            horizontalLineTo(5f)
+            verticalLineToRelative(2f)
+            horizontalLineToRelative(14f)
+            close()
+        }
+    }
+
     /** Material "schedule" (filled clock face). */
     val Schedule: ImageVector by lazy {
         materialIcon("Schedule") {
