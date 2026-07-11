@@ -22,9 +22,9 @@
 4. **Licenses** — THIRD_PARTY_LICENSES.md must match what's actually bundled
    (libvlc LGPL text ships inside the installers via fetch-libvlc.sh).
 
-5. **Tag** — `git tag v<name> && git push origin v<name>`. CI builds deb/msi/dmg + debug
-   APK and attaches them to an auto-created GitHub release (the iOS shard is best-effort
-   and doesn't gate the release).
+5. **Tag** — `git tag v<name> && git push origin v<name>`. CI builds deb/msi/dmg + a
+   signed release APK and attaches them to an auto-created GitHub release (the iOS shard
+   is best-effort and doesn't gate the release).
 
 6. **Verify the release** — artifacts attached and carry the right version;
    `sudo apt install ./podcasthacker_<name>_amd64.deb` locally; sideload the APK

@@ -49,9 +49,23 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    signingConfigs {
+        create("release") {
+            // CI decodes the ANDROID_KEYSTORE secret to a file and exports these
+            // env vars; without them (local builds, PR CI) release stays unsigned
+            val keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("ANDROID_KEYSTORE_ROOT_PASSWORD")
+                keyAlias = "episode6"
+                keyPassword = System.getenv("ANDROID_KEYSTORE_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release").takeIf { it.storeFile != null }
         }
     }
     compileOptions {
