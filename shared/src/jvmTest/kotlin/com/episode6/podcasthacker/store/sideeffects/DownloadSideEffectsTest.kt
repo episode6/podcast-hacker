@@ -258,6 +258,54 @@ class DownloadSideEffectsTest {
         collector.join()
     }
 
+    /** The middleware relays actions through a zero-buffer shared flow: an emit only
+     * completes once every side effect has accepted it, so a side effect that suspends
+     * mid-collect stalls action delivery to the whole app. A saturated download queue
+     * must keep accepting actions — taps beyond the first queued episode used to go
+     * dead until a slot freed. */
+    @Test
+    fun saturatedQueue_keepsAcceptingActions() = runTest {
+        val guids = (1..6).map { "guid-$it" }
+        val gates = guids.associateWith { CompletableDeferred<Unit>() }
+        val started = mutableListOf<String>()
+        val tacita = mockk<Tacita>()
+        guids.forEach { g ->
+            val output = "/downloads/$g.mp3".toPath()
+            coEvery { episodeRepo.episode(g) } returns
+                Episode(guid = g, feedUrl = "feed", title = g, audioUrl = audioUrl)
+            every { downloadsRepo.downloadFilePath(g) } returns output
+            every { downloadsRepo.referenceFilePath(g) } returns "/cache/$g.adref".toPath()
+            every { downloadsRepo.downloadedFileExists(g) } returns false
+            every { tacita.downloadPodcast(audioUrl, output, any(), any(), any(), any(), any()) } returns flow {
+                started += g
+                gates.getValue(g).await()
+                emit(DownloadState.Complete())
+            }
+        }
+        // mimics the relay: emit(action) suspends until the side effect's collector takes it
+        val accepted = mutableListOf<String>()
+        val context = mockk<SideEffectContext<AppState>> {
+            every { actions } returns flow {
+                guids.forEach { g ->
+                    emit(DownloadEpisode(g))
+                    accepted += g
+                }
+            }
+            coEvery { currentState() } returns AppState()
+        }
+        val effect = sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+
+        val collector = launch { with(effect) { context.act() }.toList() }
+        runCurrent()
+
+        // all six requests accepted off the relay even though only four download slots exist
+        assertThat(accepted).containsExactly(*guids.toTypedArray())
+        assertThat(started).containsExactly("guid-1", "guid-2", "guid-3", "guid-4")
+
+        guids.forEach { gates.getValue(it).complete(Unit) }
+        collector.join()
+    }
+
     @Test
     fun episodeWithoutAudioUrl_reportsFailure() = runTest {
         coEvery { episodeRepo.episode(guid) } returns
@@ -277,6 +325,29 @@ class DownloadSideEffectsTest {
 
         assertThat(actions).containsExactly(SetEpisodeDownloadStatus(guid, null))
         coVerify(exactly = 1) { downloadsRepo.deleteDownload(guid) }
+    }
+
+    /** A slow file delete must not hold up the action-collection path (same
+     * relay-stall class as the saturated download queue above). */
+    @Test
+    fun deleteDownload_slowDelete_doesNotBlockOtherDeletes() = runTest {
+        val otherGuid = "other-guid"
+        val gate = CompletableDeferred<Unit>()
+        val started = mutableListOf<String>()
+        coEvery { downloadsRepo.deleteDownload(any()) } coAnswers {
+            val g = firstArg<String>()
+            started += g
+            if (g == guid) gate.await()
+        }
+
+        val collector = launch {
+            sideEffects.deleteDownloads(downloadsRepo).output(DeleteDownload(guid), DeleteDownload(otherGuid)).toList()
+        }
+        runCurrent()
+        assertThat(started).containsExactly(guid, otherGuid)
+
+        gate.complete(Unit)
+        collector.join()
     }
 
     @Test

@@ -19,7 +19,9 @@ import dev.zacsweers.metro.IntoSet
 import dev.zacsweers.metro.Provides
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
@@ -52,6 +54,12 @@ interface DownloadSideEffects {
         downloadsRepository: DownloadsRepository,
     ): SideEffect<AppState> = sideEffect {
         actions.filterIsInstance<DownloadEpisode>()
+            // At full concurrency flatMapMerge suspends its upstream collector until a
+            // slot frees, which would stall the middleware's zero-buffer action relay
+            // (and with it every side effect — taps beyond the first queued episode
+            // went dead). Park pending requests in an unbounded buffer instead so the
+            // collect path always accepts actions immediately.
+            .buffer(Channel.UNLIMITED)
             .flatMapMerge(concurrency = MAX_CONCURRENT_DOWNLOADS) { action ->
                 flow { downloadEpisode(action.episodeGuid, tacita, episodeRepository, downloadsRepository) }
             }
@@ -85,15 +93,20 @@ interface DownloadSideEffects {
         }
     }
 
+    /** File deletion runs inside flatMapMerge rather than inline in the collect path,
+     * for the same relay-stalling reason as [downloadEpisodes] above. */
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Provides @IntoSet fun deleteDownloads(
         downloadsRepository: DownloadsRepository,
     ): SideEffect<AppState> = sideEffect {
         actions.filterIsInstance<DeleteDownload>()
-            .transform { action ->
-                val result = runCatching { downloadsRepository.deleteDownload(action.episodeGuid) }
-                result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
-                // clear any lingering in-flight entry (e.g. an old Failure)
-                emit(SetEpisodeDownloadStatus(action.episodeGuid, null))
+            .flatMapMerge { action ->
+                flow {
+                    val result = runCatching { downloadsRepository.deleteDownload(action.episodeGuid) }
+                    result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+                    // clear any lingering in-flight entry (e.g. an old Failure)
+                    emit(SetEpisodeDownloadStatus(action.episodeGuid, null))
+                }
             }
     }
 }
