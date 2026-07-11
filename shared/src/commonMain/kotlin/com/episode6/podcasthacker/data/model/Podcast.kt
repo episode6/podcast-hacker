@@ -23,6 +23,8 @@ data class Episode(
     val enclosureBytes: Long? = null,
     val downloadState: DownloadState = DownloadState.NotDownloaded,
     val playbackPosition: Duration = Duration.ZERO,
+    /** Null until the episode is first played; drives the Recently Played screen. */
+    val lastPlayed: Instant? = null,
 )
 
 enum class DownloadState { NotDownloaded, Downloading, Downloaded }

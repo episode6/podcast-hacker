@@ -81,6 +81,7 @@ class PlaybackSideEffectsTest {
     private val episodeRepository = mockk<EpisodeRepository> {
         coEvery { episode(episode.guid) } returns episode
         coEvery { setPlaybackPosition(any(), any()) } just Runs
+        coEvery { markPlayed(any(), any()) } just Runs
     }
     private val downloadsRepository = mockk<DownloadsRepository> {
         every { downloadedFileExists(episode.guid) } returns true
@@ -110,6 +111,30 @@ class PlaybackSideEffectsTest {
                 startAt = episode.playbackPosition,
             )
         }
+    }
+
+    @Test
+    fun playEpisode_marksEpisodePlayed() = runTest {
+        sideEffects.playEpisode(player, episodeRepository, downloadsRepository)
+            .output(PlayEpisode(episode.guid), state = AppState(subscriptions = listOf(podcast)))
+            .toList()
+
+        coVerify(exactly = 1) { episodeRepository.markPlayed(episode.guid, any()) }
+    }
+
+    @Test
+    fun playEpisode_loadFails_doesNotMarkPlayed() = runTest {
+        every { player.load(any(), any(), any(), any()) } throws RuntimeException("boom")
+
+        val actions = sideEffects.playEpisode(player, episodeRepository, downloadsRepository)
+            .output(PlayEpisode(episode.guid), state = AppState(subscriptions = listOf(podcast)))
+            .toList()
+
+        assertThat(actions).containsExactly(
+            SetNowPlaying(nowPlaying.copy(isLoading = true)),
+            SetNowPlaying(nowPlaying.copy(error = "boom")),
+        )
+        coVerify(exactly = 0) { episodeRepository.markPlayed(any(), any()) }
     }
 
     @Test

@@ -29,6 +29,7 @@ class FeedRepository(
                 episode.toEntity().copy(
                     downloadState = current?.downloadState ?: DownloadState.NotDownloaded.name,
                     playbackPositionMillis = current?.playbackPositionMillis ?: 0L,
+                    lastPlayedEpochMillis = current?.lastPlayedEpochMillis,
                 )
             }
         )

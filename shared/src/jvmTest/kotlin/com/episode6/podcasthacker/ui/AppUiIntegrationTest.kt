@@ -4,9 +4,11 @@ import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isNotEnabled
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -200,6 +202,49 @@ class AppUiIntegrationTest {
         waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 5_000)
         onNodeWithText("Delete Download").performClick()
         waitForExactlyOne(hasText("Download"), timeoutMillis = 10_000)
+    }
+
+    @Test
+    fun recentlyPlayed_listsPlayedEpisode_trashDeletesFileButKeepsEntry() = runComposeUiTest {
+        setContent { App(testGraph()) }
+
+        // empty state before anything has played
+        onNodeWithText("Recently Played", substring = true).performClick()
+        waitForExactlyOne(hasText("Nothing played yet"), timeoutMillis = 5_000)
+        onNodeWithText("← Back").performClick()
+
+        // subscribe, download an episode, and play it
+        onNodeWithText("Add Podcast", substring = true).performClick()
+        onNode(hasSetTextAction()).performTextInput(FEED_URL)
+        waitForExactlyOne(hasText("Subscribe to RSS url"), timeoutMillis = 5_000)
+        onNodeWithText("Subscribe to RSS url").performClick()
+        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
+        onNodeWithText("Test Podcast").performClick()
+        waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
+        onNodeWithText("Episode Two").performClick()
+        waitForExactlyOne(hasText("Download"), timeoutMillis = 5_000)
+        onNodeWithText("Download").performClick()
+        waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 30_000)
+        onNodeWithText("Play").performClick()
+        waitForExactlyOne(hasTestTag("playPauseButton") and hasText("❚❚"), timeoutMillis = 10_000)
+        // stopping pops NowPlaying back to episode detail
+        onNodeWithText("Stop").performScrollTo().performClick()
+        waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 10_000)
+
+        // back on the grid, Recently Played now lists the episode with live actions
+        onNodeWithText("← Back").performClick()
+        waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
+        onNodeWithText("← Back").performClick()
+        waitForExactlyOne(hasText("Recently Played", substring = true), timeoutMillis = 10_000)
+        onNodeWithText("Recently Played", substring = true).performClick()
+        waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
+
+        // trash deletes the file: the row stays (play history kept) but both actions
+        // grey out until a re-download
+        onNode(hasContentDescription("Delete file")).performClick()
+        waitForExactlyOne(hasContentDescription("Delete file") and isNotEnabled(), timeoutMillis = 10_000)
+        onNode(hasContentDescription("Resume") and isNotEnabled()).assertExists()
+        onNodeWithText("Episode Two").assertExists()
     }
 
     @Test

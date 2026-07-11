@@ -64,6 +64,7 @@ class AppStorePlaybackIntegrationTest {
     private val episodeRepository = mockk<EpisodeRepository> {
         coEvery { episode(episode.guid) } returns episode
         coEvery { setPlaybackPosition(any(), any()) } just Runs
+        coEvery { markPlayed(any(), any()) } just Runs
     }
     private val downloadsRepository = mockk<DownloadsRepository> {
         every { downloadedFileExists(episode.guid) } returns true

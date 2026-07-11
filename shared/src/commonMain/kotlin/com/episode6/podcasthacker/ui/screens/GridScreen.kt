@@ -38,6 +38,7 @@ import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.UnsubscribeFromPodcast
 import com.episode6.podcasthacker.ui.nav.AddPodcastRoute
 import com.episode6.podcasthacker.ui.nav.PodcastDetailRoute
+import com.episode6.podcasthacker.ui.nav.RecentlyPlayedRoute
 import com.episode6.podcasthacker.ui.util.stateOf
 
 @Composable
@@ -70,8 +71,17 @@ internal fun GridScreen(navController: NavController) {
                     onUnsubscribe = { store.dispatch(UnsubscribeFromPodcast(podcast.feedUrl)) },
                 )
             }
+            item(key = "recently-played") {
+                LabelTile(
+                    label = "↺\nRecently Played",
+                    onClick = { navController.navigate(RecentlyPlayedRoute) },
+                )
+            }
             item(key = "add-podcast") {
-                AddPodcastTile(onClick = { navController.navigate(AddPodcastRoute) })
+                LabelTile(
+                    label = "+\nAdd Podcast",
+                    onClick = { navController.navigate(AddPodcastRoute) },
+                )
             }
         }
     }
@@ -123,8 +133,9 @@ private fun PodcastTile(
     }
 }
 
+/** Artwork-less grid tile (Add Podcast, Recently Played), sized like a podcast tile. */
 @Composable
-private fun AddPodcastTile(onClick: () -> Unit) {
+private fun LabelTile(label: String, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().aspectRatio(1f),
@@ -133,7 +144,7 @@ private fun AddPodcastTile(onClick: () -> Unit) {
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
-                "+\nAdd Podcast",
+                label,
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.primary,

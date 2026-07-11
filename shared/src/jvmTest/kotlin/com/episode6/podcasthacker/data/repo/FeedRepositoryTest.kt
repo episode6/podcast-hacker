@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.Test
+import kotlin.time.Instant
 
 class FeedRepositoryTest {
 
@@ -65,11 +66,24 @@ class FeedRepositoryTest {
     fun resync_preservesPerEpisodeUserState() = runTest {
         repo.sync(feedUrl)
         db.episodeDao().setPlaybackPosition("ep-2", 5_000L)
+        db.episodeDao().setLastPlayed("ep-2", 1_234L)
 
         repo.sync(feedUrl)
 
         val episode = db.episodeDao().get("ep-2")
         assertThat(episode!!.playbackPositionMillis).isEqualTo(5_000L)
+        assertThat(episode.lastPlayedEpochMillis).isEqualTo(1_234L)
+    }
+
+    @Test
+    fun markPlayed_persistsTimestampOnEpisode() = runTest {
+        repo.sync(feedUrl)
+        val playedAt = Instant.fromEpochMilliseconds(1_720_000_000_000L)
+
+        EpisodeRepository(db).markPlayed("ep-2", at = playedAt)
+
+        val episode = EpisodeRepository(db).episode("ep-2")
+        assertThat(episode!!.lastPlayed).isEqualTo(playedAt)
     }
 
     @Test

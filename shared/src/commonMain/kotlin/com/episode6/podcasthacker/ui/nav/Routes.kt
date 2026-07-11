@@ -7,3 +7,4 @@ import kotlinx.serialization.Serializable
 @Serializable data class PodcastDetailRoute(val feedUrl: String)
 @Serializable data class EpisodeDetailRoute(val feedUrl: String, val episodeGuid: String)
 @Serializable data object NowPlayingRoute
+@Serializable data object RecentlyPlayedRoute
