@@ -18,11 +18,12 @@ import kotlinx.coroutines.cancel
 import kotlin.test.Test
 
 /**
- * Guards against re-introducing redux-compose's collectAsState under [stateOf]: it seeds
- * compose with StoreFlow.initialState (the construction-time default), so every screen's
- * first frame rendered from an empty AppState before snapping to the real state. That
- * flicker changes lazy layouts' item counts mid-navigation and can crash measure
- * (flaky IndexOutOfBoundsException in AppUiIntegrationTest's grid navigation).
+ * Pins [stateOf]'s first-frame behavior: compose must be seeded with the store's *current*
+ * state, never StoreFlow.initialState (the construction-time default). Before redux 1.1.7,
+ * redux-compose's collectAsState seeded with initialState, so every screen's first frame
+ * rendered from an empty AppState before snapping to the real state. That flicker changes
+ * lazy layouts' item counts mid-navigation and can crash measure (flaky
+ * IndexOutOfBoundsException in AppUiIntegrationTest's grid navigation).
  */
 @OptIn(ExperimentalTestApi::class)
 class StateOfTest {
