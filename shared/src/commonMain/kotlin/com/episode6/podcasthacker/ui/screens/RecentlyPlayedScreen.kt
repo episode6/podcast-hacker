@@ -33,15 +33,17 @@ import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.DeleteDownload
 import com.episode6.podcasthacker.store.PlayEpisode
+import com.episode6.podcasthacker.store.TogglePlayPause
 import com.episode6.podcasthacker.ui.nav.EpisodeDetailRoute
 import com.episode6.podcasthacker.ui.util.AppIcons
 import com.episode6.podcasthacker.ui.util.formatShortDate
 import com.episode6.podcasthacker.ui.util.stateOf
 
 /**
- * Every episode ever played in the app, most recent play first. Rows resume playback or
- * delete the downloaded file; deleting keeps the episode's row (and its play history),
- * it only frees the disk space, so both actions grey out until a re-download.
+ * Every episode ever played in the app, most recent play first. Rows resume playback
+ * (pause, for the episode currently playing) or delete the downloaded file; deleting
+ * keeps the episode's row (and its play history), it only frees the disk space, so both
+ * actions grey out until a re-download.
  */
 @Composable
 internal fun RecentlyPlayedScreen(navController: NavController) {
@@ -63,16 +65,21 @@ internal fun RecentlyPlayedScreen(navController: NavController) {
         }
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(played, key = { it.guid }) { episode ->
+                val isPlaying by store.stateOf {
+                    nowPlaying?.episodeGuid == episode.guid && nowPlaying?.isPlaying == true
+                }
                 RecentlyPlayedRow(
                     episode = episode,
                     podcastTitle = podcastsByFeed[episode.feedUrl]?.title,
                     artworkUrl = podcastsByFeed[episode.feedUrl]?.artworkUrl,
+                    isPlaying = isPlaying,
                     onClick = {
                         navController.navigate(
                             EpisodeDetailRoute(feedUrl = episode.feedUrl, episodeGuid = episode.guid)
                         )
                     },
                     onResume = { store.dispatch(PlayEpisode(episode.guid)) },
+                    onPause = { store.dispatch(TogglePlayPause) },
                     onDeleteFile = { store.dispatch(DeleteDownload(episode.guid)) },
                 )
                 HorizontalDivider()
@@ -86,8 +93,10 @@ private fun RecentlyPlayedRow(
     episode: Episode,
     podcastTitle: String?,
     artworkUrl: String?,
+    isPlaying: Boolean,
     onClick: () -> Unit,
     onResume: () -> Unit,
+    onPause: () -> Unit,
     onDeleteFile: () -> Unit,
 ) {
     val downloaded = episode.downloadState == DownloadState.Downloaded
@@ -127,10 +136,10 @@ private fun RecentlyPlayedRow(
         }
         Spacer(Modifier.width(8.dp))
         RowIconButton(
-            icon = AppIcons.Play,
-            contentDescription = "Resume",
+            icon = if (isPlaying) AppIcons.Pause else AppIcons.Play,
+            contentDescription = if (isPlaying) "Pause" else "Resume",
             enabled = downloaded,
-            onClick = onResume,
+            onClick = if (isPlaying) onPause else onResume,
         )
         RowIconButton(
             icon = AppIcons.Delete,

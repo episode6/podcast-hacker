@@ -23,6 +23,22 @@ internal object AppIcons {
         }
     }
 
+    /** Material "pause" (filled). */
+    val Pause: ImageVector by lazy {
+        materialIcon("Pause") {
+            moveTo(6f, 19f)
+            horizontalLineToRelative(4f)
+            verticalLineTo(5f)
+            horizontalLineTo(6f)
+            close()
+            moveTo(14f, 5f)
+            verticalLineToRelative(14f)
+            horizontalLineToRelative(4f)
+            verticalLineTo(5f)
+            close()
+        }
+    }
+
     /** Material "download" (filled). */
     val Download: ImageVector by lazy {
         materialIcon("Download") {

@@ -42,6 +42,7 @@ import com.episode6.podcasthacker.store.DownloadEpisode
 import com.episode6.podcasthacker.store.EpisodeDownloadStatus
 import com.episode6.podcasthacker.store.PlayEpisode
 import com.episode6.podcasthacker.store.RefreshFeed
+import com.episode6.podcasthacker.store.TogglePlayPause
 import com.episode6.podcasthacker.ui.nav.EpisodeDetailRoute
 import com.episode6.podcasthacker.ui.nav.PodcastDetailRoute
 import com.episode6.podcasthacker.ui.util.AppIcons
@@ -102,15 +103,20 @@ internal fun PodcastDetailScreen(navController: NavController, route: PodcastDet
             }
             items(episodes, key = { it.guid }) { episode ->
                 val downloadStatus by store.stateOf { downloads[episode.guid] }
+                val isPlaying by store.stateOf {
+                    nowPlaying?.episodeGuid == episode.guid && nowPlaying?.isPlaying == true
+                }
                 EpisodeRow(
                     episode = episode,
                     downloadStatus = downloadStatus,
+                    isPlaying = isPlaying,
                     onClick = {
                         navController.navigate(
                             EpisodeDetailRoute(feedUrl = route.feedUrl, episodeGuid = episode.guid)
                         )
                     },
                     onPlay = { store.dispatch(PlayEpisode(episode.guid)) },
+                    onPause = { store.dispatch(TogglePlayPause) },
                     onDownload = { store.dispatch(DownloadEpisode(episode.guid)) },
                 )
                 HorizontalDivider()
@@ -123,8 +129,10 @@ internal fun PodcastDetailScreen(navController: NavController, route: PodcastDet
 private fun EpisodeRow(
     episode: Episode,
     downloadStatus: EpisodeDownloadStatus?,
+    isPlaying: Boolean,
     onClick: () -> Unit,
     onPlay: () -> Unit,
+    onPause: () -> Unit,
     onDownload: () -> Unit,
 ) {
     Row(
@@ -157,24 +165,28 @@ private fun EpisodeRow(
         EpisodeRowAction(
             episode = episode,
             downloadStatus = downloadStatus,
+            isPlaying = isPlaying,
             onPlay = onPlay,
+            onPause = onPause,
             onDownload = onDownload,
         )
     }
 }
 
 /**
- * Trailing control for an episode row: play when the episode is downloaded, download
- * when it isn't (including after a failure, where it acts as retry), an inert clock
- * icon while the episode waits for a download slot, and a circular progress bar while
- * a download is in flight — determinate with byte progress, indeterminate while
- * starting and while tacita is cutting ads.
+ * Trailing control for an episode row: play when the episode is downloaded (pause when
+ * it's the one currently playing), download when it isn't (including after a failure,
+ * where it acts as retry), an inert clock icon while the episode waits for a download
+ * slot, and a circular progress bar while a download is in flight — determinate with
+ * byte progress, indeterminate while starting and while tacita is cutting ads.
  */
 @Composable
 private fun EpisodeRowAction(
     episode: Episode,
     downloadStatus: EpisodeDownloadStatus?,
+    isPlaying: Boolean,
     onPlay: () -> Unit,
+    onPause: () -> Unit,
     onDownload: () -> Unit,
 ) {
     when (downloadStatus) {
@@ -183,7 +195,9 @@ private fun EpisodeRowAction(
         EpisodeDownloadStatus.CuttingAds -> EpisodeRowProgress()
         is EpisodeDownloadStatus.Downloading -> EpisodeRowProgress(downloadStatus.percentComplete)
         is EpisodeDownloadStatus.Failure, null ->
-            if (episode.downloadState == DownloadState.Downloaded) {
+            if (isPlaying) {
+                EpisodeRowIconButton(AppIcons.Pause, contentDescription = "Pause", onClick = onPause)
+            } else if (episode.downloadState == DownloadState.Downloaded) {
                 EpisodeRowIconButton(AppIcons.Play, contentDescription = "Play", onClick = onPlay)
             } else {
                 EpisodeRowIconButton(AppIcons.Download, contentDescription = "Download", onClick = onDownload)
