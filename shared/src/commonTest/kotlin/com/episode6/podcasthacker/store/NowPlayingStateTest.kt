@@ -126,4 +126,48 @@ class NowPlayingStateTest {
 
         assertThat(state.previousAdBoundary()).isEqualTo(boundary(1.minutes))
     }
+
+    @Test
+    fun platformSkipTargets_usePlayerPositionNotStatePosition() {
+        // state position (30s) would pick different targets than the player's live 6:00
+        val state = state(30.seconds, listOf(1.minutes, 5.minutes, 10.minutes))
+
+        assertThat(state.adBoundarySkipForwardTarget("guid", 6.minutes)).isEqualTo(10.minutes)
+        assertThat(state.adBoundarySkipBackTarget("guid", 6.minutes)).isEqualTo(5.minutes)
+    }
+
+    @Test
+    fun platformSkipTargets_nullForADifferentOrMissingEpisode() {
+        val state = state(30.seconds, listOf(1.minutes, 5.minutes))
+
+        assertThat(state.adBoundarySkipForwardTarget("other-guid", 30.seconds)).isNull()
+        assertThat(state.adBoundarySkipBackTarget("other-guid", 2.minutes)).isNull()
+        assertThat(state.adBoundarySkipForwardTarget(null, 30.seconds)).isNull()
+    }
+
+    @Test
+    fun platformSkipTargets_nullWhenNoBoundaryInThatDirection() {
+        val state = state(Duration.ZERO, listOf(1.minutes, 5.minutes))
+
+        // before the first boundary / past the last one → callers fall back to 15s/30s
+        assertThat(state.adBoundarySkipBackTarget("guid", 30.seconds)).isNull()
+        assertThat(state.adBoundarySkipForwardTarget("guid", 6.minutes)).isNull()
+    }
+
+    @Test
+    fun platformSkipTargets_nullWhenEpisodeHasNoBoundaries() {
+        val state = state(5.minutes)
+
+        assertThat(state.adBoundarySkipForwardTarget("guid", 5.minutes)).isNull()
+        assertThat(state.adBoundarySkipBackTarget("guid", 5.minutes)).isNull()
+    }
+
+    @Test
+    fun platformSkipTargets_respectTheConfidenceFilter() {
+        val state = mixedConfidenceState(filter = 1f)
+
+        // only the 0.9-confidence boundary at 3:00 survives the filter
+        assertThat(state.adBoundarySkipForwardTarget("guid", 90.seconds)).isEqualTo(3.minutes)
+        assertThat(state.adBoundarySkipBackTarget("guid", 4.minutes)).isEqualTo(3.minutes)
+    }
 }

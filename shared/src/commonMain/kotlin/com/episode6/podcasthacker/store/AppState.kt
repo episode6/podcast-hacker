@@ -71,6 +71,20 @@ fun NowPlayingState.nextAdBoundary(): AdBoundary? =
 fun NowPlayingState.previousAdBoundary(): AdBoundary? =
     filteredAdBoundaries().lastOrNull { it.position <= position - SKIP_BACK_GRACE }
 
+/**
+ * Where a platform skip-forward control (e.g. the media notification button) should land:
+ * the next filtered ad boundary, or null when there's nothing to jump to — callers fall
+ * back to their fixed seek increment. [playerGuid]/[playerPosition] come from the
+ * platform player, which is fresher than this state and guards against acting on
+ * boundaries of a previously loaded episode.
+ */
+fun NowPlayingState.adBoundarySkipForwardTarget(playerGuid: String?, playerPosition: Duration): Duration? =
+    takeIf { it.episodeGuid == playerGuid }?.copy(position = playerPosition)?.nextAdBoundary()?.position
+
+/** Skip-back counterpart of [adBoundarySkipForwardTarget], honoring [SKIP_BACK_GRACE]. */
+fun NowPlayingState.adBoundarySkipBackTarget(playerGuid: String?, playerPosition: Duration): Duration? =
+    takeIf { it.episodeGuid == playerGuid }?.copy(position = playerPosition)?.previousAdBoundary()?.position
+
 data class FeedSyncState(
     val syncing: Set<String> = emptySet(),
     val lastError: String? = null,
