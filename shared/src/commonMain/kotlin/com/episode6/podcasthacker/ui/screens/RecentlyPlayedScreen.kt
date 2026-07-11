@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,9 +22,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -34,6 +34,7 @@ import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.DeleteDownload
 import com.episode6.podcasthacker.store.PlayEpisode
 import com.episode6.podcasthacker.ui.nav.EpisodeDetailRoute
+import com.episode6.podcasthacker.ui.util.AppIcons
 import com.episode6.podcasthacker.ui.util.formatShortDate
 import com.episode6.podcasthacker.ui.util.stateOf
 
@@ -125,14 +126,14 @@ private fun RecentlyPlayedRow(
             }
         }
         Spacer(Modifier.width(8.dp))
-        GlyphButton(
-            glyph = "▶",
+        RowIconButton(
+            icon = AppIcons.Play,
             contentDescription = "Resume",
             enabled = downloaded,
             onClick = onResume,
         )
-        GlyphButton(
-            glyph = "🗑",
+        RowIconButton(
+            icon = AppIcons.Delete,
             contentDescription = "Delete file",
             enabled = downloaded,
             onClick = onDeleteFile,
@@ -140,24 +141,24 @@ private fun RecentlyPlayedRow(
     }
 }
 
-/** Glyph buttons rather than material icons, matching the episode rows + MiniPlayerBar. */
+/** 32dp icon buttons matching the episode-list rows in PodcastDetailScreen. */
 @Composable
-private fun GlyphButton(
-    glyph: String,
+private fun RowIconButton(
+    icon: ImageVector,
     contentDescription: String,
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
     IconButton(onClick = onClick, enabled = enabled) {
-        Text(
-            text = glyph,
-            style = MaterialTheme.typography.titleMedium,
-            color = if (enabled) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (enabled) {
                 MaterialTheme.colorScheme.primary
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
             },
-            modifier = Modifier.semantics { this.contentDescription = contentDescription },
+            modifier = Modifier.size(32.dp),
         )
     }
 }
