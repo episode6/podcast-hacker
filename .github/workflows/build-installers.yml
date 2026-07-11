@@ -1,6 +1,9 @@
 name: Build Installers
 on:
   pull_request:
+    # labeled is included so applying 'build-release' reruns the android job
+    # as a signed release build
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches: [main]
     tags: ['v*']
@@ -60,6 +63,11 @@ jobs:
 
   android-apk:
     runs-on: ubuntu-latest
+    # PRs build debug; pushes to main/tags (and manual runs) build a signed
+    # release. A PR authored by ghackett with the 'build-release' label also
+    # builds a signed release.
+    env:
+      BUILD_TYPE: ${{ (github.event_name != 'pull_request' || (contains(github.event.pull_request.labels.*.name, 'build-release') && github.event.pull_request.user.login == 'ghackett')) && 'release' || 'debug' }}
     steps:
       - uses: actions/checkout@v6
       - name: Set up JDK 23
@@ -69,9 +77,23 @@ jobs:
           distribution: 'zulu'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
+      - name: Decode release keystore
+        if: env.BUILD_TYPE == 'release'
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE" ]; then
+            echo "ANDROID_KEYSTORE secret is not set; refusing to build an unsigned release" >&2
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE" | base64 -d > "$RUNNER_TEMP/keystore.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/keystore.jks" >> "$GITHUB_ENV"
       # check includes android lint + unit tests for :androidApp and :shared
-      - name: Check and build debug APK
-        run: ./gradlew check :androidApp:assembleDebug
+      - name: Check and build APK
+        run: ./gradlew check :androidApp:assemble${{ env.BUILD_TYPE == 'release' && 'Release' || 'Debug' }}
+        env:
+          ANDROID_KEYSTORE_ROOT_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_ROOT_PASSWORD }}
+          ANDROID_KEYSTORE_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_KEY_PASSWORD }}
       - name: Upload test results on failure
         if: failure()
         uses: actions/upload-artifact@v7
@@ -82,7 +104,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
         with:
-          path: androidApp/build/outputs/apk/debug/*.apk
+          path: androidApp/build/outputs/apk/${{ env.BUILD_TYPE }}/*.apk
           archive: false
           if-no-files-found: error
 
