@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -29,11 +30,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.episode6.podcasthacker.data.model.DownloadState
@@ -45,6 +44,7 @@ import com.episode6.podcasthacker.store.PlayEpisode
 import com.episode6.podcasthacker.store.RefreshFeed
 import com.episode6.podcasthacker.ui.nav.EpisodeDetailRoute
 import com.episode6.podcasthacker.ui.nav.PodcastDetailRoute
+import com.episode6.podcasthacker.ui.util.AppIcons
 import com.episode6.podcasthacker.ui.util.episodeSubtitle
 import com.episode6.podcasthacker.ui.util.stateOf
 
@@ -164,12 +164,11 @@ private fun EpisodeRow(
 }
 
 /**
- * Trailing control for an episode row: play (▶) when the episode is downloaded,
- * download (↓) when it isn't (including after a failure, where it acts as retry), an
- * inert clock glyph (◷) while the episode waits for a download slot, and a circular
- * progress bar while a download is in flight — determinate with byte progress,
- * indeterminate while starting and while tacita is cutting ads.
- * Glyph buttons rather than material icons, matching MiniPlayerBar.
+ * Trailing control for an episode row: play when the episode is downloaded, download
+ * when it isn't (including after a failure, where it acts as retry), an inert clock
+ * icon while the episode waits for a download slot, and a circular progress bar while
+ * a download is in flight — determinate with byte progress, indeterminate while
+ * starting and while tacita is cutting ads.
  */
 @Composable
 private fun EpisodeRowAction(
@@ -185,42 +184,45 @@ private fun EpisodeRowAction(
         is EpisodeDownloadStatus.Downloading -> EpisodeRowProgress(downloadStatus.percentComplete)
         is EpisodeDownloadStatus.Failure, null ->
             if (episode.downloadState == DownloadState.Downloaded) {
-                EpisodeRowGlyphButton("▶", contentDescription = "Play", onClick = onPlay)
+                EpisodeRowIconButton(AppIcons.Play, contentDescription = "Play", onClick = onPlay)
             } else {
-                EpisodeRowGlyphButton("↓", contentDescription = "Download", onClick = onDownload)
+                EpisodeRowIconButton(AppIcons.Download, contentDescription = "Download", onClick = onDownload)
             }
     }
 }
 
 @Composable
-private fun EpisodeRowGlyphButton(glyph: String, contentDescription: String, onClick: () -> Unit) {
+private fun EpisodeRowIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
     IconButton(onClick = onClick) {
-        Text(
-            text = glyph,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.semantics { this.contentDescription = contentDescription },
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(EPISODE_ROW_ICON_SIZE),
         )
     }
 }
 
 /** Deliberately not a button: a queued episode has no action yet, the icon just marks
  * it as waiting for one of the download slots. Sized like the buttons so rows don't
- * jump as states change. The clock glyph's font metrics draw much smaller than the
- * play/download glyphs at the same text style, so its font size is bumped to
- * visually match them. */
+ * jump as states change. */
 @Composable
 private fun EpisodeRowQueuedIcon() {
     Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-        Text(
-            text = "◷",
-            style = MaterialTheme.typography.titleMedium,
-            fontSize = 24.sp,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.semantics { this.contentDescription = "Queued" },
+        Icon(
+            imageVector = AppIcons.Schedule,
+            contentDescription = "Queued",
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(EPISODE_ROW_ICON_SIZE),
         )
     }
 }
+
+private val EPISODE_ROW_ICON_SIZE = 32.dp
 
 @Composable
 private fun EpisodeRowProgress(percentComplete: Float? = null) {
