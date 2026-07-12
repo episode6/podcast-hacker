@@ -51,7 +51,7 @@ The skill uses the `./scripts/ship-release.py` script.
   "dry_run": false,
   "tag": "v1.0.0",
   "title": "v1.0.0",
-  "version_code": "100000000",
+  "version_code": "10000000",
   "branch": "release/v1.0.0",
   "url": "https://github.com/episode6/podcast-hacker/releases/tag/v1.0.0",
   "notes": "- Initial release: subscribe, download (ads cut) and play podcasts..."

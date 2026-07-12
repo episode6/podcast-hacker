@@ -3,13 +3,13 @@
 
 The version name (self.versions.toml) is MAJOR.MINOR.PATCH plus an optional 4th
 HOTFIX segment used only when hotfixing a shipped release. The code is derived by
-concatenating MAJOR | MINOR(3 digits) | PATCH(3 digits) | HOTFIX(2 digits), e.g.
-1.2.3 -> 100200300 and 1.2.3.4 -> 100200304, so newer versions always outrank
+concatenating MAJOR | MINOR(3 digits) | PATCH(3 digits) | HOTFIX(1 digit), e.g.
+1.2.3 -> 10020030 and 1.2.3.4 -> 10020034, so newer versions always outrank
 older ones and hotfixes slot between patches.
 
-Limits: minor/patch max out at 999, hotfix at 99, major must be >= 1 (jpackage
-rejects MAJOR==0 for dmg/msi) and the result must fit android's 2,100,000,000
-versionCode cap.
+Limits: major maxes out at 99 (and must be >= 1 — jpackage rejects MAJOR==0 for
+dmg/msi), minor/patch at 999, hotfix at 9. The max code (99.999.999.9 ->
+999999999) stays under android's versionCode cap.
 
 The root build.gradle.kts mirrors this formula for gradle builds; keep the two
 in sync.
@@ -18,8 +18,6 @@ Usage: version-code.py <version-name>
 """
 import re
 import sys
-
-ANDROID_MAX_VERSION_CODE = 2_100_000_000
 
 
 def compute(name):
@@ -33,17 +31,13 @@ def compute(name):
     hotfix = nums[3] if len(nums) == 4 else 0
     if major < 1:
         raise ValueError("major version must be >= 1 (jpackage rejects MAJOR==0 for dmg/msi)")
+    if major > 99:
+        raise ValueError(f"major version maxes out at 99 (got '{name}')")
     if minor > 999 or patch > 999:
         raise ValueError(f"minor/patch versions max out at 999 (got '{name}')")
-    if hotfix > 99:
-        raise ValueError(f"hotfix version maxes out at 99 (got '{name}')")
-    code = ((major * 1000 + minor) * 1000 + patch) * 100 + hotfix
-    if code > ANDROID_MAX_VERSION_CODE:
-        raise ValueError(
-            f"versionCode {code} for '{name}' exceeds android's {ANDROID_MAX_VERSION_CODE:,} cap; "
-            "the major version is too large"
-        )
-    return code
+    if hotfix > 9:
+        raise ValueError(f"hotfix version maxes out at 9 (got '{name}')")
+    return ((major * 1000 + minor) * 1000 + patch) * 10 + hotfix
 
 
 def main():

@@ -12,9 +12,10 @@ plugins {
 // The version name in self.versions.toml is the single source of truth:
 // MAJOR.MINOR.PATCH plus an optional 4th HOTFIX segment used only when hotfixing a
 // shipped release. The android versionCode / iOS build number is derived from it by
-// concatenating MAJOR | MINOR(3 digits) | PATCH(3 digits) | HOTFIX(2 digits), e.g.
-// 1.2.3 -> 100200300 and 1.2.3.4 -> 100200304, so newer versions always outrank older
-// ones and hotfixes slot between patches. scripts/version-code.py mirrors this formula
+// concatenating MAJOR | MINOR(3 digits) | PATCH(3 digits) | HOTFIX(1 digit), e.g.
+// 1.2.3 -> 10020030 and 1.2.3.4 -> 10020034, so newer versions always outrank older
+// ones and hotfixes slot between patches. The max code (99.999.999.9 -> 999999999)
+// stays under android's versionCode cap. scripts/version-code.py mirrors this formula
 // for the iOS xcconfig sync + release tooling; keep the two in sync.
 val selfVersionName: String = self.versions.name.get()
 val selfVersionCode: Int by extra(run {
@@ -30,13 +31,10 @@ val selfVersionCode: Int by extra(run {
     val (major, minor, patch) = nums
     val hotfix = nums.getOrElse(3) { 0 }
     require(major >= 1) { "major version must be >= 1 (jpackage rejects MAJOR==0 for dmg/msi)" }
+    require(major <= 99) { "major version maxes out at 99 (got '$selfVersionName')" }
     require(minor <= 999 && patch <= 999) { "minor/patch versions max out at 999 (got '$selfVersionName')" }
-    require(hotfix <= 99) { "hotfix version maxes out at 99 (got '$selfVersionName')" }
-    val code = ((major.toLong() * 1000 + minor) * 1000 + patch) * 100 + hotfix
-    require(code <= 2_100_000_000L) {
-        "versionCode $code for '$selfVersionName' exceeds android's 2,100,000,000 cap; the major version is too large"
-    }
-    code.toInt()
+    require(hotfix <= 9) { "hotfix version maxes out at 9 (got '$selfVersionName')" }
+    ((major * 1000 + minor) * 1000 + patch) * 10 + hotfix
 })
 
 // snapshot unless CI is building from a release tag (GITHUB_REF=refs/tags/v*);
