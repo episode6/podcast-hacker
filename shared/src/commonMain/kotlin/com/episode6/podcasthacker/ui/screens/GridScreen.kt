@@ -126,7 +126,10 @@ private fun OverflowMenu(store: AppStore) {
     val exportOpml = rememberFileExportLauncher(
         title = "Export OPML",
         fileName = "subscriptions.opml",
-        mimeType = "text/xml",
+        // android's SAF appends an extension when the name's doesn't match the mime
+        // (subscriptions.opml + text/xml saved as "subscriptions.opml.xml"); the
+        // unknown-type mime has no canonical extension so the name survives intact
+        mimeType = "application/octet-stream",
     ) {
         opmlDocument(store.state.subscriptions.map { OpmlFeed(feedUrl = it.feedUrl, title = it.title) })
     }
