@@ -11,7 +11,7 @@
     "Check CI status on main",
     "Create release branch",
     "Create version bump PRs for main and release branches",
-    "Bump name in self.versions.toml, patch-increment only (VITAL)",
+    "Bump name in self.versions.toml, minor-increment only with patch reset to 0 (VITAL)",
     "Run scripts/sync-ios-version.sh after every version bump",
     "Update CHANGELOG.md in both PRs (VITAL)"
   ]

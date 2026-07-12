@@ -14,38 +14,35 @@ plugins {
 val selfIsSnapshot: Boolean by extra(System.getenv("GITHUB_REF")?.startsWith("refs/tags/v") != true)
 
 // The version name in self.versions.toml is the single source of truth:
-// MAJOR.MINOR.PATCH plus an optional 4th HOTFIX segment used only when hotfixing a
-// shipped release. The android versionCode / iOS build number is derived from it by
-// concatenating MAJOR | MINOR(2 digits) | PATCH(3 digits) | HOTFIX(2 digits), e.g.
-// 1.2.3 -> 10200300 and 1.2.3.4 -> 10200304, so newer versions always outrank older
-// ones and hotfixes slot between patches. The major has no fixed max — the code just
-// has to stay within Google Play's 2,100,000,000 versionCode cap, which allows majors
-// up to 210. This is the single source of truth for the formula: release tooling
-// (scripts/sync-ios-version.sh, scripts/ship-release.py) queries it via the
-// printReleaseVersionCode / printSnapshotVersionCode tasks instead of reimplementing it.
+// MAJOR.MINOR.PATCH, where the patch segment is reserved for hotfixing shipped releases
+// (normal releases always ship X.Y.0, and cutting a release branch bumps the minor).
+// The android versionCode / iOS build number is derived from the name by concatenating
+// MAJOR | MINOR(4 digits) | PATCH(2 digits), e.g. 1.2.0 -> 1000200 and a 1.2.3 hotfix
+// -> 1000203, so newer versions always outrank older ones and hotfixes slot between
+// minors. The major has no fixed max — the code just has to stay within Google Play's
+// 2,100,000,000 versionCode cap, which allows majors up to 2100. This is the single
+// source of truth for the formula: release tooling (scripts/sync-ios-version.sh,
+// scripts/ship-release.py) queries it via the printReleaseVersionCode /
+// printSnapshotVersionCode tasks instead of reimplementing it.
 //
-// Snapshot builds instead hardcode 100,000,000 (v10.0.0's derived code): high enough to
+// Snapshot builds instead hardcode 10,000,000 (v10.0.0's derived code): high enough to
 // install over every prod build below v10 for the foreseeable future, low enough to
 // leave plenty of schema wiggle room if a build with this code ever shipped by accident.
-val snapshotVersionCode = 100_000_000
+val snapshotVersionCode = 10_000_000
 val selfVersionName: String = self.versions.name.get()
 val selfReleaseVersionCode: Int = run {
     val segments = selfVersionName.split(".")
-    require(segments.size in 3..4) {
-        "version name '$selfVersionName' must be MAJOR.MINOR.PATCH with an optional 4th hotfix segment"
-    }
+    require(segments.size == 3) { "version name '$selfVersionName' must be MAJOR.MINOR.PATCH" }
     val nums = segments.map { segment ->
         requireNotNull(segment.toIntOrNull()?.takeIf { it >= 0 }) {
             "version name '$selfVersionName' has a non-numeric segment '$segment'"
         }
     }
     val (major, minor, patch) = nums
-    val hotfix = nums.getOrElse(3) { 0 }
     require(major >= 1) { "major version must be >= 1 (jpackage rejects MAJOR==0 for dmg/msi)" }
-    require(minor <= 99) { "minor version maxes out at 99 (got '$selfVersionName')" }
-    require(patch <= 999) { "patch version maxes out at 999 (got '$selfVersionName')" }
-    require(hotfix <= 99) { "hotfix version maxes out at 99 (got '$selfVersionName')" }
-    val code = ((major.toLong() * 100 + minor) * 1000 + patch) * 100 + hotfix
+    require(minor <= 9999) { "minor version maxes out at 9999 (got '$selfVersionName')" }
+    require(patch <= 99) { "patch version maxes out at 99 (got '$selfVersionName')" }
+    val code = (major.toLong() * 10000 + minor) * 100 + patch
     require(code <= 2_100_000_000L) {
         "versionCode $code for '$selfVersionName' exceeds Google Play's 2,100,000,000 cap; the major version is too large"
     }

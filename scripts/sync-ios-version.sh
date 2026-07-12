@@ -8,9 +8,7 @@
 # to swap in the formula-derived code (that change is never committed).
 #
 # The versionCode formula lives in the root build.gradle.kts (the single source
-# of truth); this script queries it via gradle. MARKETING_VERSION is truncated
-# to 3 segments (CFBundleShortVersionString doesn't allow a 4th/hotfix segment
-# — the build number carries that ordering).
+# of truth); this script queries it via gradle.
 #
 # Usage: sync-ios-version.sh [--release]
 set -euo pipefail
@@ -36,12 +34,10 @@ if ! [[ "$CODE" =~ ^[0-9]+$ ]]; then
   echo "error: unexpected output from ./gradlew $CODE_TASK: '$CODE'" >&2
   exit 1
 fi
-MARKETING="$(cut -d. -f1-3 <<<"$NAME")"
-
 sed -i.bak \
-  -e "s/^MARKETING_VERSION=.*/MARKETING_VERSION=$MARKETING/" \
+  -e "s/^MARKETING_VERSION=.*/MARKETING_VERSION=$NAME/" \
   -e "s/^CURRENT_PROJECT_VERSION=.*/CURRENT_PROJECT_VERSION=$CODE/" \
   "$XCCONFIG"
 rm -f "$XCCONFIG.bak"
 
-echo "synced $XCCONFIG to MARKETING_VERSION=$MARKETING CURRENT_PROJECT_VERSION=$CODE"
+echo "synced $XCCONFIG to MARKETING_VERSION=$NAME CURRENT_PROJECT_VERSION=$CODE"

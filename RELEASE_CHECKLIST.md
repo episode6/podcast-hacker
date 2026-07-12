@@ -7,18 +7,19 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
 
 ### Versioning
 
-- `name` in `self.versions.toml` is the single source of truth: `MAJOR.MINOR.PATCH` plus
-  an optional 4th `HOTFIX` segment used only when hotfixing a shipped release (e.g.
-  `1.2.3.1`).
+- `name` in `self.versions.toml` is the single source of truth: `MAJOR.MINOR.PATCH`,
+  where the **patch segment is reserved for hotfixing shipped releases** — normal
+  releases always ship `X.Y.0`, and cutting a release branch bumps the minor.
 - The android versionCode / iOS build number is **derived** from the name — never set it
-  manually. Formula: concat `MAJOR | MINOR (2 digits) | PATCH (3 digits) | HOTFIX (2
-  digits)`, e.g. `1.2.3` → `10200300`, `1.2.3.4` → `10200304`. Newer versions always
-  produce bigger codes and hotfixes slot between patches, so older builds can never
-  override newer ones.
-- Limits: minor maxes out at 99, patch at 999, hotfix at 99, and major must stay >= 1
-  (jpackage rejects MAJOR==0 for dmg/msi). The major has no fixed max — the derived code
-  just has to stay within Google Play's versionCode cap of 2,100,000,000, which allows
-  majors up to 210 (`210.0.0` is the exact ceiling).
+  manually. Formula: concat `MAJOR | MINOR (4 digits) | PATCH (2 digits)`, e.g. `1.2.0`
+  → `1000200`, hotfix `1.2.3` → `1000203`. Newer versions always produce bigger codes
+  and hotfixes slot between minors, so older builds can never override newer ones.
+- Limits: minor maxes out at 9999, patch at 99, and major must stay >= 1 (jpackage
+  rejects MAJOR==0 for dmg/msi). The major has no fixed max — the derived code just has
+  to stay within Google Play's versionCode cap of 2,100,000,000, which allows majors up
+  to 2100 (`2100.0.0` is the exact ceiling). (Heads-up if we near it: Windows MSI caps
+  its ProductVersion minor at 255, so bump the major before minor 256 while we still
+  ship an msi.)
 - The formula lives in the root `build.gradle.kts` — the single source of truth. Release
   tooling queries it via `./gradlew -q printReleaseVersionCode` /
   `printSnapshotVersionCode` instead of reimplementing it.
@@ -26,7 +27,7 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
   build sets `BuildInfo.IS_SNAPSHOT = true` (generated into `shared` commonMain) except
   CI builds off a release tag (`GITHUB_REF=refs/tags/v*`). `main` always carries the
   *next* release's version, so the release branch inherits the correct version when cut.
-- Snapshot builds hardcode their versionCode to `100,000,000` (v10.0.0's derived code)
+- Snapshot builds hardcode their versionCode to `10,000,000` (v10.0.0's derived code)
   instead of using the formula: high enough that a snapshot installs over every prod
   build below v10 for the foreseeable future, low enough to leave schema wiggle room if
   a build with that code ever shipped by accident. (Consequence: installing a prod
@@ -35,9 +36,6 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
   number; CI swaps in the release-derived code on tag builds
   (`scripts/sync-ios-version.sh --release`) — that swap is workspace-only and must
   never be committed.
-- The desktop installers and iOS `MARKETING_VERSION` carry only the first 3 segments
-  (jpackage / `CFBundleShortVersionString` limitation); the derived code carries the
-  hotfix ordering.
 
 ### Cut new Release Branch
 
@@ -50,8 +48,10 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
 
 - Create 2 PRs
     - `[VERSION] Snapshot v<NEXT_VERSION>` points at `main`
-        - Bump `name` in `self.versions.toml` (VITAL). Only patch-increment; major/minor
-          bumps are an explicit human decision. The versionCode derives automatically.
+        - Bump `name` in `self.versions.toml` (VITAL). Only minor-increment, with patch
+          reset to 0 (e.g. `1.2.0` → `1.3.0`); major bumps are an explicit human
+          decision and the patch is reserved for hotfixes. The versionCode derives
+          automatically.
         - Run `scripts/sync-ios-version.sh` and commit the updated
           `iosApp/Configuration/Config.xcconfig`
         - Update `CHANGELOG.md`: add a new `### v<NEXT_VERSION> - Unreleased` section and
@@ -91,7 +91,7 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
   release branch and add a new release tag
 - All fixes (including hotfixes) should be applied to the `main` branch first whenever
   possible and cherry-picked onto the appropriate release-branch for a hotfix
-- A hotfix needs its own version bump PR on the release branch: bump the hotfix segment
-  of `name` (e.g. `1.2.3` → `1.2.3.1`, max `99`), run `scripts/sync-ios-version.sh`, and
+- A hotfix needs its own version bump PR on the release branch: bump the patch segment
+  of `name` (e.g. `1.2.0` → `1.2.1`, max `99`), run `scripts/sync-ios-version.sh`, and
   update `CHANGELOG.md`. No coordination with `main` is needed — the derived versionCodes
-  keep ordering (main's `1.2.4` always outranks any `1.2.3.x` hotfix)
+  keep ordering (main's `1.3.0` always outranks any `1.2.x` hotfix)

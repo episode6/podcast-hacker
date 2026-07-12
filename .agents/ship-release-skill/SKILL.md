@@ -12,7 +12,7 @@ description: >-
 
 ## Overview
 This skill guides the agent in shipping a release branch by creating and publishing a GitHub release pointing to the tip of the release branch. It ensures consistency by:
-1. Resolving the release version directly from `self.versions.toml` on the target release branch (never assuming the branch name matches the version name, as hotfixes are appended to existing release branches with a 4th/hotfix version segment). The release versionCode / iOS build number is derived from the name by gradle (`./gradlew -q printReleaseVersionCode`) — see the Versioning section of `RELEASE_CHECKLIST.md` for the formula.
+1. Resolving the release version directly from `self.versions.toml` on the target release branch (never assuming the branch name matches the version name, as hotfixes are appended to existing release branches by bumping the patch segment). The release versionCode / iOS build number is derived from the name by gradle (`./gradlew -q printReleaseVersionCode`) — see the Versioning section of `RELEASE_CHECKLIST.md` for the formula.
 2. Extracting release notes from the corresponding section in `CHANGELOG.md`.
 3. Publishing the GitHub release using the `gh` CLI with matching tag name and release name (format: `v<VERSION>`).
 4. The tag push triggers `.github/workflows/build-installers.yml`, which builds the deb/msi/dmg installers + a signed release APK and attaches them to the release created in step 3 (the iOS shard is best-effort and doesn't gate the release).
@@ -51,7 +51,7 @@ The skill uses the `./scripts/ship-release.py` script.
   "dry_run": false,
   "tag": "v1.0.0",
   "title": "v1.0.0",
-  "version_code": "10000000",
+  "version_code": "1000000",
   "branch": "release/v1.0.0",
   "url": "https://github.com/episode6/podcast-hacker/releases/tag/v1.0.0",
   "notes": "- Initial release: subscribe, download (ads cut) and play podcasts..."

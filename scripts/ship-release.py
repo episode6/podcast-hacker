@@ -75,11 +75,10 @@ def check_xcconfig_in_sync(version):
     marketing_version = marketing.group(1).strip() if marketing else None
     project_version = project.group(1).strip() if project else None
 
-    # MARKETING_VERSION carries only the first 3 segments (CFBundleShortVersionString
-    # doesn't allow a hotfix segment). The committed CURRENT_PROJECT_VERSION is always
-    # the snapshot code — CI swaps in the release code on tag builds (sync-ios-version.sh
-    # --release), so that swap must never be committed.
-    expected_marketing = ".".join(version.split(".")[:3])
+    # The committed CURRENT_PROJECT_VERSION is always the snapshot code — CI swaps in
+    # the release code on tag builds (sync-ios-version.sh --release), so that swap must
+    # never be committed.
+    expected_marketing = version
     expected_project = gradle_version_code("printSnapshotVersionCode")
     if marketing_version != expected_marketing or project_version != expected_project:
         print(
