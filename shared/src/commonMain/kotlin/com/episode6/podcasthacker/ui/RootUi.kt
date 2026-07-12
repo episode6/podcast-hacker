@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
@@ -23,10 +24,16 @@ import com.episode6.podcasthacker.ui.screens.GridScreen
 import com.episode6.podcasthacker.ui.screens.NowPlayingScreen
 import com.episode6.podcasthacker.ui.screens.PodcastDetailScreen
 import com.episode6.podcasthacker.ui.screens.RecentlyPlayedScreen
+import kotlinx.coroutines.flow.Flow
 
 @Composable
-internal fun RootUi() {
+internal fun RootUi(openNowPlayingRequests: Flow<Unit>) {
     val navController = rememberNavController()
+    LaunchedEffect(openNowPlayingRequests) {
+        openNowPlayingRequests.collect {
+            navController.navigate(NowPlayingRoute) { launchSingleTop = true }
+        }
+    }
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
