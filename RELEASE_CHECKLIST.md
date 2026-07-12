@@ -25,6 +25,13 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
   build sets `BuildInfo.IS_SNAPSHOT = true` (generated into `shared` commonMain) except
   CI builds off a release tag (`GITHUB_REF=refs/tags/v*`). `main` always carries the
   *next* release's version, so the release branch inherits the correct version when cut.
+- Snapshot builds hardcode their versionCode to `20,000,000` (v2.0.0's derived code)
+  instead of using the formula: high enough that a snapshot installs over every 1.x prod
+  build for the foreseeable future, low enough to leave schema wiggle room if a build
+  with that code ever shipped by accident. (Consequence: installing a prod 1.x build
+  over a snapshot requires an uninstall, and the hardcode must be revisited before
+  v2.0.0 ships. The committed iOS xcconfig always carries the release-derived build
+  number — it's a static file that can't switch per build.)
 - The desktop installers and iOS `MARKETING_VERSION` carry only the first 3 segments
   (jpackage / `CFBundleShortVersionString` limitation); the derived code carries the
   hotfix ordering.

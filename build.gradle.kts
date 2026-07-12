@@ -9,6 +9,10 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform) apply false
 }
 
+// snapshot unless CI is building from a release tag (GITHUB_REF=refs/tags/v*);
+// local and branch/PR builds are always snapshots
+val selfIsSnapshot: Boolean by extra(System.getenv("GITHUB_REF")?.startsWith("refs/tags/v") != true)
+
 // The version name in self.versions.toml is the single source of truth:
 // MAJOR.MINOR.PATCH plus an optional 4th HOTFIX segment used only when hotfixing a
 // shipped release. The android versionCode / iOS build number is derived from it by
@@ -18,6 +22,11 @@ plugins {
 // has to stay within Google Play's 2,100,000,000 versionCode cap, which allows majors
 // up to 210. scripts/version-code.py mirrors this formula for the iOS xcconfig sync +
 // release tooling; keep the two in sync.
+//
+// Snapshot builds instead hardcode 20,000,000 (v2.0.0's derived code): high enough to
+// install over every 1.x prod build for the foreseeable future, low enough to leave
+// plenty of schema wiggle room if a build with this code ever shipped by accident.
+val snapshotVersionCode = 20_000_000
 val selfVersionName: String = self.versions.name.get()
 val selfVersionCode: Int by extra(run {
     val segments = selfVersionName.split(".")
@@ -39,12 +48,9 @@ val selfVersionCode: Int by extra(run {
     require(code <= 2_100_000_000L) {
         "versionCode $code for '$selfVersionName' exceeds Google Play's 2,100,000,000 cap; the major version is too large"
     }
-    code.toInt()
+    // the name is validated on every build, but only release-tag builds carry its code
+    if (selfIsSnapshot) snapshotVersionCode else code.toInt()
 })
-
-// snapshot unless CI is building from a release tag (GITHUB_REF=refs/tags/v*);
-// local and branch/PR builds are always snapshots
-val selfIsSnapshot: Boolean by extra(System.getenv("GITHUB_REF")?.startsWith("refs/tags/v") != true)
 
 allprojects {
     configurations.all {

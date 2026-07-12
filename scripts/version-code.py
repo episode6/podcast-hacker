@@ -13,7 +13,9 @@ code just has to stay within Google Play's 2,100,000,000 versionCode cap, which
 allows majors up to 210.
 
 The root build.gradle.kts mirrors this formula for gradle builds; keep the two
-in sync.
+in sync. Note that snapshot builds (everything except CI release-tag builds)
+ignore the formula and hardcode versionCode 20,000,000 — see the root
+build.gradle.kts; this script always returns the release code for a name.
 
 Usage: version-code.py <version-name>
 """
