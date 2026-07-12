@@ -8,6 +8,7 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.isNotEnabled
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
@@ -263,6 +264,33 @@ class AppUiIntegrationTest {
         waitForExactlyOne(hasText("Unsubscribe"))
         onNodeWithText("Unsubscribe").performClick()
         waitForExactlyOne(hasText("No subscriptions yet"), timeoutMillis = 10_000)
+    }
+
+    // the opml menu tests only inspect the dropdown: clicking Import/Export would open
+    // a real (blocking) AWT FileDialog, which a headless test can't drive
+
+    @Test
+    fun gridOverflowMenu_noSubscriptions_offersImportButNotExport() = runComposeUiTest {
+        setContent { App(testGraph()) }
+
+        onNode(hasContentDescription("More options")).performClick()
+        waitForExactlyOne(hasText("Import OPML"))
+        onNode(hasText("Export OPML") and isNotEnabled()).assertExists() // nothing to export yet
+    }
+
+    @Test
+    fun gridOverflowMenu_withSubscriptions_offersExport() = runComposeUiTest {
+        setContent { App(testGraph()) }
+
+        onNodeWithText("Add Podcast", substring = true).performClick()
+        onNode(hasSetTextAction()).performTextInput(FEED_URL)
+        waitForExactlyOne(hasText("Subscribe to RSS url"))
+        onNodeWithText("Subscribe to RSS url").performClick()
+        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
+
+        onNode(hasContentDescription("More options")).performClick()
+        waitForExactlyOne(hasText("Export OPML") and isEnabled())
+        onNodeWithText("Import OPML").assertExists()
     }
 
     /**
