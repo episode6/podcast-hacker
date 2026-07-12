@@ -54,8 +54,7 @@ plain numeric version. The release branch therefore inherits the correct version
    gate the release)
 3. Verify the release: artifacts attached and carry the right version;
    `sudo apt install ./podcasthacker_<name>_amd64.deb` locally; sideload the APK
-   (`adb install`). Remember the dmg/msi versions are mapped `0.x.y → 1.x.y` (jpackage
-   rejects MAJOR==0 there) — the deb and APK carry the real version.
+   (`adb install`).
 
 ### Hotfixes
 

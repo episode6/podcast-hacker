@@ -48,17 +48,17 @@ The skill uses the `./scripts/ship-release.py` script.
 {
   "success": true,
   "dry_run": false,
-  "tag": "v0.0.1",
-  "title": "v0.0.1",
+  "tag": "v1.0.0",
+  "title": "v1.0.0",
   "version_code": "1",
-  "branch": "release/v0.0.1",
-  "url": "https://github.com/episode6/podcast-hacker/releases/tag/v0.0.1",
+  "branch": "release/v1.0.0",
+  "url": "https://github.com/episode6/podcast-hacker/releases/tag/v1.0.0",
   "notes": "- Initial release: subscribe, download (ads cut) and play podcasts..."
 }
 ```
 
 ## After Shipping
-- Watch the `build-installers.yml` run triggered by the new tag; when it finishes, verify the deb/msi/dmg + APK are attached to the release and carry the right version. Remember the dmg/msi versions are mapped `0.x.y → 1.x.y` (jpackage rejects MAJOR==0 there) — the deb and APK carry the real version.
+- Watch the `build-installers.yml` run triggered by the new tag; when it finishes, verify the deb/msi/dmg + APK are attached to the release and carry the right version.
 
 ## Common Mistakes
 1. **Shipping from a non-release branch**: `main` always carries a releasable-looking plain version in this repo (no `-SNAPSHOT` markers), so the script refuses to ship unless the target is a `release/*` branch.
