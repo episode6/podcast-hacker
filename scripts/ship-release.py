@@ -32,22 +32,24 @@ def get_version():
     with open(version_file, "r") as f:
         content = f.read()
 
-    # name is the human version, code is the android versionCode / iOS build number;
-    # both live in self.versions.toml (the version source of truth for all platforms)
+    # name is the single version source of truth; the android versionCode / iOS
+    # build number is derived from it via scripts/version-code.py
     name_match = re.search(r'name\s*=\s*"([^"]+)"', content)
-    code_match = re.search(r'code\s*=\s*"([^"]+)"', content)
-    if not name_match or not code_match:
-        print("Error: Could not find name/code version pattern in self.versions.toml", file=sys.stderr)
+    if not name_match:
+        print("Error: Could not find name version pattern in self.versions.toml", file=sys.stderr)
         sys.exit(1)
 
     version = name_match.group(1)
-    code = code_match.group(1)
-    if version.endswith("-SNAPSHOT"):
-        print(f"Error: Version '{version}' ends with -SNAPSHOT. This repo uses plain versions; resolve/bump first.", file=sys.stderr)
+    result = subprocess.run(
+        [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "version-code.py"), version],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+    if result.returncode != 0:
+        print(f"Error deriving versionCode from '{version}': {result.stderr.strip()}", file=sys.stderr)
         sys.exit(1)
-    if not code.isdigit() or int(code) < 1:
-        print(f"Error: versionCode '{code}' in self.versions.toml is not a positive integer.", file=sys.stderr)
-        sys.exit(1)
+    code = result.stdout.strip()
 
     return version, code
 
@@ -64,12 +66,15 @@ def check_xcconfig_in_sync(version, code):
     marketing_version = marketing.group(1).strip() if marketing else None
     project_version = project.group(1).strip() if project else None
 
-    if marketing_version != version or project_version != code:
+    # MARKETING_VERSION carries only the first 3 segments (CFBundleShortVersionString
+    # doesn't allow a hotfix segment); the derived build number carries the ordering
+    expected_marketing = ".".join(version.split(".")[:3])
+    if marketing_version != expected_marketing or project_version != code:
         print(
             f"Error: {XCCONFIG_PATH} (MARKETING_VERSION={marketing_version}, "
             f"CURRENT_PROJECT_VERSION={project_version}) is out of sync with "
-            f"self.versions.toml (name={version}, code={code}). "
-            "Run scripts/sync-ios-version.sh and commit the result.",
+            f"self.versions.toml (name={version}, expected MARKETING_VERSION={expected_marketing}, "
+            f"derived code={code}). Run scripts/sync-ios-version.sh and commit the result.",
             file=sys.stderr
         )
         sys.exit(1)

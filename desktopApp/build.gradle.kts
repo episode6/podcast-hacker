@@ -23,7 +23,9 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "PodcastHacker"
-            packageVersion = self.versions.name.get()
+            // jpackage versions are MAJOR.MINOR.PATCH only, so a hotfix release's 4th
+            // segment is dropped here; the derived versionCode/build number carries it
+            packageVersion = self.versions.name.get().split(".").take(3).joinToString(".")
             // per-OS libvlc staged by scripts/fetch-libvlc.sh lands in the app image
             // (gitignored; dev builds without it fall back to a system VLC)
             appResourcesRootDir.set(project.layout.projectDirectory.dir("resources"))

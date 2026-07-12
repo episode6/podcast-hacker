@@ -9,7 +9,7 @@
   "tags": ["release", "git", "github", "gh-cli"],
   "required_actions": [
     "Pull latest changes from origin to ensure local branch is up-to-date",
-    "Verify name AND code were bumped together and Config.xcconfig is in sync",
+    "Verify Config.xcconfig is in sync with the name / derived versionCode",
     "Parse version from self.versions.toml on the release branch",
     "Extract release notes from CHANGELOG.md",
     "Publish GitHub release using gh CLI pointing to the tip of the release branch",

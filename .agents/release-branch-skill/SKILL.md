@@ -5,9 +5,10 @@ description: >-
   RELEASE_CHECKLIST.md. Use whenever the user asks to "cut a release branch"
   (or to cut/create/start a new release branch): verifies main is green,
   creates release/v<VERSION>, and opens the snapshot-on-main and
-  release-on-branch version-bump PRs that update self.versions.toml (name AND
-  code together), iosApp/Configuration/Config.xcconfig (via
-  scripts/sync-ios-version.sh) and CHANGELOG.md.
+  release-on-branch version-bump PRs that update self.versions.toml (the
+  versionCode derives from the version name automatically),
+  iosApp/Configuration/Config.xcconfig (via scripts/sync-ios-version.sh) and
+  CHANGELOG.md.
 ---
 
 # Cut Release Branch Skill
@@ -34,7 +35,7 @@ Create two separate Pull Requests.
 - **Target Branch:** `main`
 - **PR Title:** `[VERSION] Snapshot v<NEXT_VERSION>`
 - **Changes:**
-    - **(VITAL)** Update `self.versions.toml`: bump BOTH `name` and `code` together — `code` is the android versionCode / iOS build number and must move with every `name` bump (increment it by 1). When computing `<NEXT_VERSION>`, increment **only the patch version** (e.g., `1.2.0` → `1.2.1`). Never automatically increment the major or minor version — those bumps require explicit human decision.
+    - **(VITAL)** Update `name` in `self.versions.toml`. When computing `<NEXT_VERSION>`, increment **only the patch version** (e.g., `1.2.0` → `1.2.1`). Never automatically increment the major or minor version — those bumps require explicit human decision. The android versionCode / iOS build number derives from the name automatically (see the Versioning section of `RELEASE_CHECKLIST.md`); never set it manually.
     - Run `scripts/sync-ios-version.sh` and commit the updated `iosApp/Configuration/Config.xcconfig`.
     - **(VITAL)** Update `CHANGELOG.md` to include a new `### v<NEXT_VERSION> - Unreleased` section, AND update the version being released with its release date.
 
@@ -43,7 +44,7 @@ Create two separate Pull Requests.
 - **PR Title:** `[VERSION] Release v<VERSION>`
 - **Changes:**
     - **(VITAL)** Update `CHANGELOG.md` with the release date on the `v<VERSION>` section. Ensure all changes since the last release are documented.
-    - Verify `name`/`code` in `self.versions.toml` and `Config.xcconfig` are already consistent (no version change expected — main carried the right version at cut time).
+    - Verify `name` in `self.versions.toml` and `Config.xcconfig` are already consistent (no version change expected — main carried the right version at cut time).
 
 ### 4. Create Pull Requests
 - Use `gh pr create` (as drafts, per repo convention) or the GitHub UI to create the Pull Requests for the version bump branches created in step 3.

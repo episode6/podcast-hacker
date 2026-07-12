@@ -5,9 +5,27 @@ a GitHub release via CI (`build-installers.yml`) instead of publishing to sonaty
 Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill`,
 `ship-release-skill`, `update-docs-skill`).
 
-**No `-SNAPSHOT` versions in this repo:** the version name feeds jpackage directly and
-installers build on every push to `main`, so `main` always carries the *next* release's
-plain numeric version. The release branch therefore inherits the correct version when cut.
+### Versioning
+
+- `name` in `self.versions.toml` is the single source of truth: `MAJOR.MINOR.PATCH` plus
+  an optional 4th `HOTFIX` segment used only when hotfixing a shipped release (e.g.
+  `1.2.3.1`).
+- The android versionCode / iOS build number is **derived** from the name — never set it
+  manually. Formula: concat `MAJOR | MINOR (3 digits) | PATCH (3 digits) | HOTFIX (2
+  digits)`, e.g. `1.2.3` → `100200300`, `1.2.3.4` → `100200304`. Newer versions always
+  produce bigger codes and hotfixes slot between patches, so older builds can never
+  override newer ones.
+- Limits: minor/patch max out at 999, hotfix at 99; major must stay >= 1 (jpackage
+  rejects MAJOR==0 for dmg/msi) and <= 21 (android's versionCode cap of 2,100,000,000).
+- The formula lives in the root `build.gradle.kts` (gradle builds) and
+  `scripts/version-code.py` (iOS sync + release tooling); keep the two in sync.
+- **No `-SNAPSHOT` suffixes** (jpackage requires plain numeric versions). Instead every
+  build sets `BuildInfo.IS_SNAPSHOT = true` (generated into `shared` commonMain) except
+  CI builds off a release tag (`GITHUB_REF=refs/tags/v*`). `main` always carries the
+  *next* release's version, so the release branch inherits the correct version when cut.
+- The desktop installers and iOS `MARKETING_VERSION` carry only the first 3 segments
+  (jpackage / `CFBundleShortVersionString` limitation); the derived code carries the
+  hotfix ordering.
 
 ### Cut new Release Branch
 
@@ -20,9 +38,8 @@ plain numeric version. The release branch therefore inherits the correct version
 
 - Create 2 PRs
     - `[VERSION] Snapshot v<NEXT_VERSION>` points at `main`
-        - Bump `name` AND `code` together in `self.versions.toml` (VITAL — `code` is the
-          android versionCode / iOS build number and must move with every `name` bump).
-          Only patch-increment `name`; major/minor bumps are an explicit human decision.
+        - Bump `name` in `self.versions.toml` (VITAL). Only patch-increment; major/minor
+          bumps are an explicit human decision. The versionCode derives automatically.
         - Run `scripts/sync-ios-version.sh` and commit the updated
           `iosApp/Configuration/Config.xcconfig`
         - Update `CHANGELOG.md`: add a new `### v<NEXT_VERSION> - Unreleased` section and
@@ -30,7 +47,7 @@ plain numeric version. The release branch therefore inherits the correct version
     - `[VERSION] Release v<VERSION>` points at new release branch
         - Stamp the release date on the `v<VERSION>` section of `CHANGELOG.md` and ensure
           all changes since the last release are documented
-        - Verify `name`/`code` in `self.versions.toml` and `Config.xcconfig` are already
+        - Verify `name` in `self.versions.toml` and `Config.xcconfig` are already
           consistent (no version change expected — main carried the right version at cut
           time)
 
@@ -62,8 +79,7 @@ plain numeric version. The release branch therefore inherits the correct version
   release branch and add a new release tag
 - All fixes (including hotfixes) should be applied to the `main` branch first whenever
   possible and cherry-picked onto the appropriate release-branch for a hotfix
-- A hotfix needs its own version bump PR on the release branch (`name` + `code` +
-  xcconfig + `CHANGELOG.md`). The hotfix claims the next unreleased version (typically
-  the one `main` currently carries) — bump `main` past it first via a normal
-  `[VERSION] Snapshot` PR so `main`'s `name`/`code` always stay ahead of every shipped
-  release
+- A hotfix needs its own version bump PR on the release branch: bump the hotfix segment
+  of `name` (e.g. `1.2.3` → `1.2.3.1`, max `99`), run `scripts/sync-ios-version.sh`, and
+  update `CHANGELOG.md`. No coordination with `main` is needed — the derived versionCodes
+  keep ordering (main's `1.2.4` always outranks any `1.2.3.x` hotfix)

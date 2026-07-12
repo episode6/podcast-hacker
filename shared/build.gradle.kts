@@ -108,6 +108,42 @@ kotlin {
     }
 }
 
+// BuildInfo.kt is generated into commonMain so every target (and the upcoming
+// version/snapshot UI) can read the app version + snapshot flag at runtime
+val selfVersionCode: Int by rootProject.extra
+val selfIsSnapshot: Boolean by rootProject.extra
+val generateBuildInfo = tasks.register("generateBuildInfo") {
+    val versionName = self.versions.name.get()
+    val versionCode = selfVersionCode
+    val isSnapshot = selfIsSnapshot
+    val outDir = layout.buildDirectory.dir("generated/buildInfo/kotlin")
+    inputs.property("versionName", versionName)
+    inputs.property("versionCode", versionCode)
+    inputs.property("isSnapshot", isSnapshot)
+    outputs.dir(outDir)
+    doLast {
+        val outFile = outDir.get().file("com/episode6/podcasthacker/BuildInfo.kt").asFile
+        outFile.parentFile.mkdirs()
+        outFile.writeText(
+            """
+            |package com.episode6.podcasthacker
+            |
+            |/** Generated from self.versions.toml at build time; do not edit. */
+            |object BuildInfo {
+            |    const val VERSION_NAME: String = "$versionName"
+            |    const val VERSION_CODE: Int = $versionCode
+            |
+            |    /** False only when CI builds from a release tag; true everywhere else, including local builds. */
+            |    const val IS_SNAPSHOT: Boolean = $isSnapshot
+            |}
+            |""".trimMargin()
+        )
+    }
+}
+kotlin.sourceSets.named("commonMain") {
+    kotlin.srcDir(generateBuildInfo)
+}
+
 dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)
 
