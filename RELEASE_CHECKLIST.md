@@ -40,6 +40,14 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
   number; CI swaps in the release-derived code on tag builds
   (`scripts/sync-ios-version.sh --release`) — that swap is workspace-only and must
   never be committed.
+- **Snapshot builds carry their own app identity** so they install side-by-side with
+  release builds instead of overwriting them: the display name gains a ` (SNAPSHOT)`
+  suffix and the android applicationId / macOS bundle id becomes
+  `com.episode6.snapshots.podcasthacker` (see `selfAppName` / `selfAppId` in the root
+  `build.gradle.kts`; the desktop jpackage packageName and jvm data dirs use
+  `PodcastHacker-SNAPSHOT`). The committed iOS xcconfig likewise carries the snapshot
+  bundle id + display name, swapped to the release identity by the same
+  `sync-ios-version.sh --release` workspace-only step on tag builds.
 
 ### Cut new Release Branch
 

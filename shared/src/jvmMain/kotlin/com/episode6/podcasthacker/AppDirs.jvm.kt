@@ -2,7 +2,9 @@ package com.episode6.podcasthacker
 
 import okio.Path.Companion.toPath
 
-private const val APP_DIR_NAME = "PodcastHacker"
+// mirrors the jpackage packageName split in desktopApp/build.gradle.kts, so a
+// side-by-side snapshot install keeps its data separate from the released app's
+private val APP_DIR_NAME = if (BuildInfo.IS_SNAPSHOT) "PodcastHacker-SNAPSHOT" else "PodcastHacker"
 
 actual fun PlatformContext.appDirs(): AppDirs {
     val os = System.getProperty("os.name").lowercase()

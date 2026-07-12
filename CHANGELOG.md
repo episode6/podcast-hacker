@@ -13,6 +13,8 @@
   Podcast tiles stay at the bottom).
 - Replace the "← Back" text button with an icon button, and fix a stale (dead) back
   button lingering on the podcast grid after returning from another screen.
-- Android snapshot builds now install side-by-side with the released app instead of
-  overwriting it: they use the applicationId `com.episode6.snapshots.podcasthacker`
-  and are labeled "PodcastHacker (SNAPSHOT)".
+- Snapshot builds now install side-by-side with the released app on every platform
+  instead of overwriting it: they're labeled "PodcastHacker (SNAPSHOT)" and use a
+  distinct app id (android applicationId / iOS + macOS bundle id
+  `com.episode6.snapshots.podcasthacker`); desktop installers and jvm data dirs use
+  `PodcastHacker-SNAPSHOT`.
