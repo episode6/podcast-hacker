@@ -11,6 +11,9 @@ kotlin {
         jvmTarget = JvmTarget.JVM_11
     }
 }
+
+// derived from self.versions.name in the root build script (see the formula there)
+val selfVersionCode: Int by rootProject.extra
 dependencies {
     implementation(projects.shared)
 
@@ -40,7 +43,7 @@ android {
         applicationId = "com.episode6.podcasthacker"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = self.versions.code.get().toInt()
+        versionCode = selfVersionCode
         versionName = self.versions.name.get()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
