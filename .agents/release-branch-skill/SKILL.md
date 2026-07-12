@@ -35,7 +35,7 @@ Create two separate Pull Requests.
 - **Target Branch:** `main`
 - **PR Title:** `[VERSION] Snapshot v<NEXT_VERSION>`
 - **Changes:**
-    - **(VITAL)** Update `name` in `self.versions.toml`. When computing `<NEXT_VERSION>`, increment **only the minor version**, keeping patch at 0 (e.g., `1.2.0` → `1.3.0`). Never automatically increment the major version — that bump requires explicit human decision — and never bump the patch here: it is reserved for hotfixes on release branches. The android versionCode / iOS build number derives from the name automatically (see the Versioning section of `RELEASE_CHECKLIST.md`); never set it manually.
+    - **(VITAL)** Update `name` in `self.versions.toml`. When computing `<NEXT_VERSION>`, increment **the patch version by 10** (e.g., `1.2.30` → `1.2.40`). Never automatically increment the major or minor version — those bumps require explicit human decision — and never hand out the 9 patch values between releases: they're reserved for hotfixing the release below them. The android versionCode / iOS build number derives from the name automatically (see the Versioning section of `RELEASE_CHECKLIST.md`); never set it manually.
     - Run `scripts/sync-ios-version.sh` and commit the updated `iosApp/Configuration/Config.xcconfig`.
     - **(VITAL)** Update `CHANGELOG.md` to include a new `### v<NEXT_VERSION> - Unreleased` section, AND update the version being released with its release date.
 
