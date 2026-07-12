@@ -17,6 +17,8 @@ This skill automates and describes the process of cutting a new release branch a
 
 **No `-SNAPSHOT` versions in this repo** (unlike the episode6 library repos): the version name feeds jpackage directly and installers build on every push to `main`, so `main` always carries the *next* release's plain numeric version. The release branch therefore inherits the correct version when cut — the "release" PR only finalizes the changelog.
 
+**`-SNAPSHOT` *dependencies* are a separate concern**: it's fine for a PR to point a dependency in `gradle/libs.versions.toml` at a `-SNAPSHOT` library version while testing unreleased library changes. The `no-snapshot-deps.yml` CI workflow fails any PR whose `libs.versions.toml` still contains `-SNAPSHOT` — the guard exists to keep snapshot dependencies from *merging*, not to forbid them during development. Swap in the released version before merge (and certainly before cutting a release branch).
+
 ## Steps to Execute
 
 ### 1. Pre-check
