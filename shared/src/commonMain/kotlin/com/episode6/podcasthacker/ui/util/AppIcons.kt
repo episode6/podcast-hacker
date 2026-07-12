@@ -13,6 +13,23 @@ import androidx.compose.ui.unit.dp
  * here from the standard 24x24 Material path data instead of pulling a dependency.
  */
 internal object AppIcons {
+    /** Material "arrow_back" (filled). */
+    val ArrowBack: ImageVector by lazy {
+        materialIcon("ArrowBack") {
+            moveTo(20f, 11f)
+            horizontalLineTo(7.83f)
+            lineToRelative(5.59f, -5.59f)
+            lineTo(12f, 4f)
+            lineToRelative(-8f, 8f)
+            lineToRelative(8f, 8f)
+            lineToRelative(1.41f, -1.41f)
+            lineTo(7.83f, 13f)
+            horizontalLineTo(20f)
+            verticalLineToRelative(-2f)
+            close()
+        }
+    }
+
     /** Material "play_arrow" (filled). */
     val Play: ImageVector by lazy {
         materialIcon("Play") {

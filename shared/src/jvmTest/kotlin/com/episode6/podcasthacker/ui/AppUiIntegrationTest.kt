@@ -20,6 +20,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.test.waitUntilDoesNotExist
 import androidx.compose.ui.test.waitUntilExactlyOneExists
 import com.episode6.podcasthacker.App
 import com.episode6.podcasthacker.AppDirs
@@ -186,7 +187,7 @@ class AppUiIntegrationTest {
 
         // back to episode detail: the mini player bar carries the paused state; tapping
         // it returns to NowPlaying, where Stop clears playback + hides the bar
-        onNodeWithText("← Back").performClick()
+        onNode(hasContentDescription("Back")).performClick()
         waitForExactlyOne(pausedOnMiniBar, timeoutMillis = 10_000)
         onNodeWithTag("miniPlayerBar").performClick()
         waitForExactlyOne(hasText("Stop"), timeoutMillis = 10_000)
@@ -195,7 +196,7 @@ class AppUiIntegrationTest {
         waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 10_000)
 
         // the episode row now carries the downloaded marker
-        onNodeWithText("← Back").performClick()
+        onNode(hasContentDescription("Back")).performClick()
         waitForExactlyOne(hasText("downloaded", substring = true))
 
         // delete resets to downloadable
@@ -212,7 +213,7 @@ class AppUiIntegrationTest {
         // empty state before anything has played
         onNodeWithText("Recently Played", substring = true).performClick()
         waitForExactlyOne(hasText("Nothing played yet"))
-        onNodeWithText("← Back").performClick()
+        onNode(hasContentDescription("Back")).performClick()
 
         // subscribe, download an episode, and play it
         onNodeWithText("Add Podcast", substring = true).performClick()
@@ -233,9 +234,9 @@ class AppUiIntegrationTest {
         waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 10_000)
 
         // back on the grid, Recently Played now lists the episode with live actions
-        onNodeWithText("← Back").performClick()
+        onNode(hasContentDescription("Back")).performClick()
         waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
-        onNodeWithText("← Back").performClick()
+        onNode(hasContentDescription("Back")).performClick()
         waitForExactlyOne(hasText("Recently Played", substring = true), timeoutMillis = 10_000)
         onNodeWithText("Recently Played", substring = true).performClick()
         waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
@@ -264,6 +265,23 @@ class AppUiIntegrationTest {
         waitForExactlyOne(hasText("Unsubscribe"))
         onNodeWithText("Unsubscribe").performClick()
         waitForExactlyOne(hasText("No subscriptions yet"), timeoutMillis = 10_000)
+    }
+
+    /** Regression: the root grid used to keep a (dead) back button after popping back
+     * to it — previousBackStackEntry was read mid-pop, while the popped entry was still
+     * on the stack, and nothing ever re-read it. */
+    @Test
+    fun backButton_disappearsAfterPoppingBackToGrid() = runComposeUiTest {
+        setContent { App(testGraph()) }
+
+        // the root grid never shows a back button
+        onNode(hasContentDescription("Back")).assertDoesNotExist()
+
+        onNodeWithText("Recently Played", substring = true).performClick()
+        waitForExactlyOne(hasText("Nothing played yet"))
+        onNode(hasContentDescription("Back")).performClick()
+        waitForExactlyOne(hasText("No subscriptions yet"))
+        waitUntilDoesNotExist(hasContentDescription("Back"), timeoutMillis = 10_000)
     }
 
     // the import/export menu tests never click Import or a format item: that would
