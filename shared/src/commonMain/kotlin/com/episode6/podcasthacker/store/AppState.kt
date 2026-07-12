@@ -5,6 +5,7 @@ import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.data.model.Podcast
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 data class AppState(
     val nowPlaying: NowPlayingState? = null,
@@ -19,6 +20,15 @@ data class AppState(
 ) {
     fun episode(guid: String): Episode? =
         episodesByFeed.values.firstNotNullOfOrNull { list -> list.firstOrNull { it.guid == guid } }
+
+    /** Subscriptions for the grid: freshest episode release first. Feeds with no loaded
+     * episodes (or none carrying a pubDate) sort last; the sort is stable, so ties keep
+     * their [subscriptions] (db) order. */
+    fun subscriptionsByLatestEpisode(): List<Podcast> =
+        subscriptions.sortedByDescending { podcast ->
+            episodesByFeed[podcast.feedUrl].orEmpty().mapNotNull { it.pubDate }.maxOrNull()
+                ?: Instant.DISTANT_PAST
+        }
 }
 
 sealed interface EpisodeDownloadStatus {

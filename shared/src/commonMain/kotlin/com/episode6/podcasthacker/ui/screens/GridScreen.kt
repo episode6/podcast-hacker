@@ -62,7 +62,9 @@ import com.episode6.podcasthacker.ui.util.stateOf
 @Composable
 internal fun GridScreen(navController: NavController) {
     val store = LocalAppGraph.current.appStore
-    val subscriptions by store.stateOf { subscriptions }
+    // freshest release first; the Recently Played / Add Podcast label tiles are
+    // appended after the podcast items, so they always stay at the bottom
+    val subscriptions by store.stateOf { subscriptionsByLatestEpisode() }
     val isSyncing by store.stateOf { feedSync.isSyncing }
 
     ScreenScaffold(
