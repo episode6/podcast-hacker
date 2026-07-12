@@ -150,6 +150,38 @@ kotlin.sourceSets.named("commonMain") {
     kotlin.srcDir(generateBuildInfo)
 }
 
+// LicenseNotices.kt embeds THIRD_PARTY_LICENSES.md so the in-app licenses screen always
+// shows the same document the repo ships
+val generateLicenseNotices = tasks.register("generateLicenseNotices") {
+    val noticesFile = rootProject.layout.projectDirectory.file("THIRD_PARTY_LICENSES.md")
+    val outDir = layout.buildDirectory.dir("generated/licenseNotices/kotlin")
+    inputs.file(noticesFile)
+    outputs.dir(outDir)
+    doLast {
+        val escaped = noticesFile.asFile.readText()
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("$", "\\$")
+            .replace("\r", "")
+            .replace("\n", "\\n")
+        val outFile = outDir.get().file("com/episode6/podcasthacker/LicenseNotices.kt").asFile
+        outFile.parentFile.mkdirs()
+        outFile.writeText(
+            """
+            |package com.episode6.podcasthacker
+            |
+            |/** Generated from THIRD_PARTY_LICENSES.md at build time; do not edit. */
+            |object LicenseNotices {
+            |    const val MARKDOWN: String = "$escaped"
+            |}
+            |""".trimMargin()
+        )
+    }
+}
+kotlin.sourceSets.named("commonMain") {
+    kotlin.srcDir(generateLicenseNotices)
+}
+
 dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)
 
