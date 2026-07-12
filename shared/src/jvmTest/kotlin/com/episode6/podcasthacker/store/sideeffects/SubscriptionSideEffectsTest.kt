@@ -8,6 +8,7 @@ import com.episode6.podcasthacker.data.repo.FeedRepository
 import com.episode6.podcasthacker.data.repo.SubscriptionRepository
 import com.episode6.podcasthacker.store.AppState
 import com.episode6.podcasthacker.store.FeedSyncState
+import com.episode6.podcasthacker.store.RefreshAllFeeds
 import com.episode6.podcasthacker.store.RefreshFeed
 import com.episode6.podcasthacker.store.SetFeedSyncError
 import com.episode6.podcasthacker.store.SetFeedSyncing
@@ -142,6 +143,58 @@ class SubscriptionSideEffectsTest {
 
         assertThat(actions).isEmpty()
         coVerify(exactly = 0) { repo.sync(any()) }
+    }
+
+    @Test
+    fun refreshAllFeeds_syncsEverySubscription() = runTest {
+        val otherFeed = "https://example.com/other.xml"
+        val state = AppState(
+            subscriptions = listOf(
+                Podcast(feedUrl = feedUrl, title = "One"),
+                Podcast(feedUrl = otherFeed, title = "Two"),
+            ),
+        )
+        val repo = mockk<FeedRepository> {
+            coEvery { sync(any()) } returns Unit
+        }
+
+        val actions = sideEffects.refreshAllFeeds(repo).output(RefreshAllFeeds, state = state).toList()
+
+        // the per-feed syncs run concurrently, so only per-feed ordering is guaranteed
+        assertThat(actions.filter { (it as SetFeedSyncing).feedUrl == feedUrl }).containsExactly(
+            SetFeedSyncing(feedUrl, true),
+            SetFeedSyncing(feedUrl, false),
+        )
+        assertThat(actions.filter { (it as SetFeedSyncing).feedUrl == otherFeed }).containsExactly(
+            SetFeedSyncing(otherFeed, true),
+            SetFeedSyncing(otherFeed, false),
+        )
+        coVerify(exactly = 1) { repo.sync(feedUrl) }
+        coVerify(exactly = 1) { repo.sync(otherFeed) }
+    }
+
+    @Test
+    fun refreshAllFeeds_skipsFeedsAlreadySyncing() = runTest {
+        val otherFeed = "https://example.com/other.xml"
+        val state = AppState(
+            subscriptions = listOf(
+                Podcast(feedUrl = feedUrl, title = "One"),
+                Podcast(feedUrl = otherFeed, title = "Two"),
+            ),
+            feedSync = FeedSyncState(syncing = setOf(feedUrl)),
+        )
+        val repo = mockk<FeedRepository> {
+            coEvery { sync(any()) } returns Unit
+        }
+
+        val actions = sideEffects.refreshAllFeeds(repo).output(RefreshAllFeeds, state = state).toList()
+
+        assertThat(actions).containsExactly(
+            SetFeedSyncing(otherFeed, true),
+            SetFeedSyncing(otherFeed, false),
+        )
+        coVerify(exactly = 0) { repo.sync(feedUrl) }
+        coVerify(exactly = 1) { repo.sync(otherFeed) }
     }
 
     private fun SideEffect<AppState>.output(vararg input: Action, state: AppState = AppState()): Flow<Action> {

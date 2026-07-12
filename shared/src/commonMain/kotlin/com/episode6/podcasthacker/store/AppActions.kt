@@ -39,6 +39,10 @@ sealed interface AsyncAction : Action
 data class SubscribeToPodcast(val feedUrl: String) : AsyncAction
 data class UnsubscribeFromPodcast(val feedUrl: String) : AsyncAction
 data class RefreshFeed(val feedUrl: String) : AsyncAction
+
+/** Grid-screen refresh: syncs every subscribed feed in parallel, each skipped if
+ * already mid-sync (same rule as [RefreshFeed]). */
+data object RefreshAllFeeds : AsyncAction
 data class DownloadEpisode(val episodeGuid: String) : AsyncAction
 data class DeleteDownload(val episodeGuid: String) : AsyncAction
 data class PlayEpisode(val episodeGuid: String) : AsyncAction
