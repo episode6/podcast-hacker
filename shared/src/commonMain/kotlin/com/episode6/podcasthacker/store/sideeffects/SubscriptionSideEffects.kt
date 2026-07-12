@@ -94,8 +94,10 @@ interface SubscriptionSideEffects {
         }
 }
 
-/** Brackets [block] with syncing-state actions, emitting an error action on failure. */
-private suspend fun FlowCollector<Action>.syncingFeed(
+/** Brackets [block] with syncing-state actions, emitting an error action on failure.
+ * Completes normally either way, so callers can also use it as a "finished, success or
+ * not" signal (see LibraryImportSideEffects). */
+internal suspend fun FlowCollector<Action>.syncingFeed(
     feedUrl: String,
     errorPrefix: String,
     block: suspend () -> Unit,

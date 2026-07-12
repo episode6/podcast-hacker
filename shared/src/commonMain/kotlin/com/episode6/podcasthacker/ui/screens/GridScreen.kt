@@ -42,8 +42,7 @@ import com.episode6.podcasthacker.data.opml.OpmlFeed
 import com.episode6.podcasthacker.data.opml.opmlDocument
 import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.AppStore
-import com.episode6.podcasthacker.store.ImportEpisodeProgress
-import com.episode6.podcasthacker.store.SubscribeToPodcast
+import com.episode6.podcasthacker.store.ImportLibrary
 import com.episode6.podcasthacker.store.UnsubscribeFromPodcast
 import com.episode6.podcasthacker.ui.nav.AddPodcastRoute
 import com.episode6.podcasthacker.ui.nav.PodcastDetailRoute
@@ -105,23 +104,21 @@ internal fun GridScreen(navController: NavController) {
 }
 
 /**
- * Overflow (3-dots) menu with library import/export. Import opens one picker and
- * sniffs the chosen file — the app's json backup or an OPML subscription list —
- * subscribing to any not-yet-subscribed feeds (categories flattened) and restoring
- * any listening state the file carries (applied as the freshly subscribed feeds
- * sync; see ImportEpisodeProgress). Export offers a format submenu: OPML for interop
- * with other podcast apps, json for the full library (subscriptions + progress);
- * both disabled with nothing to export. Hidden on platforms without file dialogs.
+ * Overflow (3-dots) menu with library import/export. Import opens one picker, sniffs
+ * the chosen file — the app's json backup or an OPML subscription list — and hands it
+ * to [ImportLibrary], which subscribes to any not-yet-subscribed feeds (categories
+ * flattened) and then restores any listening state the file carries. Export offers a
+ * format submenu: OPML for interop with other podcast apps, json for the full library
+ * (subscriptions + progress); both disabled with nothing to export. Hidden on
+ * platforms without file dialogs.
  */
 @Composable
 private fun OverflowMenu(store: AppStore) {
     val importFile = rememberFileImportLauncher(title = "Import") { text ->
         val backup = parseLibraryImport(text)
-        val subscribed = store.state.subscriptions.map { it.feedUrl }.toSet()
-        backup.podcasts
-            .filter { it.feedUrl !in subscribed }
-            .forEach { store.dispatch(SubscribeToPodcast(it.feedUrl)) }
-        if (backup.episodes.isNotEmpty()) store.dispatch(ImportEpisodeProgress(backup.episodes))
+        if (backup.podcasts.isNotEmpty() || backup.episodes.isNotEmpty()) {
+            store.dispatch(ImportLibrary(backup))
+        }
     }
     val exportOpml = rememberFileExportLauncher(
         title = "Export OPML",
