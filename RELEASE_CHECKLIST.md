@@ -11,14 +11,14 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
   an optional 4th `HOTFIX` segment used only when hotfixing a shipped release (e.g.
   `1.2.3.1`).
 - The android versionCode / iOS build number is **derived** from the name — never set it
-  manually. Formula: concat `MAJOR | MINOR (3 digits) | PATCH (3 digits) | HOTFIX (1
-  digit)`, e.g. `1.2.3` → `10020030`, `1.2.3.4` → `10020034`. Newer versions always
+  manually. Formula: concat `MAJOR | MINOR (2 digits) | PATCH (3 digits) | HOTFIX (2
+  digits)`, e.g. `1.2.3` → `10200300`, `1.2.3.4` → `10200304`. Newer versions always
   produce bigger codes and hotfixes slot between patches, so older builds can never
   override newer ones.
-- Limits: minor/patch max out at 999, hotfix at 9, and major must stay >= 1 (jpackage
-  rejects MAJOR==0 for dmg/msi). The major has no fixed max — the derived code just has
-  to fit a 32-bit int, which allows majors up to 214 (`214.748.364.7` is the exact
-  ceiling).
+- Limits: minor maxes out at 99, patch at 999, hotfix at 99, and major must stay >= 1
+  (jpackage rejects MAJOR==0 for dmg/msi). The major has no fixed max — the derived code
+  just has to stay within Google Play's versionCode cap of 2,100,000,000, which allows
+  majors up to 210 (`210.0.0` is the exact ceiling).
 - The formula lives in the root `build.gradle.kts` (gradle builds) and
   `scripts/version-code.py` (iOS sync + release tooling); keep the two in sync.
 - **No `-SNAPSHOT` suffixes** (jpackage requires plain numeric versions). Instead every
@@ -82,6 +82,6 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
 - All fixes (including hotfixes) should be applied to the `main` branch first whenever
   possible and cherry-picked onto the appropriate release-branch for a hotfix
 - A hotfix needs its own version bump PR on the release branch: bump the hotfix segment
-  of `name` (e.g. `1.2.3` → `1.2.3.1`, max `9`), run `scripts/sync-ios-version.sh`, and
+  of `name` (e.g. `1.2.3` → `1.2.3.1`, max `99`), run `scripts/sync-ios-version.sh`, and
   update `CHANGELOG.md`. No coordination with `main` is needed — the derived versionCodes
   keep ordering (main's `1.2.4` always outranks any `1.2.3.x` hotfix)

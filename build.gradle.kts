@@ -12,11 +12,12 @@ plugins {
 // The version name in self.versions.toml is the single source of truth:
 // MAJOR.MINOR.PATCH plus an optional 4th HOTFIX segment used only when hotfixing a
 // shipped release. The android versionCode / iOS build number is derived from it by
-// concatenating MAJOR | MINOR(3 digits) | PATCH(3 digits) | HOTFIX(1 digit), e.g.
-// 1.2.3 -> 10020030 and 1.2.3.4 -> 10020034, so newer versions always outrank older
+// concatenating MAJOR | MINOR(2 digits) | PATCH(3 digits) | HOTFIX(2 digits), e.g.
+// 1.2.3 -> 10200300 and 1.2.3.4 -> 10200304, so newer versions always outrank older
 // ones and hotfixes slot between patches. The major has no fixed max — the code just
-// has to fit a 32-bit int, which allows majors up to 214. scripts/version-code.py
-// mirrors this formula for the iOS xcconfig sync + release tooling; keep the two in sync.
+// has to stay within Google Play's 2,100,000,000 versionCode cap, which allows majors
+// up to 210. scripts/version-code.py mirrors this formula for the iOS xcconfig sync +
+// release tooling; keep the two in sync.
 val selfVersionName: String = self.versions.name.get()
 val selfVersionCode: Int by extra(run {
     val segments = selfVersionName.split(".")
@@ -31,11 +32,12 @@ val selfVersionCode: Int by extra(run {
     val (major, minor, patch) = nums
     val hotfix = nums.getOrElse(3) { 0 }
     require(major >= 1) { "major version must be >= 1 (jpackage rejects MAJOR==0 for dmg/msi)" }
-    require(minor <= 999 && patch <= 999) { "minor/patch versions max out at 999 (got '$selfVersionName')" }
-    require(hotfix <= 9) { "hotfix version maxes out at 9 (got '$selfVersionName')" }
-    val code = ((major.toLong() * 1000 + minor) * 1000 + patch) * 10 + hotfix
-    require(code <= Int.MAX_VALUE) {
-        "versionCode $code for '$selfVersionName' exceeds the 32-bit int limit; the major version is too large"
+    require(minor <= 99) { "minor version maxes out at 99 (got '$selfVersionName')" }
+    require(patch <= 999) { "patch version maxes out at 999 (got '$selfVersionName')" }
+    require(hotfix <= 99) { "hotfix version maxes out at 99 (got '$selfVersionName')" }
+    val code = ((major.toLong() * 100 + minor) * 1000 + patch) * 100 + hotfix
+    require(code <= 2_100_000_000L) {
+        "versionCode $code for '$selfVersionName' exceeds Google Play's 2,100,000,000 cap; the major version is too large"
     }
     code.toInt()
 })

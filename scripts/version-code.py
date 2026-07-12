@@ -3,13 +3,14 @@
 
 The version name (self.versions.toml) is MAJOR.MINOR.PATCH plus an optional 4th
 HOTFIX segment used only when hotfixing a shipped release. The code is derived by
-concatenating MAJOR | MINOR(3 digits) | PATCH(3 digits) | HOTFIX(1 digit), e.g.
-1.2.3 -> 10020030 and 1.2.3.4 -> 10020034, so newer versions always outrank
+concatenating MAJOR | MINOR(2 digits) | PATCH(3 digits) | HOTFIX(2 digits), e.g.
+1.2.3 -> 10200300 and 1.2.3.4 -> 10200304, so newer versions always outrank
 older ones and hotfixes slot between patches.
 
-Limits: minor/patch max out at 999, hotfix at 9, and major must be >= 1
-(jpackage rejects MAJOR==0 for dmg/msi). The major has no fixed max — the code
-just has to fit a 32-bit int, which allows majors up to 214.
+Limits: minor maxes out at 99, patch at 999, hotfix at 99, and major must be
+>= 1 (jpackage rejects MAJOR==0 for dmg/msi). The major has no fixed max — the
+code just has to stay within Google Play's 2,100,000,000 versionCode cap, which
+allows majors up to 210.
 
 The root build.gradle.kts mirrors this formula for gradle builds; keep the two
 in sync.
@@ -19,7 +20,7 @@ Usage: version-code.py <version-name>
 import re
 import sys
 
-INT32_MAX = 2_147_483_647
+PLAY_MAX_VERSION_CODE = 2_100_000_000
 
 
 def compute(name):
@@ -33,13 +34,18 @@ def compute(name):
     hotfix = nums[3] if len(nums) == 4 else 0
     if major < 1:
         raise ValueError("major version must be >= 1 (jpackage rejects MAJOR==0 for dmg/msi)")
-    if minor > 999 or patch > 999:
-        raise ValueError(f"minor/patch versions max out at 999 (got '{name}')")
-    if hotfix > 9:
-        raise ValueError(f"hotfix version maxes out at 9 (got '{name}')")
-    code = ((major * 1000 + minor) * 1000 + patch) * 10 + hotfix
-    if code > INT32_MAX:
-        raise ValueError(f"versionCode {code} for '{name}' exceeds the 32-bit int limit; the major version is too large")
+    if minor > 99:
+        raise ValueError(f"minor version maxes out at 99 (got '{name}')")
+    if patch > 999:
+        raise ValueError(f"patch version maxes out at 999 (got '{name}')")
+    if hotfix > 99:
+        raise ValueError(f"hotfix version maxes out at 99 (got '{name}')")
+    code = ((major * 100 + minor) * 1000 + patch) * 100 + hotfix
+    if code > PLAY_MAX_VERSION_CODE:
+        raise ValueError(
+            f"versionCode {code} for '{name}' exceeds Google Play's {PLAY_MAX_VERSION_CODE:,} cap; "
+            "the major version is too large"
+        )
     return code
 
 
