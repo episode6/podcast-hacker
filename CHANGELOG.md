@@ -6,3 +6,6 @@
   (deb/msi/dmg installers), with a best-effort iOS app.
 - Note: the desktop installers are still unsigned — only the android app (signed release
   APK) is prod-ready.
+- Add refresh to the main podcast grid screen: pull-to-refresh on android, a toolbar
+  button on desktop; while syncing, touch platforms show the pull indicator instead of
+  the top loading bar.
