@@ -112,14 +112,17 @@ kotlin {
 // version/snapshot UI) can read the app version + snapshot flag at runtime
 val selfVersionCode: Int by rootProject.extra
 val selfIsSnapshot: Boolean by rootProject.extra
+val selfAppName: String by rootProject.extra
 val generateBuildInfo = tasks.register("generateBuildInfo") {
     val versionName = self.versions.name.get()
     val versionCode = selfVersionCode
     val isSnapshot = selfIsSnapshot
+    val appName = selfAppName
     val outDir = layout.buildDirectory.dir("generated/buildInfo/kotlin")
     inputs.property("versionName", versionName)
     inputs.property("versionCode", versionCode)
     inputs.property("isSnapshot", isSnapshot)
+    inputs.property("appName", appName)
     outputs.dir(outDir)
     doLast {
         val outFile = outDir.get().file("com/episode6/podcasthacker/BuildInfo.kt").asFile
@@ -135,6 +138,9 @@ val generateBuildInfo = tasks.register("generateBuildInfo") {
             |
             |    /** False only when CI builds from a release tag; true everywhere else, including local builds. */
             |    const val IS_SNAPSHOT: Boolean = $isSnapshot
+            |
+            |    /** User-facing app name; snapshot builds carry a " (SNAPSHOT)" suffix. */
+            |    const val APP_NAME: String = "$appName"
             |}
             |""".trimMargin()
         )

@@ -41,7 +41,7 @@ fun main() {
                 exitApplication()
             },
             state = windowState,
-            title = "PodcastHacker",
+            title = BuildInfo.APP_NAME,
         ) {
             App(appGraph)
         }

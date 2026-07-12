@@ -13,8 +13,10 @@ test — CI-grade, not a substitute for driving the app).
 
 ```bash
 ./gradlew :androidApp:installDebug          # android compile task is :shared:compileAndroidMain
-adb shell am start -n com.episode6.podcasthacker/.MainActivity
-adb shell pm clear com.episode6.podcasthacker   # reset to empty state
+# local builds are always snapshots, so the applicationId is the snapshot one
+# (the activity class keeps the base package — it follows the fixed namespace)
+adb shell am start -n com.episode6.snapshots.podcasthacker/com.episode6.podcasthacker.MainActivity
+adb shell pm clear com.episode6.snapshots.podcasthacker   # reset to empty state
 ```
 
 ## Local feed the app can reach

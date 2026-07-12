@@ -13,6 +13,14 @@ plugins {
 // local and branch/PR builds are always snapshots
 val selfIsSnapshot: Boolean by extra(System.getenv("GITHUB_REF")?.startsWith("refs/tags/v") != true)
 
+// snapshot builds carry their own app identity so they install side-by-side with
+// release builds instead of overwriting them. selfAppName is the user-facing display
+// name, selfAppId the android applicationId / macOS bundle id. The iOS equivalents
+// live in iosApp/Configuration/Config.xcconfig (committed = snapshot identity;
+// scripts/sync-ios-version.sh --release swaps in the release identity on tag builds).
+val selfAppName: String by extra(if (selfIsSnapshot) "PodcastHacker (SNAPSHOT)" else "PodcastHacker")
+val selfAppId: String by extra(if (selfIsSnapshot) "com.episode6.snapshots.podcasthacker" else "com.episode6.podcasthacker")
+
 // The version name in self.versions.toml is the single source of truth: MAJOR.MINOR.PATCH.
 // Cutting a release branch bumps the patch by 10, so regular releases land on multiples
 // of 10 and the 9 values in between are reserved for hotfixing that release (1.2.30 ->
