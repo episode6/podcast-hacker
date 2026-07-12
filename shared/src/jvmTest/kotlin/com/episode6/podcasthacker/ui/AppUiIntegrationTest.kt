@@ -8,6 +8,7 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.isNotEnabled
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
@@ -263,6 +264,39 @@ class AppUiIntegrationTest {
         waitForExactlyOne(hasText("Unsubscribe"))
         onNodeWithText("Unsubscribe").performClick()
         waitForExactlyOne(hasText("No subscriptions yet"), timeoutMillis = 10_000)
+    }
+
+    // the import/export menu tests never click Import or a format item: that would
+    // open a real (blocking) AWT FileDialog, which a headless test can't drive
+
+    @Test
+    fun gridOverflowMenu_emptyLibrary_offersImportButNotExport() = runComposeUiTest {
+        setContent { App(testGraph()) }
+
+        onNode(hasContentDescription("More options")).performClick()
+        waitForExactlyOne(hasText("Import") and isEnabled())
+        onNode(hasText("Export") and isNotEnabled()).assertExists() // nothing to export yet
+    }
+
+    @Test
+    fun gridOverflowMenu_withSubscriptions_exportOpensFormatSubmenu() = runComposeUiTest {
+        setContent { App(testGraph()) }
+
+        onNodeWithText("Add Podcast", substring = true).performClick()
+        onNode(hasSetTextAction()).performTextInput(FEED_URL)
+        waitForExactlyOne(hasText("Subscribe to RSS url"))
+        onNodeWithText("Subscribe to RSS url").performClick()
+        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
+
+        onNode(hasContentDescription("More options")).performClick()
+        waitForExactlyOne(hasText("Export") and isEnabled())
+        onNodeWithText("Import").assertExists()
+
+        // choosing Export swaps the menu content for the format picker
+        onNodeWithText("Export").performClick()
+        waitForExactlyOne(hasText("OPML"))
+        onNodeWithText("JSON").assertExists()
+        onNodeWithText("Import").assertDoesNotExist()
     }
 
     /**

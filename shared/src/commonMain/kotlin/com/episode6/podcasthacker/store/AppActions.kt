@@ -2,6 +2,7 @@ package com.episode6.podcasthacker.store
 
 import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.data.model.Podcast
+import com.episode6.podcasthacker.data.backup.LibraryBackup
 import com.episode6.podcasthacker.playback.PlayerState
 import com.episode6.redux.Action
 import kotlin.time.Duration
@@ -52,3 +53,7 @@ data object SkipToNextAdBoundary : AsyncAction
 data object SkipToPreviousAdBoundary : AsyncAction
 data class SetPlaybackSpeed(val speed: Float) : AsyncAction
 data object StopPlayback : AsyncAction
+
+/** Imports a library backup (parsed from an OPML or json file): subscribes to its new
+ * feeds, then applies its listening state once every subscribe has finished. */
+data class ImportLibrary(val backup: LibraryBackup) : AsyncAction

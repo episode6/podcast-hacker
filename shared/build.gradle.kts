@@ -46,6 +46,8 @@ kotlin {
     
     sourceSets {
         androidMain.dependencies {
+            // rememberLauncherForActivityResult for the OPML SAF file pickers
+            implementation(libs.androidx.activity.compose)
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.media3.exoplayer)
