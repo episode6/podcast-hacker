@@ -50,6 +50,7 @@ import com.episode6.podcasthacker.store.ImportLibrary
 import com.episode6.podcasthacker.store.RefreshAllFeeds
 import com.episode6.podcasthacker.store.UnsubscribeFromPodcast
 import com.episode6.podcasthacker.ui.nav.AddPodcastRoute
+import com.episode6.podcasthacker.ui.nav.LicensesRoute
 import com.episode6.podcasthacker.ui.nav.PodcastDetailRoute
 import com.episode6.podcasthacker.ui.nav.RecentlyPlayedRoute
 import com.episode6.podcasthacker.ui.util.AppIcons
@@ -86,7 +87,7 @@ internal fun GridScreen(navController: NavController) {
                     }
                 }
             }
-            OverflowMenu(store)
+            OverflowMenu(store, navController)
         },
     ) {
         // pull-to-refresh platforms surface syncing via the pull indicator, so the
@@ -152,16 +153,17 @@ private fun PodcastGrid(
 }
 
 /**
- * Overflow (3-dots) menu with library import/export. Import opens one picker, sniffs
- * the chosen file — the app's json backup or an OPML subscription list — and hands it
- * to [ImportLibrary], which subscribes to any not-yet-subscribed feeds (categories
- * flattened) and then restores any listening state the file carries. Export offers a
- * format submenu: OPML for interop with other podcast apps, json for the full library
- * (subscriptions + progress); both disabled with nothing to export. Hidden on
- * platforms without file dialogs.
+ * Overflow (3-dots) menu with library import/export and third-party license notices.
+ * Import opens one picker, sniffs the chosen file — the app's json backup or an OPML
+ * subscription list — and hands it to [ImportLibrary], which subscribes to any
+ * not-yet-subscribed feeds (categories flattened) and then restores any listening state
+ * the file carries. Export offers a format submenu: OPML for interop with other podcast
+ * apps, json for the full library (subscriptions + progress); both disabled with nothing
+ * to export. Import/export are hidden on platforms without file dialogs; the license
+ * notices item is always present.
  */
 @Composable
-private fun OverflowMenu(store: AppStore) {
+private fun OverflowMenu(store: AppStore, navController: NavController) {
     val importFile = rememberFileImportLauncher(title = "Import") { text ->
         val backup = parseLibraryImport(text)
         if (backup.podcasts.isNotEmpty() || backup.episodes.isNotEmpty()) {
@@ -185,7 +187,6 @@ private fun OverflowMenu(store: AppStore) {
     ) {
         libraryBackupDocument(store.state.subscriptions, store.state.episodesByFeed.values.flatten())
     }
-    if (importFile == null && exportOpml == null && exportJson == null) return
 
     // progress can't exist without a subscription, so this alone gates both exports
     val hasSubscriptions by store.stateOf { subscriptions.isNotEmpty() }
@@ -222,6 +223,10 @@ private fun OverflowMenu(store: AppStore) {
                         onClick = { showExportFormats = true },
                     )
                 }
+                DropdownMenuItem(
+                    text = { Text("Third-party license notices") },
+                    onClick = menuAction { navController.navigate(LicensesRoute) },
+                )
             } else {
                 if (exportOpml != null) {
                     DropdownMenuItem(text = { Text("OPML") }, onClick = menuAction(exportOpml))

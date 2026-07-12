@@ -15,12 +15,14 @@ import androidx.navigation.toRoute
 import com.episode6.podcasthacker.ui.nav.AddPodcastRoute
 import com.episode6.podcasthacker.ui.nav.EpisodeDetailRoute
 import com.episode6.podcasthacker.ui.nav.GridRoute
+import com.episode6.podcasthacker.ui.nav.LicensesRoute
 import com.episode6.podcasthacker.ui.nav.NowPlayingRoute
 import com.episode6.podcasthacker.ui.nav.PodcastDetailRoute
 import com.episode6.podcasthacker.ui.nav.RecentlyPlayedRoute
 import com.episode6.podcasthacker.ui.screens.AddPodcastScreen
 import com.episode6.podcasthacker.ui.screens.EpisodeDetailScreen
 import com.episode6.podcasthacker.ui.screens.GridScreen
+import com.episode6.podcasthacker.ui.screens.LicensesScreen
 import com.episode6.podcasthacker.ui.screens.NowPlayingScreen
 import com.episode6.podcasthacker.ui.screens.PodcastDetailScreen
 import com.episode6.podcasthacker.ui.screens.RecentlyPlayedScreen
@@ -50,6 +52,7 @@ internal fun RootUi(openNowPlayingRequests: Flow<Unit>) {
                 composable<EpisodeDetailRoute> { EpisodeDetailScreen(navController, it.toRoute()) }
                 composable<NowPlayingRoute> { NowPlayingScreen(navController) }
                 composable<RecentlyPlayedRoute> { RecentlyPlayedScreen(navController) }
+                composable<LicensesRoute> { LicensesScreen(navController) }
             }
             MiniPlayerBar(
                 navController = navController,

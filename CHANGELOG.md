@@ -18,3 +18,6 @@
   distinct app id (android applicationId / iOS + macOS bundle id
   `com.episode6.snapshots.podcasthacker`); desktop installers and jvm data dirs use
   `PodcastHacker-SNAPSHOT`.
+- Add a "Third-party license notices" option to the podcast grid's overflow menu; it
+  opens a screen rendering THIRD_PARTY_LICENSES.md (embedded at build time), which now
+  covers all shipped libraries, not just the desktop-bundled libvlc/JNA.

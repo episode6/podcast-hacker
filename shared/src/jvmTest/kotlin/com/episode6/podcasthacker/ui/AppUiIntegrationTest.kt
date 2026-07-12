@@ -317,6 +317,21 @@ class AppUiIntegrationTest {
         onNodeWithText("Import").assertDoesNotExist()
     }
 
+    @Test
+    fun gridOverflowMenu_opensLicenseNotices() = runComposeUiTest {
+        setContent { App(testGraph()) }
+
+        onNode(hasContentDescription("More options")).performClick()
+        waitForExactlyOne(hasText("Third-party license notices"))
+        onNodeWithText("Third-party license notices").performClick()
+
+        // the licenses screen renders the embedded THIRD_PARTY_LICENSES.md
+        waitForExactlyOne(hasText("License notices"))
+        onNodeWithText("libvlc (VLC media engine)", substring = true).assertExists()
+        onNode(hasContentDescription("Back")).performClick()
+        waitForExactlyOne(hasText("No subscriptions yet"))
+    }
+
     /**
      * [waitUntilExactlyOneExists] but the failure says what the ui actually showed.
      * The 10s default is the floor for every wait: CI runs these tests concurrently with
