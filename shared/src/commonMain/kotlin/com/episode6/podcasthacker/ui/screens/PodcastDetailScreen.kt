@@ -15,12 +15,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,17 +46,19 @@ import com.episode6.podcasthacker.store.RefreshFeed
 import com.episode6.podcasthacker.store.TogglePlayPause
 import com.episode6.podcasthacker.ui.nav.EpisodeDetailRoute
 import com.episode6.podcasthacker.ui.nav.PodcastDetailRoute
+import com.episode6.podcasthacker.data.model.Podcast
 import com.episode6.podcasthacker.ui.util.AppIcons
 import com.episode6.podcasthacker.ui.util.episodeSubtitle
+import com.episode6.podcasthacker.ui.util.platformUsesPullToRefresh
 import com.episode6.podcasthacker.ui.util.stateOf
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun PodcastDetailScreen(navController: NavController, route: PodcastDetailRoute) {
     val graph = LocalAppGraph.current
     val store = graph.appStore
     val podcast by store.stateOf { subscriptions.firstOrNull { it.feedUrl == route.feedUrl } }
     val syncing by store.stateOf { route.feedUrl in feedSync.syncing }
-    val episodes by store.stateOf { episodesByFeed[route.feedUrl].orEmpty() }
 
     LaunchedEffect(route.feedUrl) { store.dispatch(RefreshFeed(route.feedUrl)) }
 
@@ -63,64 +66,94 @@ internal fun PodcastDetailScreen(navController: NavController, route: PodcastDet
         title = podcast?.title ?: "Podcast",
         navController = navController,
         actions = {
-            if (syncing) {
-                CircularProgressIndicator(Modifier.size(20.dp))
-            } else {
-                TextButton(onClick = { store.dispatch(RefreshFeed(route.feedUrl)) }) { Text("Refresh") }
+            // touch platforms refresh by pulling the list instead of a toolbar control
+            if (!platformUsesPullToRefresh) {
+                if (syncing) {
+                    CircularProgressIndicator(Modifier.size(20.dp))
+                } else {
+                    IconButton(onClick = { store.dispatch(RefreshFeed(route.feedUrl)) }) {
+                        Icon(
+                            imageVector = AppIcons.Refresh,
+                            contentDescription = "Refresh",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
             }
         },
     ) {
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            item(key = "header") {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AsyncImage(
-                        model = podcast?.artworkUrl,
-                        contentDescription = null,
-                        modifier = Modifier.size(96.dp).clip(RoundedCornerShape(12.dp)),
-                    )
-                    Spacer(Modifier.width(16.dp))
-                    Column {
-                        podcast?.author?.let {
-                            Text(
-                                it,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        podcast?.description?.let {
-                            Text(
-                                it,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 4,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+        if (platformUsesPullToRefresh) {
+            PullToRefreshBox(
+                isRefreshing = syncing,
+                onRefresh = { store.dispatch(RefreshFeed(route.feedUrl)) },
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                EpisodeList(navController, route, podcast)
+            }
+        } else {
+            EpisodeList(navController, route, podcast)
+        }
+    }
+}
+
+@Composable
+private fun EpisodeList(
+    navController: NavController,
+    route: PodcastDetailRoute,
+    podcast: Podcast?,
+) {
+    val store = LocalAppGraph.current.appStore
+    val episodes by store.stateOf { episodesByFeed[route.feedUrl].orEmpty() }
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        item(key = "header") {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AsyncImage(
+                    model = podcast?.artworkUrl,
+                    contentDescription = null,
+                    modifier = Modifier.size(96.dp).clip(RoundedCornerShape(12.dp)),
+                )
+                Spacer(Modifier.width(16.dp))
+                Column {
+                    podcast?.author?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    podcast?.description?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
-                Spacer(Modifier.height(16.dp))
-                HorizontalDivider()
             }
-            items(episodes, key = { it.guid }) { episode ->
-                val downloadStatus by store.stateOf { downloads[episode.guid] }
-                val isPlaying by store.stateOf {
-                    nowPlaying?.episodeGuid == episode.guid && nowPlaying?.isPlaying == true
-                }
-                EpisodeRow(
-                    episode = episode,
-                    downloadStatus = downloadStatus,
-                    isPlaying = isPlaying,
-                    onClick = {
-                        navController.navigate(
-                            EpisodeDetailRoute(feedUrl = route.feedUrl, episodeGuid = episode.guid)
-                        )
-                    },
-                    onPlay = { store.dispatch(PlayEpisode(episode.guid)) },
-                    onPause = { store.dispatch(TogglePlayPause) },
-                    onDownload = { store.dispatch(DownloadEpisode(episode.guid)) },
-                )
-                HorizontalDivider()
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider()
+        }
+        items(episodes, key = { it.guid }) { episode ->
+            val downloadStatus by store.stateOf { downloads[episode.guid] }
+            val isPlaying by store.stateOf {
+                nowPlaying?.episodeGuid == episode.guid && nowPlaying?.isPlaying == true
             }
+            EpisodeRow(
+                episode = episode,
+                downloadStatus = downloadStatus,
+                isPlaying = isPlaying,
+                onClick = {
+                    navController.navigate(
+                        EpisodeDetailRoute(feedUrl = route.feedUrl, episodeGuid = episode.guid)
+                    )
+                },
+                onPlay = { store.dispatch(PlayEpisode(episode.guid)) },
+                onPause = { store.dispatch(TogglePlayPause) },
+                onDownload = { store.dispatch(DownloadEpisode(episode.guid)) },
+            )
+            HorizontalDivider()
         }
     }
 }
