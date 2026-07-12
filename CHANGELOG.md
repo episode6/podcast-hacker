@@ -9,3 +9,5 @@
 - Add refresh to the main podcast grid screen: pull-to-refresh on android, a toolbar
   button on desktop; while syncing, touch platforms show the pull indicator instead of
   the top loading bar.
+- Order the podcast grid by most recently released episode (Recently Played and Add
+  Podcast tiles stay at the bottom).
