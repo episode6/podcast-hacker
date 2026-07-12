@@ -14,6 +14,7 @@ kotlin {
 
 // derived from self.versions.name in the root build script (see the formula there)
 val selfVersionCode: Int by rootProject.extra
+val selfIsSnapshot: Boolean by rootProject.extra
 dependencies {
     implementation(projects.shared)
 
@@ -39,8 +40,17 @@ android {
     namespace = "com.episode6.podcasthacker"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
+    buildFeatures {
+        // for the snapshot-aware app_name resValue in defaultConfig
+        resValues = true
+    }
+
     defaultConfig {
-        applicationId = "com.episode6.podcasthacker"
+        // snapshot builds get their own applicationId and launcher label so they can
+        // be installed side-by-side with the released app instead of overwriting it
+        // (the namespace above stays fixed, so R + manifest class refs are unaffected)
+        applicationId = if (selfIsSnapshot) "com.episode6.snapshots.podcasthacker" else "com.episode6.podcasthacker"
+        resValue("string", "app_name", if (selfIsSnapshot) "PodcastHacker (SNAPSHOT)" else "PodcastHacker")
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = selfVersionCode
