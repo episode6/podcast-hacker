@@ -135,7 +135,7 @@ class AppUiIntegrationTest {
         // grid → add podcast → search
         onNodeWithText("Add Podcast", substring = true).performClick()
         onNode(hasSetTextAction()).performTextInput("test")
-        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Test Podcast"))
 
         // tapping the result subscribes + pops back to the grid, where the tile appears
         onNodeWithText("Test Podcast").performClick()
@@ -148,7 +148,7 @@ class AppUiIntegrationTest {
 
         // episode detail: show notes rendered from the feed html
         onNodeWithText("Episode Two").performClick()
-        waitForExactlyOne(hasText("notes two"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("notes two"))
     }
 
     @Test
@@ -158,13 +158,13 @@ class AppUiIntegrationTest {
         // subscribe + navigate to an episode
         onNodeWithText("Add Podcast", substring = true).performClick()
         onNode(hasSetTextAction()).performTextInput(FEED_URL)
-        waitForExactlyOne(hasText("Subscribe to RSS url"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Subscribe to RSS url"))
         onNodeWithText("Subscribe to RSS url").performClick()
         waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
         onNodeWithText("Test Podcast").performClick()
         waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
         onNodeWithText("Episode Two").performClick()
-        waitForExactlyOne(hasText("Download"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Download"))
 
         // download runs through the real tacita pipeline against MockEngine bytes
         onNodeWithText("Download").performClick()
@@ -195,11 +195,11 @@ class AppUiIntegrationTest {
 
         // the episode row now carries the downloaded marker
         onNodeWithText("← Back").performClick()
-        waitForExactlyOne(hasText("downloaded", substring = true), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("downloaded", substring = true))
 
         // delete resets to downloadable
         onNodeWithText("Episode Two").performClick()
-        waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Delete Download"))
         onNodeWithText("Delete Download").performClick()
         waitForExactlyOne(hasText("Download"), timeoutMillis = 10_000)
     }
@@ -210,19 +210,19 @@ class AppUiIntegrationTest {
 
         // empty state before anything has played
         onNodeWithText("Recently Played", substring = true).performClick()
-        waitForExactlyOne(hasText("Nothing played yet"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Nothing played yet"))
         onNodeWithText("← Back").performClick()
 
         // subscribe, download an episode, and play it
         onNodeWithText("Add Podcast", substring = true).performClick()
         onNode(hasSetTextAction()).performTextInput(FEED_URL)
-        waitForExactlyOne(hasText("Subscribe to RSS url"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Subscribe to RSS url"))
         onNodeWithText("Subscribe to RSS url").performClick()
         waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
         onNodeWithText("Test Podcast").performClick()
         waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
         onNodeWithText("Episode Two").performClick()
-        waitForExactlyOne(hasText("Download"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Download"))
         onNodeWithText("Download").performClick()
         waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 30_000)
         onNodeWithText("Play").performClick()
@@ -254,18 +254,23 @@ class AppUiIntegrationTest {
         // paste a feed url → direct subscribe row instead of search results
         onNodeWithText("Add Podcast", substring = true).performClick()
         onNode(hasSetTextAction()).performTextInput(FEED_URL)
-        waitForExactlyOne(hasText("Subscribe to RSS url"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Subscribe to RSS url"))
         onNodeWithText("Subscribe to RSS url").performClick()
         waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
 
         // long-press the tile → dropdown → unsubscribe empties the grid
         onNodeWithText("Test Podcast").performTouchInput { longClick() }
-        waitForExactlyOne(hasText("Unsubscribe"), timeoutMillis = 5_000)
+        waitForExactlyOne(hasText("Unsubscribe"))
         onNodeWithText("Unsubscribe").performClick()
         waitForExactlyOne(hasText("No subscriptions yet"), timeoutMillis = 10_000)
     }
 
-    /** [waitUntilExactlyOneExists] but the failure says what the ui actually showed. */
+    /**
+     * [waitUntilExactlyOneExists] but the failure says what the ui actually showed.
+     * The 10s default is the floor for every wait: CI runs these tests concurrently with
+     * installer packaging on 2-core runners, and the resulting cpu starvation blew
+     * through a 5s wait at least once (flaked on windows-latest, 2026-07-11).
+     */
     private fun ComposeUiTest.waitForExactlyOne(matcher: SemanticsMatcher, timeoutMillis: Long = 10_000) {
         try {
             waitUntilExactlyOneExists(matcher, timeoutMillis)
