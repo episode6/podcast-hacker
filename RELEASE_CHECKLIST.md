@@ -15,9 +15,10 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
   digit)`, e.g. `1.2.3` → `10020030`, `1.2.3.4` → `10020034`. Newer versions always
   produce bigger codes and hotfixes slot between patches, so older builds can never
   override newer ones.
-- Limits: major maxes out at 99 (and must stay >= 1 — jpackage rejects MAJOR==0 for
-  dmg/msi), minor/patch at 999, hotfix at 9. The max code (`99.999.999.9` → 999999999)
-  fits android's versionCode cap with room to spare.
+- Limits: minor/patch max out at 999, hotfix at 9, and major must stay >= 1 (jpackage
+  rejects MAJOR==0 for dmg/msi). The major has no fixed max — the derived code just has
+  to fit a 32-bit int, which allows majors up to 214 (`214.748.364.7` is the exact
+  ceiling).
 - The formula lives in the root `build.gradle.kts` (gradle builds) and
   `scripts/version-code.py` (iOS sync + release tooling); keep the two in sync.
 - **No `-SNAPSHOT` suffixes** (jpackage requires plain numeric versions). Instead every

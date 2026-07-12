@@ -14,9 +14,9 @@ plugins {
 // shipped release. The android versionCode / iOS build number is derived from it by
 // concatenating MAJOR | MINOR(3 digits) | PATCH(3 digits) | HOTFIX(1 digit), e.g.
 // 1.2.3 -> 10020030 and 1.2.3.4 -> 10020034, so newer versions always outrank older
-// ones and hotfixes slot between patches. The max code (99.999.999.9 -> 999999999)
-// stays under android's versionCode cap. scripts/version-code.py mirrors this formula
-// for the iOS xcconfig sync + release tooling; keep the two in sync.
+// ones and hotfixes slot between patches. The major has no fixed max — the code just
+// has to fit a 32-bit int, which allows majors up to 214. scripts/version-code.py
+// mirrors this formula for the iOS xcconfig sync + release tooling; keep the two in sync.
 val selfVersionName: String = self.versions.name.get()
 val selfVersionCode: Int by extra(run {
     val segments = selfVersionName.split(".")
@@ -31,10 +31,13 @@ val selfVersionCode: Int by extra(run {
     val (major, minor, patch) = nums
     val hotfix = nums.getOrElse(3) { 0 }
     require(major >= 1) { "major version must be >= 1 (jpackage rejects MAJOR==0 for dmg/msi)" }
-    require(major <= 99) { "major version maxes out at 99 (got '$selfVersionName')" }
     require(minor <= 999 && patch <= 999) { "minor/patch versions max out at 999 (got '$selfVersionName')" }
     require(hotfix <= 9) { "hotfix version maxes out at 9 (got '$selfVersionName')" }
-    ((major * 1000 + minor) * 1000 + patch) * 10 + hotfix
+    val code = ((major.toLong() * 1000 + minor) * 1000 + patch) * 10 + hotfix
+    require(code <= Int.MAX_VALUE) {
+        "versionCode $code for '$selfVersionName' exceeds the 32-bit int limit; the major version is too large"
+    }
+    code.toInt()
 })
 
 // snapshot unless CI is building from a release tag (GITHUB_REF=refs/tags/v*);
