@@ -17,9 +17,10 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
 - Limits: minor maxes out at 9999, patch at 99, and major must stay >= 1 (jpackage
   rejects MAJOR==0 for dmg/msi). The major has no fixed max — the derived code just has
   to stay within Google Play's versionCode cap of 2,100,000,000, which allows majors up
-  to 2100 (`2100.0.0` is the exact ceiling). (Heads-up if we near it: Windows MSI caps
-  its ProductVersion minor at 255, so bump the major before minor 256 while we still
-  ship an msi.)
+  to 2100 (`2100.0.0` is the exact ceiling). (Heads-up: while we ship an msi, Windows
+  ProductVersion limits bind earlier — major and minor each cap at 255 there, so bump
+  the major before minor 256, and majors past 255 would need the msi story revisited.
+  Its third field caps at 65535, so the patch — max 99 — is never a concern.)
 - The formula lives in the root `build.gradle.kts` — the single source of truth. Release
   tooling queries it via `./gradlew -q printReleaseVersionCode` /
   `printSnapshotVersionCode` instead of reimplementing it.
