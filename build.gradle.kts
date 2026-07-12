@@ -23,10 +23,10 @@ val selfIsSnapshot: Boolean by extra(System.getenv("GITHUB_REF")?.startsWith("re
 // up to 210. scripts/version-code.py mirrors this formula for the iOS xcconfig sync +
 // release tooling; keep the two in sync.
 //
-// Snapshot builds instead hardcode 20,000,000 (v2.0.0's derived code): high enough to
-// install over every 1.x prod build for the foreseeable future, low enough to leave
-// plenty of schema wiggle room if a build with this code ever shipped by accident.
-val snapshotVersionCode = 20_000_000
+// Snapshot builds instead hardcode 100,000,000 (v10.0.0's derived code): high enough to
+// install over every prod build below v10 for the foreseeable future, low enough to
+// leave plenty of schema wiggle room if a build with this code ever shipped by accident.
+val snapshotVersionCode = 100_000_000
 val selfVersionName: String = self.versions.name.get()
 val selfVersionCode: Int by extra(run {
     val segments = selfVersionName.split(".")
