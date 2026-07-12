@@ -2,6 +2,7 @@ package com.episode6.podcasthacker.store
 
 import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.data.model.Podcast
+import com.episode6.podcasthacker.data.progress.EpisodeProgress
 import com.episode6.podcasthacker.playback.PlayerState
 import com.episode6.redux.Action
 import kotlin.time.Duration
@@ -52,3 +53,7 @@ data object SkipToNextAdBoundary : AsyncAction
 data object SkipToPreviousAdBoundary : AsyncAction
 data class SetPlaybackSpeed(val speed: Float) : AsyncAction
 data object StopPlayback : AsyncAction
+
+/** Applies an imported progress document to episodes already in the library (matched by
+ * guid; unknown episodes are skipped — import subscriptions first and let feeds sync). */
+data class ImportEpisodeProgress(val episodes: List<EpisodeProgress>) : AsyncAction

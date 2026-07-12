@@ -270,16 +270,19 @@ class AppUiIntegrationTest {
     // a real (blocking) AWT FileDialog, which a headless test can't drive
 
     @Test
-    fun gridOverflowMenu_noSubscriptions_offersImportButNotExport() = runComposeUiTest {
+    fun gridOverflowMenu_emptyLibrary_offersImportsButNotExports() = runComposeUiTest {
         setContent { App(testGraph()) }
 
         onNode(hasContentDescription("More options")).performClick()
         waitForExactlyOne(hasText("Import OPML"))
-        onNode(hasText("Export OPML") and isNotEnabled()).assertExists() // nothing to export yet
+        onNodeWithText("Import Episode Progress").assertExists()
+        // nothing to export yet
+        onNode(hasText("Export OPML") and isNotEnabled()).assertExists()
+        onNode(hasText("Export Episode Progress") and isNotEnabled()).assertExists()
     }
 
     @Test
-    fun gridOverflowMenu_withSubscriptions_offersExport() = runComposeUiTest {
+    fun gridOverflowMenu_withSubscriptions_offersOpmlExport() = runComposeUiTest {
         setContent { App(testGraph()) }
 
         onNodeWithText("Add Podcast", substring = true).performClick()
@@ -291,6 +294,8 @@ class AppUiIntegrationTest {
         onNode(hasContentDescription("More options")).performClick()
         waitForExactlyOne(hasText("Export OPML") and isEnabled())
         onNodeWithText("Import OPML").assertExists()
+        // subscriptions alone carry no listening state
+        onNode(hasText("Export Episode Progress") and isNotEnabled()).assertExists()
     }
 
     /**

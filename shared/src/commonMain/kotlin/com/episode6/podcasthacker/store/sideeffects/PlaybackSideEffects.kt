@@ -7,6 +7,7 @@ import com.episode6.podcasthacker.playback.PlayerState
 import com.episode6.podcasthacker.playback.PlayerStatus
 import com.episode6.podcasthacker.playback.PodcastPlayer
 import com.episode6.podcasthacker.store.AppState
+import com.episode6.podcasthacker.store.ImportEpisodeProgress
 import com.episode6.podcasthacker.store.NowPlayingState
 import com.episode6.podcasthacker.store.PlayEpisode
 import com.episode6.podcasthacker.store.SeekBy
@@ -34,7 +35,9 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.transform
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 @ContributesTo(AppScope::class)
 interface PlaybackSideEffects {
@@ -127,6 +130,28 @@ interface PlaybackSideEffects {
                 if (action == StopPlayback) emit(SetNowPlaying(null))
             }
         }
+
+    /**
+     * Applies an imported progress document: restores resume positions and last-played
+     * stamps for episodes that exist in the library (matched by guid), skipping the
+     * rest. Positions overwrite unconditionally — an import is an explicit "make this
+     * device look like that one".
+     */
+    @Provides @IntoSet fun importEpisodeProgress(
+        episodeRepository: EpisodeRepository,
+    ): SideEffect<AppState> = sideEffect {
+        actions.filterIsInstance<ImportEpisodeProgress>().transform { action ->
+            action.episodes.forEach { entry ->
+                episodeRepository.episode(entry.guid) ?: return@forEach
+                if (entry.positionMs > 0) {
+                    episodeRepository.setPlaybackPosition(entry.guid, entry.positionMs.milliseconds)
+                }
+                entry.lastPlayedAtMs?.let {
+                    episodeRepository.markPlayed(entry.guid, Instant.fromEpochMilliseconds(it))
+                }
+            }
+        }
+    }
 
     /** Persist playback position to Room: every ~10s of playback and when playback pauses/ends. */
     @Provides @IntoSet fun persistPlaybackPosition(

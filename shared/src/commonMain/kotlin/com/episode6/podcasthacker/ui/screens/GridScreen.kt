@@ -39,17 +39,21 @@ import com.episode6.podcasthacker.data.model.Podcast
 import com.episode6.podcasthacker.data.opml.OpmlFeed
 import com.episode6.podcasthacker.data.opml.opmlDocument
 import com.episode6.podcasthacker.data.opml.parseOpmlFeeds
+import com.episode6.podcasthacker.data.progress.episodeProgressDocument
+import com.episode6.podcasthacker.data.progress.parseEpisodeProgress
 import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.AppStore
+import com.episode6.podcasthacker.store.ImportEpisodeProgress
 import com.episode6.podcasthacker.store.SubscribeToPodcast
 import com.episode6.podcasthacker.store.UnsubscribeFromPodcast
 import com.episode6.podcasthacker.ui.nav.AddPodcastRoute
 import com.episode6.podcasthacker.ui.nav.PodcastDetailRoute
 import com.episode6.podcasthacker.ui.nav.RecentlyPlayedRoute
 import com.episode6.podcasthacker.ui.util.AppIcons
-import com.episode6.podcasthacker.ui.util.rememberOpmlExportLauncher
-import com.episode6.podcasthacker.ui.util.rememberOpmlImportLauncher
+import com.episode6.podcasthacker.ui.util.rememberFileExportLauncher
+import com.episode6.podcasthacker.ui.util.rememberFileImportLauncher
 import com.episode6.podcasthacker.ui.util.stateOf
+import kotlin.time.Duration
 
 @Composable
 internal fun GridScreen(navController: NavController) {
@@ -103,26 +107,54 @@ internal fun GridScreen(navController: NavController) {
 }
 
 /**
- * Overflow (3-dots) menu with OPML subscription import/export. Import subscribes to
- * every feed in the chosen file that isn't already subscribed (categories flattened);
- * new tiles appear as each feed syncs. Export saves the current subscriptions and is
- * disabled while there are none. Hidden entirely on platforms without file dialogs.
+ * Overflow (3-dots) menu with OPML subscription import/export plus episode-progress
+ * import/export. OPML import subscribes to every feed in the chosen file that isn't
+ * already subscribed (categories flattened); new tiles appear as each feed syncs.
+ * Progress import restores resume positions / play history to episodes already in the
+ * library, so it belongs after an OPML import has synced. Exports save the current
+ * subscriptions / listening state and are disabled while there's nothing to write.
+ * Hidden entirely on platforms without file dialogs.
  */
 @Composable
 private fun OverflowMenu(store: AppStore) {
-    val importOpml = rememberOpmlImportLauncher { xml ->
+    val importOpml = rememberFileImportLauncher(title = "Import OPML") { xml ->
         val subscribed = store.state.subscriptions.map { it.feedUrl }.toSet()
         parseOpmlFeeds(xml)
             .filter { it.feedUrl !in subscribed }
             .forEach { store.dispatch(SubscribeToPodcast(it.feedUrl)) }
     }
-    val exportOpml = rememberOpmlExportLauncher {
+    val exportOpml = rememberFileExportLauncher(
+        title = "Export OPML",
+        fileName = "subscriptions.opml",
+        mimeType = "text/xml",
+    ) {
         opmlDocument(store.state.subscriptions.map { OpmlFeed(feedUrl = it.feedUrl, title = it.title) })
     }
-    if (importOpml == null && exportOpml == null) return
+    val importProgress = rememberFileImportLauncher(title = "Import Episode Progress") { json ->
+        parseEpisodeProgress(json).takeIf { it.isNotEmpty() }?.let { store.dispatch(ImportEpisodeProgress(it)) }
+    }
+    val exportProgress = rememberFileExportLauncher(
+        title = "Export Episode Progress",
+        fileName = "episode-progress.json",
+        mimeType = "application/json",
+    ) {
+        episodeProgressDocument(store.state.episodesByFeed.values.flatten())
+    }
+    if (importOpml == null && exportOpml == null && importProgress == null && exportProgress == null) return
 
     val hasSubscriptions by store.stateOf { subscriptions.isNotEmpty() }
+    val hasProgress by store.stateOf {
+        episodesByFeed.values.any { episodes ->
+            episodes.any { it.playbackPosition > Duration.ZERO || it.lastPlayed != null }
+        }
+    }
     var menuOpen by remember { mutableStateOf(false) }
+
+    fun menuAction(action: () -> Unit): () -> Unit = {
+        menuOpen = false
+        action()
+    }
+
     Box {
         IconButton(onClick = { menuOpen = true }) {
             Icon(
@@ -133,22 +165,23 @@ private fun OverflowMenu(store: AppStore) {
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
             if (importOpml != null) {
-                DropdownMenuItem(
-                    text = { Text("Import OPML") },
-                    onClick = {
-                        menuOpen = false
-                        importOpml()
-                    },
-                )
+                DropdownMenuItem(text = { Text("Import OPML") }, onClick = menuAction(importOpml))
             }
             if (exportOpml != null) {
                 DropdownMenuItem(
                     text = { Text("Export OPML") },
                     enabled = hasSubscriptions,
-                    onClick = {
-                        menuOpen = false
-                        exportOpml()
-                    },
+                    onClick = menuAction(exportOpml),
+                )
+            }
+            if (importProgress != null) {
+                DropdownMenuItem(text = { Text("Import Episode Progress") }, onClick = menuAction(importProgress))
+            }
+            if (exportProgress != null) {
+                DropdownMenuItem(
+                    text = { Text("Export Episode Progress") },
+                    enabled = hasProgress,
+                    onClick = menuAction(exportProgress),
                 )
             }
         }

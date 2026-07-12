@@ -2,10 +2,12 @@ package com.episode6.podcasthacker.store.sideeffects
 
 import assertk.assertThat
 import assertk.assertions.containsExactly
+import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import com.episode6.podcasthacker.data.model.AdBoundary
 import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.data.model.Podcast
+import com.episode6.podcasthacker.data.progress.EpisodeProgress
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
 import com.episode6.podcasthacker.playback.PlaybackMetadata
@@ -13,6 +15,7 @@ import com.episode6.podcasthacker.playback.PlayerState
 import com.episode6.podcasthacker.playback.PlayerStatus
 import com.episode6.podcasthacker.playback.PodcastPlayer
 import com.episode6.podcasthacker.store.AppState
+import com.episode6.podcasthacker.store.ImportEpisodeProgress
 import com.episode6.podcasthacker.store.NowPlayingState
 import com.episode6.podcasthacker.store.PlayEpisode
 import com.episode6.podcasthacker.store.SeekBy
@@ -47,6 +50,7 @@ import kotlin.test.Test
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 class PlaybackSideEffectsTest {
 
@@ -332,6 +336,35 @@ class PlaybackSideEffectsTest {
         coVerify(exactly = 0) { episodeRepository.setPlaybackPosition(any(), any()) }
 
         job.cancel()
+    }
+
+    @Test
+    fun importEpisodeProgress_restoresPositionAndLastPlayed_skipsUnknownEpisodes() = runTest {
+        val known = EpisodeProgress(
+            feedUrl = episode.feedUrl,
+            guid = episode.guid,
+            positionMs = 90_000,
+            lastPlayedAtMs = 1_700_000_000_000,
+        )
+        val unknown = known.copy(guid = "unknown-guid")
+        val positionOnly = EpisodeProgress(feedUrl = episode.feedUrl, guid = "position-only", positionMs = 5_000)
+        coEvery { episodeRepository.episode("unknown-guid") } returns null
+        coEvery { episodeRepository.episode("position-only") } returns episode.copy(guid = "position-only")
+
+        val actions = sideEffects.importEpisodeProgress(episodeRepository)
+            .output(ImportEpisodeProgress(listOf(known, unknown, positionOnly)))
+            .toList()
+
+        assertThat(actions).isEmpty()
+        coVerify(exactly = 1) {
+            episodeRepository.setPlaybackPosition(episode.guid, 90.seconds)
+            episodeRepository.markPlayed(episode.guid, Instant.fromEpochMilliseconds(1_700_000_000_000))
+            episodeRepository.setPlaybackPosition("position-only", 5.seconds)
+        }
+        coVerify(exactly = 0) {
+            episodeRepository.setPlaybackPosition("unknown-guid", any())
+            episodeRepository.markPlayed("position-only", any())
+        }
     }
 
     private fun SideEffect<AppState>.output(vararg input: Action, state: AppState = AppState()): Flow<Action> {
