@@ -4,6 +4,7 @@ import com.episode6.podcasthacker.data.repo.EpisodeRepository
 import com.episode6.podcasthacker.data.repo.FeedRepository
 import com.episode6.podcasthacker.data.repo.SubscriptionRepository
 import com.episode6.podcasthacker.store.AppState
+import com.episode6.podcasthacker.store.RefreshAllFeeds
 import com.episode6.podcasthacker.store.RefreshFeed
 import com.episode6.podcasthacker.store.SetEpisodes
 import com.episode6.podcasthacker.store.SetFeedSyncError
@@ -20,6 +21,8 @@ import dev.zacsweers.metro.Provides
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flatMapMerge
@@ -89,6 +92,24 @@ interface SubscriptionSideEffects {
                 flow {
                     if (action.feedUrl in currentState().feedSync.syncing) return@flow
                     syncingFeed(action.feedUrl, "Failed to refresh feed") { repo.sync(action.feedUrl) }
+                }
+            }
+        }
+
+    /** Grid-screen refresh: syncs every subscription in parallel, applying the same
+     * skip-if-already-syncing rule as [refreshFeed] (the two can race each other on the
+     * same feed, e.g. a grid refresh while a detail screen's refresh is in flight). */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Provides @IntoSet fun refreshAllFeeds(repo: FeedRepository): SideEffect<AppState> =
+        sideEffect {
+            actions.filterIsInstance<RefreshAllFeeds>().flatMapMerge {
+                flow {
+                    val pending = currentState().run { subscriptions.map { it.feedUrl } - feedSync.syncing }
+                    emitAll(
+                        pending.asFlow().flatMapMerge { feedUrl ->
+                            flow { syncingFeed(feedUrl, "Failed to refresh feed") { repo.sync(feedUrl) } }
+                        },
+                    )
                 }
             }
         }

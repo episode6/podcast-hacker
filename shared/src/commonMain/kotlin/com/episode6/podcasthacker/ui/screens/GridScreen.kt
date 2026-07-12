@@ -9,18 +9,22 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +47,7 @@ import com.episode6.podcasthacker.data.opml.opmlDocument
 import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.AppStore
 import com.episode6.podcasthacker.store.ImportLibrary
+import com.episode6.podcasthacker.store.RefreshAllFeeds
 import com.episode6.podcasthacker.store.UnsubscribeFromPodcast
 import com.episode6.podcasthacker.ui.nav.AddPodcastRoute
 import com.episode6.podcasthacker.ui.nav.PodcastDetailRoute
@@ -53,6 +58,7 @@ import com.episode6.podcasthacker.ui.util.rememberFileExportLauncher
 import com.episode6.podcasthacker.ui.util.rememberFileImportLauncher
 import com.episode6.podcasthacker.ui.util.stateOf
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun GridScreen(navController: NavController) {
     val store = LocalAppGraph.current.appStore
@@ -63,13 +69,50 @@ internal fun GridScreen(navController: NavController) {
         title = "Podcasts",
         navController = navController,
         constrainContentWidth = false,
-        actions = { OverflowMenu(store) },
+        actions = {
+            // touch platforms refresh by pulling the grid instead of a toolbar control
+            if (!platformUsesPullToRefresh) {
+                if (isSyncing) {
+                    CircularProgressIndicator(Modifier.size(20.dp))
+                } else {
+                    IconButton(onClick = { store.dispatch(RefreshAllFeeds) }) {
+                        Icon(
+                            imageVector = AppIcons.Refresh,
+                            contentDescription = "Refresh",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+            OverflowMenu(store)
+        },
     ) {
         // pull-to-refresh platforms surface syncing via the pull indicator, so the
         // bar pinned above the grid would be a second, redundant spinner there
         if (isSyncing && !platformUsesPullToRefresh) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
         }
+        if (platformUsesPullToRefresh) {
+            PullToRefreshBox(
+                isRefreshing = isSyncing,
+                onRefresh = { store.dispatch(RefreshAllFeeds) },
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                PodcastGrid(navController, store, subscriptions)
+            }
+        } else {
+            PodcastGrid(navController, store, subscriptions)
+        }
+    }
+}
+
+@Composable
+private fun PodcastGrid(
+    navController: NavController,
+    store: AppStore,
+    subscriptions: List<Podcast>,
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
         if (subscriptions.isEmpty()) {
             Text(
                 "No subscriptions yet",
