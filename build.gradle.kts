@@ -20,15 +20,16 @@ val selfIsSnapshot: Boolean by extra(System.getenv("GITHUB_REF")?.startsWith("re
 // 1.2.3 -> 10200300 and 1.2.3.4 -> 10200304, so newer versions always outrank older
 // ones and hotfixes slot between patches. The major has no fixed max — the code just
 // has to stay within Google Play's 2,100,000,000 versionCode cap, which allows majors
-// up to 210. scripts/version-code.py mirrors this formula for the iOS xcconfig sync +
-// release tooling; keep the two in sync.
+// up to 210. This is the single source of truth for the formula: release tooling
+// (scripts/sync-ios-version.sh, scripts/ship-release.py) queries it via the
+// printReleaseVersionCode / printSnapshotVersionCode tasks instead of reimplementing it.
 //
 // Snapshot builds instead hardcode 100,000,000 (v10.0.0's derived code): high enough to
 // install over every prod build below v10 for the foreseeable future, low enough to
 // leave plenty of schema wiggle room if a build with this code ever shipped by accident.
 val snapshotVersionCode = 100_000_000
 val selfVersionName: String = self.versions.name.get()
-val selfVersionCode: Int by extra(run {
+val selfReleaseVersionCode: Int = run {
     val segments = selfVersionName.split(".")
     require(segments.size in 3..4) {
         "version name '$selfVersionName' must be MAJOR.MINOR.PATCH with an optional 4th hotfix segment"
@@ -48,9 +49,22 @@ val selfVersionCode: Int by extra(run {
     require(code <= 2_100_000_000L) {
         "versionCode $code for '$selfVersionName' exceeds Google Play's 2,100,000,000 cap; the major version is too large"
     }
-    // the name is validated on every build, but only release-tag builds carry its code
-    if (selfIsSnapshot) snapshotVersionCode else code.toInt()
-})
+    code.toInt()
+}
+
+// the name is validated on every build, but only release-tag builds carry its code
+val selfVersionCode: Int by extra(if (selfIsSnapshot) snapshotVersionCode else selfReleaseVersionCode)
+
+// query tasks for the release tooling (use with -q and take the last output line);
+// printReleaseVersionCode reports the formula-derived code regardless of snapshot-ness
+tasks.register("printReleaseVersionCode") {
+    val code = selfReleaseVersionCode
+    doLast { println(code) }
+}
+tasks.register("printSnapshotVersionCode") {
+    val code = snapshotVersionCode
+    doLast { println(code) }
+}
 
 allprojects {
     configurations.all {

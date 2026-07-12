@@ -19,8 +19,9 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
   (jpackage rejects MAJOR==0 for dmg/msi). The major has no fixed max — the derived code
   just has to stay within Google Play's versionCode cap of 2,100,000,000, which allows
   majors up to 210 (`210.0.0` is the exact ceiling).
-- The formula lives in the root `build.gradle.kts` (gradle builds) and
-  `scripts/version-code.py` (iOS sync + release tooling); keep the two in sync.
+- The formula lives in the root `build.gradle.kts` — the single source of truth. Release
+  tooling queries it via `./gradlew -q printReleaseVersionCode` /
+  `printSnapshotVersionCode` instead of reimplementing it.
 - **No `-SNAPSHOT` suffixes** (jpackage requires plain numeric versions). Instead every
   build sets `BuildInfo.IS_SNAPSHOT = true` (generated into `shared` commonMain) except
   CI builds off a release tag (`GITHUB_REF=refs/tags/v*`). `main` always carries the
@@ -30,8 +31,10 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
   build below v10 for the foreseeable future, low enough to leave schema wiggle room if
   a build with that code ever shipped by accident. (Consequence: installing a prod
   build over a snapshot requires an uninstall, and the hardcode must be revisited
-  before v10.0.0 ships. The committed iOS xcconfig always carries the release-derived
-  build number — it's a static file that can't switch per build.)
+  before v10.0.0 ships.) The committed iOS xcconfig also carries the snapshot build
+  number; CI swaps in the release-derived code on tag builds
+  (`scripts/sync-ios-version.sh --release`) — that swap is workspace-only and must
+  never be committed.
 - The desktop installers and iOS `MARKETING_VERSION` carry only the first 3 segments
   (jpackage / `CFBundleShortVersionString` limitation); the derived code carries the
   hotfix ordering.

@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
 # Syncs MARKETING_VERSION / CURRENT_PROJECT_VERSION in the iOS xcconfig from
 # self.versions.toml (the version source of truth for all platforms).
-# CURRENT_PROJECT_VERSION is derived from the name via scripts/version-code.py;
-# MARKETING_VERSION is truncated to 3 segments (CFBundleShortVersionString
-# doesn't allow a 4th/hotfix segment — the build number carries that ordering).
+#
+# By default CURRENT_PROJECT_VERSION is pinned to the snapshot versionCode —
+# the committed xcconfig represents snapshot builds, matching what android and
+# desktop snapshot builds carry. CI passes --release when building from a tag
+# to swap in the formula-derived code (that change is never committed).
+#
+# The versionCode formula lives in the root build.gradle.kts (the single source
+# of truth); this script queries it via gradle. MARKETING_VERSION is truncated
+# to 3 segments (CFBundleShortVersionString doesn't allow a 4th/hotfix segment
+# — the build number carries that ordering).
+#
+# Usage: sync-ios-version.sh [--release]
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -17,7 +26,16 @@ if [[ -z "$NAME" ]]; then
   exit 1
 fi
 
-CODE="$("$REPO_ROOT/scripts/version-code.py" "$NAME")"
+if [[ "${1:-}" == "--release" ]]; then
+  CODE_TASK="printReleaseVersionCode"
+else
+  CODE_TASK="printSnapshotVersionCode"
+fi
+CODE="$(cd "$REPO_ROOT" && ./gradlew -q "$CODE_TASK" | tail -n1)"
+if ! [[ "$CODE" =~ ^[0-9]+$ ]]; then
+  echo "error: unexpected output from ./gradlew $CODE_TASK: '$CODE'" >&2
+  exit 1
+fi
 MARKETING="$(cut -d. -f1-3 <<<"$NAME")"
 
 sed -i.bak \

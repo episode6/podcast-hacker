@@ -12,7 +12,7 @@ description: >-
 
 ## Overview
 This skill guides the agent in shipping a release branch by creating and publishing a GitHub release pointing to the tip of the release branch. It ensures consistency by:
-1. Resolving the release version directly from `self.versions.toml` on the target release branch (never assuming the branch name matches the version name, as hotfixes are appended to existing release branches with a 4th/hotfix version segment). The android versionCode / iOS build number is derived from the name via `scripts/version-code.py` — see the Versioning section of `RELEASE_CHECKLIST.md` for the formula.
+1. Resolving the release version directly from `self.versions.toml` on the target release branch (never assuming the branch name matches the version name, as hotfixes are appended to existing release branches with a 4th/hotfix version segment). The release versionCode / iOS build number is derived from the name by gradle (`./gradlew -q printReleaseVersionCode`) — see the Versioning section of `RELEASE_CHECKLIST.md` for the formula.
 2. Extracting release notes from the corresponding section in `CHANGELOG.md`.
 3. Publishing the GitHub release using the `gh` CLI with matching tag name and release name (format: `v<VERSION>`).
 4. The tag push triggers `.github/workflows/build-installers.yml`, which builds the deb/msi/dmg installers + a signed release APK and attaches them to the release created in step 3 (the iOS shard is best-effort and doesn't gate the release).
@@ -23,7 +23,7 @@ This skill guides the agent in shipping a release branch by creating and publish
 ## Prerequisites
 - **Merge PRs via GitHub**: Ensure the version bump PR (and any hardening PRs) are merged via the GitHub UI or `gh pr merge`. **NEVER** use local merge commits on the release branch.
 - **Pull Latest**: Once PRs are merged on GitHub, checkout the release branch locally and pull the latest changes from `origin` to ensure the local branch is up-to-date before starting the release process.
-- **Verify Versions**: `iosApp/Configuration/Config.xcconfig` must be in sync with the `name` in `self.versions.toml` (via `scripts/sync-ios-version.sh`). The script derives the versionCode from the name, verifies the xcconfig sync, and refuses to ship from a non-`release/*` branch.
+- **Verify Versions**: `iosApp/Configuration/Config.xcconfig` must be in sync with the `name` in `self.versions.toml` (via `scripts/sync-ios-version.sh` — note the committed xcconfig always carries the *snapshot* build number; CI swaps in the release code on tag builds). The script derives the release versionCode from the name via gradle, verifies the xcconfig sync, and refuses to ship from a non-`release/*` branch.
 
 ## Quick Start
 To perform a dry-run and verify release notes/version before shipping:

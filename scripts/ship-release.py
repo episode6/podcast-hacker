@@ -23,6 +23,24 @@ def get_current_branch():
         print(f"Error getting current git branch: {e.stderr.strip()}", file=sys.stderr)
         sys.exit(1)
 
+def gradle_version_code(task):
+    # the versionCode formula lives in the root build.gradle.kts (the single source of
+    # truth); query it via the print tasks it registers
+    result = subprocess.run(
+        ["./gradlew", "-q", task],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+    if result.returncode != 0:
+        print(f"Error running ./gradlew {task}: {result.stderr.strip()}", file=sys.stderr)
+        sys.exit(1)
+    lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    if not lines or not lines[-1].isdigit():
+        print(f"Error: unexpected ./gradlew {task} output: {result.stdout.strip()!r}", file=sys.stderr)
+        sys.exit(1)
+    return lines[-1]
+
 def get_version():
     version_file = "self.versions.toml"
     if not os.path.exists(version_file):
@@ -32,28 +50,19 @@ def get_version():
     with open(version_file, "r") as f:
         content = f.read()
 
-    # name is the single version source of truth; the android versionCode / iOS
-    # build number is derived from it via scripts/version-code.py
+    # name is the single version source of truth; the release versionCode / iOS
+    # build number is derived from it (this also validates the name's segments)
     name_match = re.search(r'name\s*=\s*"([^"]+)"', content)
     if not name_match:
         print("Error: Could not find name version pattern in self.versions.toml", file=sys.stderr)
         sys.exit(1)
 
     version = name_match.group(1)
-    result = subprocess.run(
-        [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "version-code.py"), version],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-    if result.returncode != 0:
-        print(f"Error deriving versionCode from '{version}': {result.stderr.strip()}", file=sys.stderr)
-        sys.exit(1)
-    code = result.stdout.strip()
+    code = gradle_version_code("printReleaseVersionCode")
 
     return version, code
 
-def check_xcconfig_in_sync(version, code):
+def check_xcconfig_in_sync(version):
     if not os.path.exists(XCCONFIG_PATH):
         print(f"Error: {XCCONFIG_PATH} not found.", file=sys.stderr)
         sys.exit(1)
@@ -67,14 +76,18 @@ def check_xcconfig_in_sync(version, code):
     project_version = project.group(1).strip() if project else None
 
     # MARKETING_VERSION carries only the first 3 segments (CFBundleShortVersionString
-    # doesn't allow a hotfix segment); the derived build number carries the ordering
+    # doesn't allow a hotfix segment). The committed CURRENT_PROJECT_VERSION is always
+    # the snapshot code — CI swaps in the release code on tag builds (sync-ios-version.sh
+    # --release), so that swap must never be committed.
     expected_marketing = ".".join(version.split(".")[:3])
-    if marketing_version != expected_marketing or project_version != code:
+    expected_project = gradle_version_code("printSnapshotVersionCode")
+    if marketing_version != expected_marketing or project_version != expected_project:
         print(
             f"Error: {XCCONFIG_PATH} (MARKETING_VERSION={marketing_version}, "
             f"CURRENT_PROJECT_VERSION={project_version}) is out of sync with "
             f"self.versions.toml (name={version}, expected MARKETING_VERSION={expected_marketing}, "
-            f"derived code={code}). Run scripts/sync-ios-version.sh and commit the result.",
+            f"expected CURRENT_PROJECT_VERSION={expected_project}). "
+            "Run scripts/sync-ios-version.sh and commit the result.",
             file=sys.stderr
         )
         sys.exit(1)
@@ -203,7 +216,7 @@ def main():
     branch = args.branch if args.branch else get_current_branch()
     check_release_branch(branch, args.dry_run)
     version, code = get_version()
-    check_xcconfig_in_sync(version, code)
+    check_xcconfig_in_sync(version)
     notes = get_changelog_notes(version)
 
     result = run_gh_release(version, code, notes, branch, dry_run=args.dry_run)
