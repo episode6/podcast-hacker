@@ -11,3 +11,5 @@
   the top loading bar.
 - Order the podcast grid by most recently released episode (Recently Played and Add
   Podcast tiles stay at the bottom).
+- Replace the "← Back" text button with an icon button, and fix a stale (dead) back
+  button lingering on the podcast grid after returning from another screen.
