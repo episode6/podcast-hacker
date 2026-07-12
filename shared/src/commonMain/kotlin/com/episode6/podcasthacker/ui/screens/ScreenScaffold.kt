@@ -16,18 +16,22 @@ import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.window.core.layout.WindowSizeClass
+import com.episode6.podcasthacker.ui.util.AppIcons
 import com.episode6.podcasthacker.ui.util.overlappedNavBarBottomPadding
 
 /**
@@ -64,8 +68,19 @@ internal fun ScreenScaffold(
     ) {
         Column(modifier = Modifier.widthIn(max = contentMaxWidth).fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (navController.previousBackStackEntry != null) {
-                    TextButton(onClick = { navController.popBackStack() }) { Text("← Back") }
+                // previousBackStackEntry isn't observable on its own: the root screen's
+                // title row composes mid-pop, while the popped entry is still on the
+                // stack, and nothing re-read it afterwards — leaving a dead back button.
+                // Observing the current entry re-runs this check once the pop settles.
+                val currentEntry by navController.currentBackStackEntryAsState()
+                if (currentEntry != null && navController.previousBackStackEntry != null) {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = AppIcons.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                     Spacer(Modifier.width(8.dp))
                 }
                 Text(

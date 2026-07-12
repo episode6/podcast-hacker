@@ -4,6 +4,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -189,7 +190,7 @@ class AppDeviceIntegrationTest {
 
         // back to episode detail: the mini player bar carries the paused state; tapping
         // it returns to NowPlaying, where Stop clears playback + hides the bar
-        compose.onNodeWithText("← Back").performClick()
+        compose.onNode(hasContentDescription("Back")).performClick()
         compose.waitForExactlyOne(pausedOnMiniBar, timeoutMillis = 10_000)
         compose.onNodeWithTag("miniPlayerBar").performClick()
         compose.waitForExactlyOne(hasText("Stop"), timeoutMillis = 10_000)
