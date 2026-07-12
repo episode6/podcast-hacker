@@ -35,12 +35,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.episode6.podcasthacker.data.backup.libraryBackupDocument
+import com.episode6.podcasthacker.data.backup.parseLibraryImport
 import com.episode6.podcasthacker.data.model.Podcast
 import com.episode6.podcasthacker.data.opml.OpmlFeed
 import com.episode6.podcasthacker.data.opml.opmlDocument
-import com.episode6.podcasthacker.data.opml.parseOpmlFeeds
-import com.episode6.podcasthacker.data.progress.episodeProgressDocument
-import com.episode6.podcasthacker.data.progress.parseEpisodeProgress
 import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.AppStore
 import com.episode6.podcasthacker.store.ImportEpisodeProgress
@@ -53,7 +52,6 @@ import com.episode6.podcasthacker.ui.util.AppIcons
 import com.episode6.podcasthacker.ui.util.rememberFileExportLauncher
 import com.episode6.podcasthacker.ui.util.rememberFileImportLauncher
 import com.episode6.podcasthacker.ui.util.stateOf
-import kotlin.time.Duration
 
 @Composable
 internal fun GridScreen(navController: NavController) {
@@ -107,21 +105,23 @@ internal fun GridScreen(navController: NavController) {
 }
 
 /**
- * Overflow (3-dots) menu with OPML subscription import/export plus episode-progress
- * import/export. OPML import subscribes to every feed in the chosen file that isn't
- * already subscribed (categories flattened); new tiles appear as each feed syncs.
- * Progress import restores resume positions / play history to episodes already in the
- * library, so it belongs after an OPML import has synced. Exports save the current
- * subscriptions / listening state and are disabled while there's nothing to write.
- * Hidden entirely on platforms without file dialogs.
+ * Overflow (3-dots) menu with library import/export. Import opens one picker and
+ * sniffs the chosen file — the app's json backup or an OPML subscription list —
+ * subscribing to any not-yet-subscribed feeds (categories flattened) and restoring
+ * any listening state the file carries (applied as the freshly subscribed feeds
+ * sync; see ImportEpisodeProgress). Export offers a format submenu: OPML for interop
+ * with other podcast apps, json for the full library (subscriptions + progress);
+ * both disabled with nothing to export. Hidden on platforms without file dialogs.
  */
 @Composable
 private fun OverflowMenu(store: AppStore) {
-    val importOpml = rememberFileImportLauncher(title = "Import OPML") { xml ->
+    val importFile = rememberFileImportLauncher(title = "Import") { text ->
+        val backup = parseLibraryImport(text)
         val subscribed = store.state.subscriptions.map { it.feedUrl }.toSet()
-        parseOpmlFeeds(xml)
+        backup.podcasts
             .filter { it.feedUrl !in subscribed }
             .forEach { store.dispatch(SubscribeToPodcast(it.feedUrl)) }
+        if (backup.episodes.isNotEmpty()) store.dispatch(ImportEpisodeProgress(backup.episodes))
     }
     val exportOpml = rememberFileExportLauncher(
         title = "Export OPML",
@@ -133,25 +133,24 @@ private fun OverflowMenu(store: AppStore) {
     ) {
         opmlDocument(store.state.subscriptions.map { OpmlFeed(feedUrl = it.feedUrl, title = it.title) })
     }
-    val importProgress = rememberFileImportLauncher(title = "Import Episode Progress") { json ->
-        parseEpisodeProgress(json).takeIf { it.isNotEmpty() }?.let { store.dispatch(ImportEpisodeProgress(it)) }
-    }
-    val exportProgress = rememberFileExportLauncher(
-        title = "Export Episode Progress",
-        fileName = "episode-progress.json",
+    val exportJson = rememberFileExportLauncher(
+        title = "Export JSON",
+        fileName = "library.json",
         mimeType = "application/json",
     ) {
-        episodeProgressDocument(store.state.episodesByFeed.values.flatten())
+        libraryBackupDocument(store.state.subscriptions, store.state.episodesByFeed.values.flatten())
     }
-    if (importOpml == null && exportOpml == null && importProgress == null && exportProgress == null) return
+    if (importFile == null && exportOpml == null && exportJson == null) return
 
+    // progress can't exist without a subscription, so this alone gates both exports
     val hasSubscriptions by store.stateOf { subscriptions.isNotEmpty() }
-    val hasProgress by store.stateOf {
-        episodesByFeed.values.any { episodes ->
-            episodes.any { it.playbackPosition > Duration.ZERO || it.lastPlayed != null }
-        }
-    }
     var menuOpen by remember { mutableStateOf(false) }
+    var showExportFormats by remember { mutableStateOf(false) }
+
+    fun openMenu() {
+        showExportFormats = false
+        menuOpen = true
+    }
 
     fun menuAction(action: () -> Unit): () -> Unit = {
         menuOpen = false
@@ -159,7 +158,7 @@ private fun OverflowMenu(store: AppStore) {
     }
 
     Box {
-        IconButton(onClick = { menuOpen = true }) {
+        IconButton(onClick = ::openMenu) {
             Icon(
                 imageVector = AppIcons.MoreVert,
                 contentDescription = "More options",
@@ -167,25 +166,24 @@ private fun OverflowMenu(store: AppStore) {
             )
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-            if (importOpml != null) {
-                DropdownMenuItem(text = { Text("Import OPML") }, onClick = menuAction(importOpml))
-            }
-            if (exportOpml != null) {
-                DropdownMenuItem(
-                    text = { Text("Export OPML") },
-                    enabled = hasSubscriptions,
-                    onClick = menuAction(exportOpml),
-                )
-            }
-            if (importProgress != null) {
-                DropdownMenuItem(text = { Text("Import Episode Progress") }, onClick = menuAction(importProgress))
-            }
-            if (exportProgress != null) {
-                DropdownMenuItem(
-                    text = { Text("Export Episode Progress") },
-                    enabled = hasProgress,
-                    onClick = menuAction(exportProgress),
-                )
+            if (!showExportFormats) {
+                if (importFile != null) {
+                    DropdownMenuItem(text = { Text("Import") }, onClick = menuAction(importFile))
+                }
+                if (exportOpml != null || exportJson != null) {
+                    DropdownMenuItem(
+                        text = { Text("Export") },
+                        enabled = hasSubscriptions,
+                        onClick = { showExportFormats = true },
+                    )
+                }
+            } else {
+                if (exportOpml != null) {
+                    DropdownMenuItem(text = { Text("OPML") }, onClick = menuAction(exportOpml))
+                }
+                if (exportJson != null) {
+                    DropdownMenuItem(text = { Text("JSON") }, onClick = menuAction(exportJson))
+                }
             }
         }
     }

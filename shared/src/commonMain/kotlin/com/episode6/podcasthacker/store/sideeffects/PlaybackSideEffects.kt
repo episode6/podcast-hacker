@@ -1,5 +1,6 @@
 package com.episode6.podcasthacker.store.sideeffects
 
+import com.episode6.podcasthacker.data.backup.EpisodeProgress
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
 import com.episode6.podcasthacker.playback.PlaybackMetadata
@@ -21,15 +22,19 @@ import com.episode6.podcasthacker.store.StopPlayback
 import com.episode6.podcasthacker.store.TogglePlayPause
 import com.episode6.podcasthacker.store.nextAdBoundary
 import com.episode6.podcasthacker.store.previousAdBoundary
+import com.episode6.redux.Action
 import com.episode6.redux.sideeffects.SideEffect
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.IntoSet
 import dev.zacsweers.metro.Provides
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
@@ -132,22 +137,27 @@ interface PlaybackSideEffects {
         }
 
     /**
-     * Applies an imported progress document: restores resume positions and last-played
-     * stamps for episodes that exist in the library (matched by guid), skipping the
-     * rest. Positions overwrite unconditionally — an import is an explicit "make this
-     * device look like that one".
+     * Applies imported listening state: restores resume positions and last-played
+     * stamps for library episodes (matched by guid). Positions overwrite
+     * unconditionally — an import is an explicit "make this device look like that one".
+     *
+     * A combined backup import dispatches this alongside the [SubscribeToPodcast]
+     * actions that create the episodes, so entries with no matching episode yet are
+     * retried while the feeds sync; whatever still hasn't matched when the retry
+     * budget runs out is dropped. Runs inside flatMapMerge so the retry loop doesn't
+     * stall action delivery to other side effects (see SubscriptionSideEffects).
      */
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Provides @IntoSet fun importEpisodeProgress(
         episodeRepository: EpisodeRepository,
     ): SideEffect<AppState> = sideEffect {
-        actions.filterIsInstance<ImportEpisodeProgress>().transform { action ->
-            action.episodes.forEach { entry ->
-                episodeRepository.episode(entry.guid) ?: return@forEach
-                if (entry.positionMs > 0) {
-                    episodeRepository.setPlaybackPosition(entry.guid, entry.positionMs.milliseconds)
-                }
-                entry.lastPlayedAtMs?.let {
-                    episodeRepository.markPlayed(entry.guid, Instant.fromEpochMilliseconds(it))
+        actions.filterIsInstance<ImportEpisodeProgress>().flatMapMerge { action ->
+            flow<Action> {
+                var remaining = action.episodes
+                repeat(IMPORT_PROGRESS_MAX_ATTEMPTS) {
+                    remaining = remaining.filterNot { episodeRepository.applyProgress(it) }
+                    if (remaining.isEmpty()) return@flow
+                    delay(IMPORT_PROGRESS_RETRY_DELAY)
                 }
             }
         }
@@ -169,6 +179,19 @@ interface PlaybackSideEffects {
 
 private fun Duration.clampedTo(nowPlaying: NowPlayingState?): Duration =
     coerceIn(Duration.ZERO, nowPlaying?.duration ?: Duration.INFINITE)
+
+/** ~30s of retries: enough for a combined import's feed syncs, bounded so a backup
+ * full of long-gone episodes doesn't poll forever. */
+internal val IMPORT_PROGRESS_RETRY_DELAY: Duration = 500.milliseconds
+internal const val IMPORT_PROGRESS_MAX_ATTEMPTS = 60
+
+/** True when [entry]'s episode exists and its listening state was applied. */
+private suspend fun EpisodeRepository.applyProgress(entry: EpisodeProgress): Boolean {
+    episode(entry.guid) ?: return false
+    if (entry.positionMs > 0) setPlaybackPosition(entry.guid, entry.positionMs.milliseconds)
+    entry.lastPlayedAtMs?.let { markPlayed(entry.guid, Instant.fromEpochMilliseconds(it)) }
+    return true
+}
 
 /**
  * Filters a player-state stream down to the moments a position is worth persisting:

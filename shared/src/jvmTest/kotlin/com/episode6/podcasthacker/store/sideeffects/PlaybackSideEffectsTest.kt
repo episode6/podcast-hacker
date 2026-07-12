@@ -7,7 +7,7 @@ import assertk.assertions.isEqualTo
 import com.episode6.podcasthacker.data.model.AdBoundary
 import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.data.model.Podcast
-import com.episode6.podcasthacker.data.progress.EpisodeProgress
+import com.episode6.podcasthacker.data.backup.EpisodeProgress
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
 import com.episode6.podcasthacker.playback.PlaybackMetadata
@@ -339,7 +339,7 @@ class PlaybackSideEffectsTest {
     }
 
     @Test
-    fun importEpisodeProgress_restoresPositionAndLastPlayed_skipsUnknownEpisodes() = runTest {
+    fun importEpisodeProgress_restoresPositionAndLastPlayed_dropsUnknownEpisodes() = runTest {
         val known = EpisodeProgress(
             feedUrl = episode.feedUrl,
             guid = episode.guid,
@@ -361,10 +361,29 @@ class PlaybackSideEffectsTest {
             episodeRepository.markPlayed(episode.guid, Instant.fromEpochMilliseconds(1_700_000_000_000))
             episodeRepository.setPlaybackPosition("position-only", 5.seconds)
         }
+        // the unknown episode exhausts the retry budget without being applied
+        coVerify(exactly = IMPORT_PROGRESS_MAX_ATTEMPTS) { episodeRepository.episode("unknown-guid") }
         coVerify(exactly = 0) {
             episodeRepository.setPlaybackPosition("unknown-guid", any())
             episodeRepository.markPlayed("position-only", any())
         }
+    }
+
+    @Test
+    fun importEpisodeProgress_retriesUntilTheEpisodeAppears() = runTest {
+        // simulates a combined backup import: the subscribe that creates the episode
+        // is still syncing when the progress import first checks for it
+        val entry = EpisodeProgress(feedUrl = episode.feedUrl, guid = "late-guid", positionMs = 7_000)
+        coEvery { episodeRepository.episode("late-guid") } returnsMany
+            listOf(null, null, episode.copy(guid = "late-guid"))
+
+        val actions = sideEffects.importEpisodeProgress(episodeRepository)
+            .output(ImportEpisodeProgress(listOf(entry)))
+            .toList()
+
+        assertThat(actions).isEmpty()
+        coVerify(exactly = 3) { episodeRepository.episode("late-guid") }
+        coVerify(exactly = 1) { episodeRepository.setPlaybackPosition("late-guid", 7.seconds) }
     }
 
     private fun SideEffect<AppState>.output(vararg input: Action, state: AppState = AppState()): Flow<Action> {

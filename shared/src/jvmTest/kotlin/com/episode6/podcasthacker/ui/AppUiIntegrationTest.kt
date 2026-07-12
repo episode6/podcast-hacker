@@ -266,23 +266,20 @@ class AppUiIntegrationTest {
         waitForExactlyOne(hasText("No subscriptions yet"), timeoutMillis = 10_000)
     }
 
-    // the opml menu tests only inspect the dropdown: clicking Import/Export would open
-    // a real (blocking) AWT FileDialog, which a headless test can't drive
+    // the import/export menu tests never click Import or a format item: that would
+    // open a real (blocking) AWT FileDialog, which a headless test can't drive
 
     @Test
-    fun gridOverflowMenu_emptyLibrary_offersImportsButNotExports() = runComposeUiTest {
+    fun gridOverflowMenu_emptyLibrary_offersImportButNotExport() = runComposeUiTest {
         setContent { App(testGraph()) }
 
         onNode(hasContentDescription("More options")).performClick()
-        waitForExactlyOne(hasText("Import OPML"))
-        onNodeWithText("Import Episode Progress").assertExists()
-        // nothing to export yet
-        onNode(hasText("Export OPML") and isNotEnabled()).assertExists()
-        onNode(hasText("Export Episode Progress") and isNotEnabled()).assertExists()
+        waitForExactlyOne(hasText("Import") and isEnabled())
+        onNode(hasText("Export") and isNotEnabled()).assertExists() // nothing to export yet
     }
 
     @Test
-    fun gridOverflowMenu_withSubscriptions_offersOpmlExport() = runComposeUiTest {
+    fun gridOverflowMenu_withSubscriptions_exportOpensFormatSubmenu() = runComposeUiTest {
         setContent { App(testGraph()) }
 
         onNodeWithText("Add Podcast", substring = true).performClick()
@@ -292,10 +289,14 @@ class AppUiIntegrationTest {
         waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
 
         onNode(hasContentDescription("More options")).performClick()
-        waitForExactlyOne(hasText("Export OPML") and isEnabled())
-        onNodeWithText("Import OPML").assertExists()
-        // subscriptions alone carry no listening state
-        onNode(hasText("Export Episode Progress") and isNotEnabled()).assertExists()
+        waitForExactlyOne(hasText("Export") and isEnabled())
+        onNodeWithText("Import").assertExists()
+
+        // choosing Export swaps the menu content for the format picker
+        onNodeWithText("Export").performClick()
+        waitForExactlyOne(hasText("OPML"))
+        onNodeWithText("JSON").assertExists()
+        onNodeWithText("Import").assertDoesNotExist()
     }
 
     /**
