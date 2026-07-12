@@ -48,6 +48,7 @@ import com.episode6.podcasthacker.ui.nav.AddPodcastRoute
 import com.episode6.podcasthacker.ui.nav.PodcastDetailRoute
 import com.episode6.podcasthacker.ui.nav.RecentlyPlayedRoute
 import com.episode6.podcasthacker.ui.util.AppIcons
+import com.episode6.podcasthacker.ui.util.platformUsesPullToRefresh
 import com.episode6.podcasthacker.ui.util.rememberFileExportLauncher
 import com.episode6.podcasthacker.ui.util.rememberFileImportLauncher
 import com.episode6.podcasthacker.ui.util.stateOf
@@ -64,7 +65,9 @@ internal fun GridScreen(navController: NavController) {
         constrainContentWidth = false,
         actions = { OverflowMenu(store) },
     ) {
-        if (isSyncing) {
+        // pull-to-refresh platforms surface syncing via the pull indicator, so the
+        // bar pinned above the grid would be a second, redundant spinner there
+        if (isSyncing && !platformUsesPullToRefresh) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
         }
         if (subscriptions.isEmpty()) {
