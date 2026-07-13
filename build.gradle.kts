@@ -43,9 +43,9 @@ val selfAppId: String by extra(if (selfIsSnapshot) "com.episode6.snapshots.podca
 // shallow clone is rejected rather than silently under-counting.
 //
 // The committed iOS xcconfig can't carry a per-commit number, so snapshot iOS builds
-// stay pinned to 25,600,000 (v10.0.0's derived code, the pre-git-count snapshot
-// versionCode) — see printSnapshotVersionCode below and scripts/sync-ios-version.sh.
-val iosSnapshotBuildNumber = 25_600_000
+// stay pinned to build number 1 — see printSnapshotVersionCode below and
+// scripts/sync-ios-version.sh.
+val iosSnapshotBuildNumber = 1
 fun git(vararg args: String): String = providers.exec {
     workingDir(rootDir)
     commandLine("git", *args)

@@ -6,8 +6,8 @@
   merge-base with main) instead of the hardcoded 25,600,000: snapshots installed from
   main can never be downgraded by an older main build, and branch/PR builds carry their
   closest main ancestor's code so a later main build installs right over them. iOS
-  snapshots keep the pinned 25,600,000 build number (the committed xcconfig can't track
-  a per-commit value). Note: because the new codes are far lower, an already-installed
+  snapshots are pinned to build number 1 (the committed xcconfig can't track a
+  per-commit value). Note: because the new codes are far lower, an already-installed
   android snapshot must be uninstalled once before a new snapshot build will install
   over it.
 

@@ -40,10 +40,10 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
   CI checkout sets `fetch-depth: 0`, and the build rejects shallow clones rather than
   silently under-counting.
 - The committed iOS xcconfig can't carry a per-commit build number, so snapshot iOS
-  builds stay pinned to `25,600,000` (v10.0.0's derived code, the pre-git-count snapshot
-  versionCode) — that's what `printSnapshotVersionCode` reports. CI swaps in the
-  release-derived code on tag builds (`scripts/sync-ios-version.sh --release`) — that
-  swap is workspace-only and must never be committed.
+  builds stay pinned to build number `1` — that's what `printSnapshotVersionCode`
+  reports. CI swaps in the release-derived code on tag builds
+  (`scripts/sync-ios-version.sh --release`) — that swap is workspace-only and must
+  never be committed.
 - **Snapshot builds carry their own app identity** so they install side-by-side with
   release builds instead of overwriting them: the display name gains a ` (SNAPSHOT)`
   suffix and the android applicationId / macOS bundle id becomes
