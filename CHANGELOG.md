@@ -21,3 +21,6 @@
 - Add a "Third-party license notices" option to the podcast grid's overflow menu; it
   opens a screen rendering THIRD_PARTY_LICENSES.md (embedded at build time), which now
   covers all shipped libraries, not just the desktop-bundled libvlc/JNA.
+- Recently Played: when an episode's file isn't downloaded, the row's play button
+  becomes a live (re-)download button (with a spinner while the download runs) instead
+  of greying out alongside the trash button.

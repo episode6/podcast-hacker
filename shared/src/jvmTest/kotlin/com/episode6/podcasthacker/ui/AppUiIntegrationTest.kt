@@ -241,12 +241,17 @@ class AppUiIntegrationTest {
         onNodeWithText("Recently Played", substring = true).performClick()
         waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
 
-        // trash deletes the file: the row stays (play history kept) but both actions
-        // grey out until a re-download
+        // trash deletes the file: the row stays (play history kept), the trash button
+        // greys out, and the play button becomes a live download button
         onNode(hasContentDescription("Delete file")).performClick()
         waitForExactlyOne(hasContentDescription("Delete file") and isNotEnabled(), timeoutMillis = 10_000)
-        onNode(hasContentDescription("Resume") and isNotEnabled()).assertExists()
+        waitForExactlyOne(hasContentDescription("Download") and isEnabled())
         onNodeWithText("Episode Two").assertExists()
+
+        // re-downloading from the row restores playback + delete
+        onNode(hasContentDescription("Download")).performClick()
+        waitForExactlyOne(hasContentDescription("Resume") and isEnabled(), timeoutMillis = 30_000)
+        onNode(hasContentDescription("Delete file") and isEnabled()).assertExists()
     }
 
     @Test

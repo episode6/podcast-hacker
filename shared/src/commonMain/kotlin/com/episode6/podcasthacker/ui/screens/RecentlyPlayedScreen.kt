@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +33,8 @@ import com.episode6.podcasthacker.data.model.DownloadState
 import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.DeleteDownload
+import com.episode6.podcasthacker.store.DownloadEpisode
+import com.episode6.podcasthacker.store.EpisodeDownloadStatus
 import com.episode6.podcasthacker.store.PlayEpisode
 import com.episode6.podcasthacker.store.TogglePlayPause
 import com.episode6.podcasthacker.ui.nav.EpisodeDetailRoute
@@ -42,8 +45,9 @@ import com.episode6.podcasthacker.ui.util.stateOf
 /**
  * Every episode ever played in the app, most recent play first. Rows resume playback
  * (pause, for the episode currently playing) or delete the downloaded file; deleting
- * keeps the episode's row (and its play history), it only frees the disk space, so both
- * actions grey out until a re-download.
+ * keeps the episode's row (and its play history), it only frees the disk space. Without
+ * a downloaded file the play button becomes a (re-)download button — kept in the accent
+ * color while the rest of the row greys out — with a spinner while the download runs.
  */
 @Composable
 internal fun RecentlyPlayedScreen(navController: NavController) {
@@ -68,11 +72,13 @@ internal fun RecentlyPlayedScreen(navController: NavController) {
                 val isPlaying by store.stateOf {
                     nowPlaying?.episodeGuid == episode.guid && nowPlaying?.isPlaying == true
                 }
+                val downloadStatus by store.stateOf { downloads[episode.guid] }
                 RecentlyPlayedRow(
                     episode = episode,
                     podcastTitle = podcastsByFeed[episode.feedUrl]?.title,
                     artworkUrl = podcastsByFeed[episode.feedUrl]?.artworkUrl,
                     isPlaying = isPlaying,
+                    downloadStatus = downloadStatus,
                     onClick = {
                         navController.navigate(
                             EpisodeDetailRoute(feedUrl = episode.feedUrl, episodeGuid = episode.guid)
@@ -80,6 +86,7 @@ internal fun RecentlyPlayedScreen(navController: NavController) {
                     },
                     onResume = { store.dispatch(PlayEpisode(episode.guid)) },
                     onPause = { store.dispatch(TogglePlayPause) },
+                    onDownload = { store.dispatch(DownloadEpisode(episode.guid)) },
                     onDeleteFile = { store.dispatch(DeleteDownload(episode.guid)) },
                 )
                 HorizontalDivider()
@@ -94,9 +101,11 @@ private fun RecentlyPlayedRow(
     podcastTitle: String?,
     artworkUrl: String?,
     isPlaying: Boolean,
+    downloadStatus: EpisodeDownloadStatus?,
     onClick: () -> Unit,
     onResume: () -> Unit,
     onPause: () -> Unit,
+    onDownload: () -> Unit,
     onDeleteFile: () -> Unit,
 ) {
     val downloaded = episode.downloadState == DownloadState.Downloaded
@@ -135,12 +144,25 @@ private fun RecentlyPlayedRow(
             }
         }
         Spacer(Modifier.width(8.dp))
-        RowIconButton(
-            icon = if (isPlaying) AppIcons.Pause else AppIcons.Play,
-            contentDescription = if (isPlaying) "Pause" else "Resume",
-            enabled = downloaded,
-            onClick = if (isPlaying) onPause else onResume,
-        )
+        val downloadInFlight = downloadStatus != null && downloadStatus !is EpisodeDownloadStatus.Failure
+        when {
+            downloaded -> RowIconButton(
+                icon = if (isPlaying) AppIcons.Pause else AppIcons.Play,
+                contentDescription = if (isPlaying) "Pause" else "Resume",
+                enabled = true,
+                onClick = if (isPlaying) onPause else onResume,
+            )
+            // sized like RowIconButton so the delete buttons stay column-aligned
+            downloadInFlight -> IconButton(onClick = {}, enabled = false) {
+                CircularProgressIndicator(Modifier.size(24.dp))
+            }
+            else -> RowIconButton(
+                icon = AppIcons.Download,
+                contentDescription = "Download",
+                enabled = true,
+                onClick = onDownload,
+            )
+        }
         RowIconButton(
             icon = AppIcons.Delete,
             contentDescription = "Delete file",
