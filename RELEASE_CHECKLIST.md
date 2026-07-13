@@ -31,15 +31,19 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
   build sets `BuildInfo.IS_SNAPSHOT = true` (generated into `shared` commonMain) except
   CI builds off a release tag (`GITHUB_REF=refs/tags/v*`). `main` always carries the
   *next* release's version, so the release branch inherits the correct version when cut.
-- Snapshot builds hardcode their versionCode to `25,600,000` (v10.0.0's derived code)
-  instead of using the formula: high enough that a snapshot installs over every prod
-  build below v10 for the foreseeable future (`9.255.9999` derives to 25,599,999), low
-  enough to leave schema wiggle room if a build with that code ever shipped by accident. (Consequence: installing a prod
-  build over a snapshot requires an uninstall, and the hardcode must be revisited
-  before v10.0.0 ships.) The committed iOS xcconfig also carries the snapshot build
-  number; CI swaps in the release-derived code on tag builds
-  (`scripts/sync-ios-version.sh --release`) — that swap is workspace-only and must
-  never be committed.
+- Snapshot builds derive their versionCode from git instead of the formula: the commit
+  count at HEAD's merge-base with main. Snapshots install under their own applicationId,
+  so their codes never compete with release codes; builds from main carry a strictly
+  growing code (a newer main snapshot always installs over an older one), while
+  branch/PR builds are locked to their closest main ancestor's code so a later main
+  build can install right over them. This needs full git history — every gradle-running
+  CI checkout sets `fetch-depth: 0`, and the build rejects shallow clones rather than
+  silently under-counting.
+- The committed iOS xcconfig can't carry a per-commit build number, so snapshot iOS
+  builds stay pinned to `25,600,000` (v10.0.0's derived code, the pre-git-count snapshot
+  versionCode) — that's what `printSnapshotVersionCode` reports. CI swaps in the
+  release-derived code on tag builds (`scripts/sync-ios-version.sh --release`) — that
+  swap is workspace-only and must never be committed.
 - **Snapshot builds carry their own app identity** so they install side-by-side with
   release builds instead of overwriting them: the display name gains a ` (SNAPSHOT)`
   suffix and the android applicationId / macOS bundle id becomes

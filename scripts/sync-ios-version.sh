@@ -3,12 +3,14 @@
 # self.versions.toml (the version source of truth for all platforms), plus the
 # snapshot/release app identity (bundle id + display name + app icon).
 #
-# By default the xcconfig is pinned to the snapshot versionCode and the snapshot
-# identity (com.episode6.snapshots.* / "... (SNAPSHOT)") — the committed xcconfig
-# represents snapshot builds, matching what android and desktop snapshot builds
-# carry, so snapshot installs sit side-by-side with the released app. CI passes
-# --release when building from a tag to swap in the formula-derived code and the
-# release identity (that change is never committed).
+# By default the xcconfig is pinned to the fixed iOS snapshot build number and the
+# snapshot identity (com.episode6.snapshots.* / "... (SNAPSHOT)") — the committed
+# xcconfig represents snapshot builds, so snapshot installs sit side-by-side with
+# the released app. (Android/desktop snapshots instead derive their versionCode
+# from the git commit count — see the root build.gradle.kts — which a committed
+# file can't track per-commit.) CI passes --release when building from a tag to
+# swap in the formula-derived code and the release identity (that change is never
+# committed).
 #
 # The versionCode formula lives in the root build.gradle.kts (the single source
 # of truth); this script queries it via gradle.
