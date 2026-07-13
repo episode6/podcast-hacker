@@ -27,3 +27,6 @@
 - Recently Played: when an episode's file isn't downloaded, the row's play button
   becomes a live (re-)download button (with a spinner while the download runs) instead
   of greying out alongside the trash button.
+- Android media notification: always show skip-back/skip-forward buttons that skip to
+  the nearest ad boundary (falling back to the fixed 15s/30s seeks). Previously there
+  was no forward button, and the back button restarted the episode from the beginning.
