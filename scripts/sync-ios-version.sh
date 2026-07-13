@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Syncs MARKETING_VERSION / CURRENT_PROJECT_VERSION in the iOS xcconfig from
 # self.versions.toml (the version source of truth for all platforms), plus the
-# snapshot/release app identity (bundle id + display name).
+# snapshot/release app identity (bundle id + display name + app icon).
 #
 # By default the xcconfig is pinned to the snapshot versionCode and the snapshot
 # identity (com.episode6.snapshots.* / "... (SNAPSHOT)") — the committed xcconfig
@@ -31,10 +31,12 @@ if [[ "${1:-}" == "--release" ]]; then
   CODE_TASK="printReleaseVersionCode"
   BUNDLE_ID_PREFIX="com.episode6.podcasthacker"
   DISPLAY_NAME="PodcastHacker"
+  APPICON_NAME="AppIcon"
 else
   CODE_TASK="printSnapshotVersionCode"
   BUNDLE_ID_PREFIX="com.episode6.snapshots.podcasthacker"
   DISPLAY_NAME="PodcastHacker (SNAPSHOT)"
+  APPICON_NAME="AppIcon-Snapshot"
 fi
 CODE="$(cd "$REPO_ROOT" && ./gradlew -q "$CODE_TASK" | tail -n1)"
 if ! [[ "$CODE" =~ ^[0-9]+$ ]]; then
@@ -47,8 +49,9 @@ sed -i.bak \
   -e "s/^CURRENT_PROJECT_VERSION=.*/CURRENT_PROJECT_VERSION=$CODE/" \
   -e "s/^PRODUCT_BUNDLE_IDENTIFIER=.*/PRODUCT_BUNDLE_IDENTIFIER=$BUNDLE_ID_PREFIX.PodcastHacker\$(TEAM_ID)/" \
   -e "s/^INFOPLIST_KEY_CFBundleDisplayName=.*/INFOPLIST_KEY_CFBundleDisplayName=$DISPLAY_NAME/" \
+  -e "s/^ASSETCATALOG_COMPILER_APPICON_NAME=.*/ASSETCATALOG_COMPILER_APPICON_NAME=$APPICON_NAME/" \
   "$XCCONFIG"
 rm -f "$XCCONFIG.bak"
 
 echo "synced $XCCONFIG to MARKETING_VERSION=$NAME CURRENT_PROJECT_VERSION=$CODE"
-echo "  PRODUCT_BUNDLE_IDENTIFIER=$BUNDLE_ID_PREFIX.PodcastHacker\$(TEAM_ID) DISPLAY_NAME=$DISPLAY_NAME"
+echo "  PRODUCT_BUNDLE_IDENTIFIER=$BUNDLE_ID_PREFIX.PodcastHacker\$(TEAM_ID) DISPLAY_NAME=$DISPLAY_NAME APPICON=$APPICON_NAME"

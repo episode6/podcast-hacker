@@ -45,9 +45,13 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
   suffix and the android applicationId / macOS bundle id becomes
   `com.episode6.snapshots.podcasthacker` (see `selfAppName` / `selfAppId` in the root
   `build.gradle.kts`; the desktop jpackage packageName and jvm data dirs use
-  `PodcastHacker-SNAPSHOT`). The committed iOS xcconfig likewise carries the snapshot
-  bundle id + display name, swapped to the release identity by the same
-  `sync-ios-version.sh --release` workspace-only step on tag builds.
+  `PodcastHacker-SNAPSHOT`). Snapshot builds also swap in their own app icon (the
+  dark variant; releases carry the white-on-episode6-orange `#FF6600` one): android
+  via `manifestPlaceholders` + `*_snapshot` mipmaps, desktop via the
+  `PodcastHacker-SNAPSHOT.*` files in `desktopApp/icons`, iOS via the
+  `AppIcon-Snapshot` asset catalog. The committed iOS xcconfig likewise carries the
+  snapshot bundle id + display name + icon name, swapped to the release identity by
+  the same `sync-ios-version.sh --release` workspace-only step on tag builds.
 
 ### Cut new Release Branch
 

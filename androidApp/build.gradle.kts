@@ -14,6 +14,7 @@ kotlin {
 
 // derived from self.versions.name in the root build script (see the formula there)
 val selfVersionCode: Int by rootProject.extra
+val selfIsSnapshot: Boolean by rootProject.extra
 val selfAppName: String by rootProject.extra
 val selfAppId: String by rootProject.extra
 dependencies {
@@ -52,6 +53,14 @@ android {
         // (the namespace above stays fixed, so R + manifest class refs are unaffected)
         applicationId = selfAppId
         resValue("string", "app_name", selfAppName)
+        // snapshot builds keep the original dark launcher icon while releases carry
+        // the episode6-orange one, so the two installs are distinguishable at a
+        // glance; placeholders resolve at manifest merge, so lint + resource
+        // shrinking still see the concrete @mipmap reference per build
+        manifestPlaceholders["appIcon"] =
+            if (selfIsSnapshot) "@mipmap/ic_launcher_snapshot" else "@mipmap/ic_launcher"
+        manifestPlaceholders["appIconRound"] =
+            if (selfIsSnapshot) "@mipmap/ic_launcher_round_snapshot" else "@mipmap/ic_launcher_round"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = selfVersionCode
