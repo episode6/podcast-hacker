@@ -75,9 +75,9 @@ def check_xcconfig_in_sync(version):
     marketing_version = marketing.group(1).strip() if marketing else None
     project_version = project.group(1).strip() if project else None
 
-    # The committed CURRENT_PROJECT_VERSION is always the snapshot code — CI swaps in
-    # the release code on tag builds (sync-ios-version.sh --release), so that swap must
-    # never be committed.
+    # The committed CURRENT_PROJECT_VERSION is always the pinned iOS snapshot build
+    # number — CI swaps in the release code on tag builds (sync-ios-version.sh
+    # --release), so that swap must never be committed.
     expected_marketing = version
     expected_project = gradle_version_code("printSnapshotVersionCode")
     if marketing_version != expected_marketing or project_version != expected_project:

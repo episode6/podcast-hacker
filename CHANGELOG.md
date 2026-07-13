@@ -2,6 +2,20 @@
 
 ### v1.0.10 - Unreleased
 
+- Snapshot builds now derive their versionCode from the git commit count (at HEAD's
+  merge-base with main) instead of the hardcoded 25,600,000: snapshots installed from
+  main can never be downgraded by an older main build, and branch/PR builds carry their
+  closest main ancestor's code so a later main build installs right over them. iOS
+  snapshots are pinned to build number 1 (the committed xcconfig can't track a
+  per-commit value). Note: because the new codes are far lower, an already-installed
+  android snapshot must be uninstalled once before a new snapshot build will install
+  over it.
+- New verify-versions CI workflow fails any PR where a committed copy of the app
+  version drifts from self.versions.toml: the iOS xcconfig (via a new
+  `sync-ios-version.sh --verify` mode, which also catches an accidentally committed
+  `--release` swap) and the required `### v<VERSION>` CHANGELOG section. Previously
+  this was only checked at ship time.
+
 ### v1.0.0 - 2026-07-12
 
 - Initial release: subscribe, download (ads cut) and play podcasts on android + desktop

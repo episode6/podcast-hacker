@@ -34,11 +34,37 @@ val selfAppId: String by extra(if (selfIsSnapshot) "com.episode6.snapshots.podca
 // queries it via the printReleaseVersionCode / printSnapshotVersionCode tasks instead
 // of reimplementing it.
 //
-// Snapshot builds instead hardcode 25,600,000 (v10.0.0's derived code): high enough to
-// install over every prod build below v10 for the foreseeable future (9.255.9999 is
-// 25,599,999), low enough to leave plenty of schema wiggle room if a build with this
-// code ever shipped by accident.
-val snapshotVersionCode = 25_600_000
+// Snapshot builds instead derive their versionCode from git: the commit count at HEAD's
+// merge-base with main. Snapshots install under their own applicationId, so their codes
+// never compete with release codes; builds from main carry a strictly growing code (a
+// newer main snapshot always installs over an older one), while branch/PR builds are
+// locked to their closest main ancestor's code so a later main build can install right
+// over them. This needs full git history — CI checkouts set fetch-depth: 0, and a
+// shallow clone is rejected rather than silently under-counting.
+//
+// The committed iOS xcconfig can't carry a per-commit number, so snapshot iOS builds
+// stay pinned to build number 1 — see printSnapshotVersionCode below and
+// scripts/sync-ios-version.sh.
+val iosSnapshotBuildNumber = 1
+fun git(vararg args: String): String = providers.exec {
+    workingDir(rootDir)
+    commandLine("git", *args)
+}.standardOutput.asText.get().trim()
+val gitSnapshotVersionCode: Int by lazy {
+    require(git("rev-parse", "--is-shallow-repository") == "false") {
+        "snapshot versionCode is derived from git commit count, which a shallow clone " +
+            "would under-count — fetch full history (CI: fetch-depth: 0)"
+    }
+    val mainRef = listOf("origin/main", "main").firstOrNull { ref ->
+        providers.exec {
+            workingDir(rootDir)
+            commandLine("git", "rev-parse", "--verify", "--quiet", "$ref^{commit}")
+            isIgnoreExitValue = true
+        }.result.get().exitValue == 0
+    }
+    requireNotNull(mainRef) { "snapshot versionCode needs a main ref (origin/main or main) to merge-base against" }
+    git("rev-list", "--count", git("merge-base", mainRef, "HEAD")).toInt()
+}
 val selfVersionName: String = self.versions.name.get()
 val selfReleaseVersionCode: Int = run {
     val segments = selfVersionName.split(".")
@@ -57,7 +83,7 @@ val selfReleaseVersionCode: Int = run {
 }
 
 // the name is validated on every build, but only release-tag builds carry its code
-val selfVersionCode: Int by extra(if (selfIsSnapshot) snapshotVersionCode else selfReleaseVersionCode)
+val selfVersionCode: Int by extra(if (selfIsSnapshot) gitSnapshotVersionCode else selfReleaseVersionCode)
 
 // query tasks for the release tooling (use with -q and take the last output line);
 // printReleaseVersionCode reports the formula-derived code regardless of snapshot-ness
@@ -65,8 +91,10 @@ tasks.register("printReleaseVersionCode") {
     val code = selfReleaseVersionCode
     doLast { println(code) }
 }
+// printSnapshotVersionCode reports the pinned build number the committed iOS xcconfig
+// carries for snapshot builds — NOT the git-derived code android/desktop snapshots use
 tasks.register("printSnapshotVersionCode") {
-    val code = snapshotVersionCode
+    val code = iosSnapshotBuildNumber
     doLast { println(code) }
 }
 

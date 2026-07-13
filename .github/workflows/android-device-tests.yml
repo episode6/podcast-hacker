@@ -10,7 +10,10 @@ jobs:
   device-tests:
     runs-on: ubuntu-latest
     steps:
+      # full history: snapshot versionCodes derive from the git commit count
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       # hardware acceleration for the emulator; ubuntu runners ship KVM but the
       # device node isn't world-accessible by default
       - name: Enable KVM
