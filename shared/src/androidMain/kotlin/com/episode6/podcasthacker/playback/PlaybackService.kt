@@ -7,6 +7,7 @@ import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.episode6.podcasthacker.inject.AppGraphOwner
@@ -41,8 +42,30 @@ class PlaybackService : MediaSessionService() {
             .build()
         mediaSession = MediaSession.Builder(this, AdBoundarySeekingPlayer(player, appStore))
             .setSessionActivity(nowPlayingActivityIntent())
+            .setMediaButtonPreferences(skipButtons())
             .build()
     }
+
+    /**
+     * Pins skip-back/forward buttons to the media notification's back/forward slots.
+     * Without these the system fills those slots with previous/next-item buttons (or
+     * nothing): with a single media item, "previous" restarts the episode and there's
+     * no forward button at all. Binding to COMMAND_SEEK_BACK/COMMAND_SEEK_FORWARD
+     * routes both buttons through [AdBoundarySeekingPlayer], so they skip to the
+     * nearest ad boundary and fall back to the fixed 15s/30s increments.
+     */
+    private fun skipButtons(): List<CommandButton> = listOf(
+        CommandButton.Builder(CommandButton.ICON_SKIP_BACK)
+            .setDisplayName("Skip back")
+            .setPlayerCommand(Player.COMMAND_SEEK_BACK)
+            .setSlots(CommandButton.SLOT_BACK)
+            .build(),
+        CommandButton.Builder(CommandButton.ICON_SKIP_FORWARD)
+            .setDisplayName("Skip forward")
+            .setPlayerCommand(Player.COMMAND_SEEK_FORWARD)
+            .setSlots(CommandButton.SLOT_FORWARD)
+            .build(),
+    )
 
     /** Opens the app on the Now Playing screen when the media notification is tapped. */
     private fun nowPlayingActivityIntent(): PendingIntent {
