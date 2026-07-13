@@ -7,16 +7,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 
-// Pocket-Casts-ish red accent on near-black surfaces
-private val AccentRed = Color(0xFFF43E37)
+// episode6-orange accent (matching the app icon) on near-black surfaces
+private val AccentOrange = Color(0xFFFF6600)
 
 private val DarkColors = darkColorScheme(
-    primary = AccentRed,
+    primary = AccentOrange,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFF5C1210),
-    onPrimaryContainer = Color(0xFFFFDAD6),
-    secondary = Color(0xFFE0B4B1),
-    onSecondary = Color(0xFF442927),
+    primaryContainer = Color(0xFF5C2600),
+    onPrimaryContainer = Color(0xFFFFDBC7),
+    secondary = Color(0xFFE0BCA8),
+    onSecondary = Color(0xFF432B15),
     background = Color(0xFF121214),
     onBackground = Color(0xFFE6E1E1),
     surface = Color(0xFF1B1B1D),
