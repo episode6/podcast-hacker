@@ -44,6 +44,12 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
   reports. CI swaps in the release-derived code on tag builds
   (`scripts/sync-ios-version.sh --release`) — that swap is workspace-only and must
   never be committed.
+- Version sync is CI-enforced: `verify-versions.yml` runs `scripts/verify-versions.sh`
+  on every PR and main push, failing if the committed xcconfig drifts from
+  `self.versions.toml` (including an accidentally committed `--release` swap) or if
+  `CHANGELOG.md` lacks a `### v<VERSION>` section for the current version. The android
+  versionName/versionCode, desktop packageVersion, and BuildInfo need no check — they
+  read the toml (or git) at build time and can't drift.
 - **Snapshot builds carry their own app identity** so they install side-by-side with
   release builds instead of overwriting them: the display name gains a ` (SNAPSHOT)`
   suffix and the android applicationId / macOS bundle id becomes
