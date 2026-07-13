@@ -15,6 +15,9 @@
   `sync-ios-version.sh --verify` mode, which also catches an accidentally committed
   `--release` swap) and the required `### v<VERSION>` CHANGELOG section. Previously
   this was only checked at ship time.
+- Change the app's accent color from Pocket-Casts-ish red to episode6 orange (`#FF6600`),
+  matching the new release app icon; the red-tinted container/secondary theme roles are
+  retinted to orange equivalents.
 
 ### v1.0.0 - 2026-07-12
 
