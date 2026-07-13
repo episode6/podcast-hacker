@@ -31,6 +31,9 @@ compose.desktop {
             // name. AppDirs.jvm.kt mirrors this split for the data/cache dirs.
             packageName = if (selfIsSnapshot) "PodcastHacker-SNAPSHOT" else "PodcastHacker"
             packageVersion = self.versions.name.get()
+            // snapshot builds also swap in their own icon (white glyph on episode6
+            // orange) so the two installs are distinguishable at a glance
+            val iconBaseName = if (selfIsSnapshot) "PodcastHacker-SNAPSHOT" else "PodcastHacker"
             // per-OS libvlc staged by scripts/fetch-libvlc.sh lands in the app image
             // (gitignored; dev builds without it fall back to a system VLC)
             appResourcesRootDir.set(project.layout.projectDirectory.dir("resources"))
@@ -40,13 +43,13 @@ compose.desktop {
                 // explicit so snapshot/release .apps are distinct apps to LaunchServices
                 // (jpackage would otherwise derive the same id for both from mainClass)
                 bundleID = selfAppId
-                iconFile.set(project.file("icons/PodcastHacker.icns"))
+                iconFile.set(project.file("icons/$iconBaseName.icns"))
             }
             windows {
-                iconFile.set(project.file("icons/PodcastHacker.ico"))
+                iconFile.set(project.file("icons/$iconBaseName.ico"))
             }
             linux {
-                iconFile.set(project.file("icons/PodcastHacker.png"))
+                iconFile.set(project.file("icons/$iconBaseName.png"))
             }
         }
     }
