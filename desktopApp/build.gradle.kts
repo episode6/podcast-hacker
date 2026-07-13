@@ -31,8 +31,8 @@ compose.desktop {
             // name. AppDirs.jvm.kt mirrors this split for the data/cache dirs.
             packageName = if (selfIsSnapshot) "PodcastHacker-SNAPSHOT" else "PodcastHacker"
             packageVersion = self.versions.name.get()
-            // snapshot builds also swap in their own icon (white glyph on episode6
-            // orange) so the two installs are distinguishable at a glance
+            // snapshot builds keep the original dark icon while releases carry the
+            // episode6-orange one, so the two installs are distinguishable at a glance
             val iconBaseName = if (selfIsSnapshot) "PodcastHacker-SNAPSHOT" else "PodcastHacker"
             // per-OS libvlc staged by scripts/fetch-libvlc.sh lands in the app image
             // (gitignored; dev builds without it fall back to a system VLC)

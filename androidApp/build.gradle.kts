@@ -53,10 +53,10 @@ android {
         // (the namespace above stays fixed, so R + manifest class refs are unaffected)
         applicationId = selfAppId
         resValue("string", "app_name", selfAppName)
-        // snapshot builds also get their own launcher icon (white glyph on episode6
-        // orange) so the two installs are distinguishable at a glance; placeholders
-        // resolve at manifest merge, so lint + resource shrinking still see the
-        // concrete @mipmap reference per build
+        // snapshot builds keep the original dark launcher icon while releases carry
+        // the episode6-orange one, so the two installs are distinguishable at a
+        // glance; placeholders resolve at manifest merge, so lint + resource
+        // shrinking still see the concrete @mipmap reference per build
         manifestPlaceholders["appIcon"] =
             if (selfIsSnapshot) "@mipmap/ic_launcher_snapshot" else "@mipmap/ic_launcher"
         manifestPlaceholders["appIconRound"] =
