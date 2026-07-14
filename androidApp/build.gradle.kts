@@ -73,6 +73,15 @@ android {
         }
     }
     signingConfigs {
+        getByName("debug") {
+            // the debug keystore is committed to the repo (standard debug credentials,
+            // not a secret) so CI-built and local debug APKs share a signature and can
+            // overwrite each other on-device instead of failing with a signature mismatch
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         create("release") {
             // CI decodes the ANDROID_KEYSTORE secret to a file and exports these
             // env vars; without them (local builds, PR CI) release stays unsigned

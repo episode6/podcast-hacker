@@ -2,6 +2,9 @@
 
 ### v1.0.10 - Unreleased
 
+- Committed a shared debug keystore (`androidApp/debug.keystore`, standard debug
+  credentials) and pointed the android debug signing config at it, so CI-built and
+  local debug APKs share a signature and can overwrite each other on-device.
 - Snapshot builds now derive their versionCode from the git commit count (at HEAD's
   merge-base with main) instead of the hardcoded 25,600,000: snapshots installed from
   main can never be downgraded by an older main build, and branch/PR builds carry their
