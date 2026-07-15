@@ -1,6 +1,6 @@
 # Podcast Hacker Changelog
 
-### v1.0.10 - Unreleased
+### v1.0.10 - 2026-07-14
 
 - Committed a shared debug keystore (`androidApp/debug.keystore`, standard debug
   credentials) and pointed the android debug signing config at it, so CI-built and
