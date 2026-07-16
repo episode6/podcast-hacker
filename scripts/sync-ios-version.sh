@@ -46,7 +46,7 @@ if [[ "${1:-}" == "--release" ]]; then
   APPICON_NAME="AppIcon"
 else
   CODE_TASK="printSnapshotVersionCode"
-  BUNDLE_ID_PREFIX="com.episode6.snapshots.podcasthacker"
+  BUNDLE_ID_PREFIX="com.episode6.podcasthacker.snapshot"
   DISPLAY_NAME="PodcastHacker (SNAPSHOT)"
   APPICON_NAME="AppIcon-Snapshot"
 fi

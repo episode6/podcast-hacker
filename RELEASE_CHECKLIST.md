@@ -53,8 +53,10 @@ Agent skills in [.agents/](./.agents) automate most of it (`release-branch-skill
 - **Snapshot builds carry their own app identity** so they install side-by-side with
   release builds instead of overwriting them: the display name gains a ` (SNAPSHOT)`
   suffix and the android applicationId / macOS bundle id becomes
-  `com.episode6.snapshots.podcasthacker` (see `selfAppName` / `selfAppId` in the root
-  `build.gradle.kts`; the desktop jpackage packageName and jvm data dirs use
+  `com.episode6.podcasthacker.snapshot` (see `selfAppName` / `selfAppId` in the root
+  `build.gradle.kts`; android debug builds append a further `.debug`
+  applicationIdSuffix so local/PR debug installs coexist with main's release-type
+  snapshot APKs; the desktop jpackage packageName and jvm data dirs use
   `PodcastHacker-SNAPSHOT`). Snapshot builds also swap in their own app icon (the
   dark variant; releases carry the white-on-episode6-orange `#FF6600` one): android
   via `manifestPlaceholders` + `*_snapshot` mipmaps, desktop via the
