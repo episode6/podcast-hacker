@@ -155,10 +155,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           QR_IMAGE_URL: ${{ steps.qr.outputs.image-url }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          # on PRs, github.sha is the ephemeral merge commit; use the head sha
+          BUILD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
         run: |
+          SHORT_SHA="${BUILD_SHA:0:7}"
           {
             echo "<!-- apk-build-comment -->"
             echo "### 📦 ${BUILD_TYPE^} APK from this build"
+            echo
+            echo "Built from commit [\`${SHORT_SHA}\`](${{ github.server_url }}/${{ github.repository }}/commit/${BUILD_SHA})"
             echo
             echo "**[Download the APK](${ARTIFACT_URL})** (workflow-run artifact; requires a GitHub login and expires with the run's retention window)"
             if [ -n "$QR_IMAGE_URL" ]; then
