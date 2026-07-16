@@ -2,6 +2,12 @@
 
 ### v1.0.20 - Unreleased
 
+- CI: after building the APK, the Build Installers workflow now comments on the
+  triggering PR (or commit, for pushes) with a download link for the APK artifact
+  plus a QR code for installing it on a device. QR images are committed to the
+  `episode6/qrcodes` repo and hot-linked via raw URLs (requires a
+  `QRCODES_GITHUB_TOKEN` secret; without it the comment posts link-only).
+
 ### v1.0.10 - 2026-07-14
 
 - Committed a shared debug keystore (`androidApp/debug.keystore`, standard debug
