@@ -89,6 +89,7 @@ rssparser = { module = "com.prof18.rssparser:rssparser", version.ref = "rssparse
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 tacita = { module = "com.episode6.tacita:tacita", version.ref = "tacita" }
+ui-test = { module = "org.jetbrains.compose.ui:ui-test", version.ref = "composeMultiplatform" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

@@ -95,6 +95,11 @@ android {
         }
     }
     buildTypes {
+        getByName("debug") {
+            // debug installs get their own id so they don't clobber (or get blocked by
+            // a signature mismatch with) an installed CI-built snapshot APK
+            applicationIdSuffix = ".debug"
+        }
         getByName("release") {
             // R8 runs in full mode by default on AGP 8+; keep rules live in proguard-rules.pro
             isMinifyEnabled = true

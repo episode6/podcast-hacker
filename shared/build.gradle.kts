@@ -62,9 +62,7 @@ kotlin {
         }
         jvmTest.dependencies {
             implementation(libs.mockk)
-            // headless (offscreen-skiko) compose ui tests — no display needed, runs in CI
-            @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
-            implementation(compose.uiTest)
+            implementation(libs.ui.test)
             implementation(compose.desktop.currentOs)
         }
         getByName("androidHostTest").dependencies {

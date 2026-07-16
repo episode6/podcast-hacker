@@ -2,6 +2,13 @@
 
 ### v1.0.20 - Unreleased
 
+- Snapshot app identity now follows the headache-tracker suffix pattern: the android
+  applicationId / macOS + iOS bundle id is `com.episode6.podcasthacker.snapshot`
+  (previously `com.episode6.snapshots.podcasthacker`), and android debug builds append
+  a further `.debug` applicationIdSuffix so local/PR debug installs coexist with
+  main's release-type snapshot APKs instead of clobbering them (or being blocked by a
+  signature mismatch). Note: already-installed snapshot builds live under the old id
+  and won't be updated by new builds — uninstall them once.
 - CI: after building the APK, the Build Installers workflow now comments on the
   triggering PR (or commit, for pushes) with a download link for the APK artifact
   plus a QR code for installing it on a device. QR images are committed to the
