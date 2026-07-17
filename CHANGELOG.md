@@ -2,6 +2,11 @@
 
 ### v1.0.20 - Unreleased
 
+- Now Playing cleanup: the transport controls collapse into a single row (skip to
+  previous ad boundary, back 15s, play/pause, forward 30s, skip to next ad boundary)
+  with the ad-boundary countdowns shown under the outer buttons, and the text glyphs
+  (↺/▶/❚❚/⇤/⇥) are replaced with proper Material icons here and on the mini player
+  bar.
 - Snapshot app identity now follows the headache-tracker suffix pattern: the android
   applicationId / macOS + iOS bundle id is `com.episode6.podcasthacker.snapshot`
   (previously `com.episode6.snapshots.podcasthacker`), and android debug builds append
