@@ -175,16 +175,17 @@ class AppDeviceIntegrationTest {
         compose.waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 60_000)
 
         // play the download → NowPlaying driven by the real MediaController session.
-        // matchers are scoped by tag (text merges into the button node): the mini player
-        // bar can briefly coexist with the NowPlaying screen during navigation
-        // animations, so bare ❚❚/▶ text can transiently match two nodes
-        val playingOnNowPlaying = hasTestTag("playPauseButton") and hasText("❚❚")
-        val pausedOnNowPlaying = hasTestTag("playPauseButton") and hasText("▶")
-        val pausedOnMiniBar = hasTestTag("miniPlayerPlayPause") and hasText("▶")
+        // matchers are scoped by tag (the icon's contentDescription merges into the
+        // button node): the mini player bar can briefly coexist with the NowPlaying
+        // screen during navigation animations, so a bare Pause/Play description can
+        // transiently match two nodes
+        val playingOnNowPlaying = hasTestTag("playPauseButton") and hasContentDescription("Pause")
+        val pausedOnNowPlaying = hasTestTag("playPauseButton") and hasContentDescription("Play")
+        val pausedOnMiniBar = hasTestTag("miniPlayerPlayPause") and hasContentDescription("Play")
         compose.onNodeWithText("Play").performClick()
         // covers MediaController connect + ExoPlayer prepare + actual audio start
         compose.waitForExactlyOne(playingOnNowPlaying, timeoutMillis = 30_000)
-        compose.onNodeWithText("↺ 15").assertExists()
+        compose.onNode(hasContentDescription("Back 15 seconds")).assertExists()
         compose.onNode(playingOnNowPlaying).performClick() // pause
         compose.waitForExactlyOne(pausedOnNowPlaying, timeoutMillis = 10_000)
 
