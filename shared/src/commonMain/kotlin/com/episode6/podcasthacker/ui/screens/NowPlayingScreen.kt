@@ -1,11 +1,14 @@
 package com.episode6.podcasthacker.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -14,6 +17,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
@@ -27,10 +32,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.episode6.podcasthacker.inject.LocalAppGraph
@@ -46,6 +53,7 @@ import com.episode6.podcasthacker.store.TogglePlayPause
 import com.episode6.podcasthacker.store.filteredAdBoundaries
 import com.episode6.podcasthacker.store.nextAdBoundary
 import com.episode6.podcasthacker.store.previousAdBoundary
+import com.episode6.podcasthacker.ui.util.AppIcons
 import com.episode6.podcasthacker.ui.util.formatTimestamp
 import com.episode6.podcasthacker.ui.util.stateOf
 import com.episode6.redux.Action
@@ -91,31 +99,7 @@ internal fun NowPlayingScreen(navController: NavController) {
             Spacer(Modifier.height(24.dp))
             SeekBar(current, onSeek = { store.dispatch(SeekTo(it)) })
             Spacer(Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { store.dispatch(SeekBy((-15).seconds)) }) {
-                    Text("↺ 15", style = MaterialTheme.typography.titleMedium)
-                }
-                Spacer(Modifier.width(16.dp))
-                Button(
-                    onClick = { store.dispatch(TogglePlayPause) },
-                    modifier = Modifier.size(72.dp).testTag("playPauseButton"),
-                ) {
-                    if (current.isLoading) {
-                        CircularProgressIndicator(Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                    } else {
-                        Text(
-                            text = if (current.isPlaying) "❚❚" else "▶",
-                            style = MaterialTheme.typography.titleLarge,
-                        )
-                    }
-                }
-                Spacer(Modifier.width(16.dp))
-                TextButton(onClick = { store.dispatch(SeekBy(30.seconds)) }) {
-                    Text("30 ↻", style = MaterialTheme.typography.titleMedium)
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            AdBoundaryRow(current, onSkip = { store.dispatch(it) })
+            TransportControls(current, dispatch = { store.dispatch(it) })
             AdBoundaryFilterSlider(current, onFilterChange = { store.dispatch(SetAdBoundaryConfidenceFilter(it)) })
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -148,44 +132,94 @@ internal fun NowPlayingScreen(navController: NavController) {
 }
 
 /**
- * Jump-to-ad-boundary controls with time since the previous candidate / until the next
- * one. Candidates are tacita's unverified guesses, so skipping is strictly
- * user-initiated; with no candidate in a direction the button disables and its label
- * shows --:--. The row stays visible (disabled) for episodes with no candidates at all,
- * e.g. anything downloaded before candidates existed.
+ * Single-row transport: skip-to-previous-ad-boundary, back 15s, play/pause, forward 30s,
+ * skip-to-next-ad-boundary. Ad-boundary candidates are tacita's unverified guesses, so
+ * skipping is strictly user-initiated; the labels under the outer buttons show the time
+ * since the previous candidate / until the next one, and with no candidate in a
+ * direction the button disables and its label shows --:--. Those buttons stay visible
+ * (disabled) for episodes with no candidates at all, e.g. anything downloaded before
+ * candidates existed.
  */
 @Composable
-private fun AdBoundaryRow(nowPlaying: NowPlayingState, onSkip: (Action) -> Unit) {
+private fun TransportControls(nowPlaying: NowPlayingState, dispatch: (Action) -> Unit) {
     // prev uses the same grace-windowed selector as the skip, so the label always
     // describes where the button would land
     val prev = nowPlaying.previousAdBoundary()
     val next = nowPlaying.nextAdBoundary()
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        TextButton(
-            onClick = { onSkip(SkipToPreviousAdBoundary) },
-            enabled = prev != null,
-            modifier = Modifier.testTag("skipToPrevAdBoundary"),
+    // IntrinsicSize.Max lets the label row span exactly the width of the button row,
+    // so each countdown sits under its outer skip button
+    Column(modifier = Modifier.width(IntrinsicSize.Max)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text("⇤", style = MaterialTheme.typography.titleMedium)
+            IconButton(
+                onClick = { dispatch(SkipToPreviousAdBoundary) },
+                enabled = prev != null,
+                modifier = Modifier.testTag("skipToPrevAdBoundary"),
+            ) {
+                Icon(AppIcons.SkipPrevious, contentDescription = "Skip to previous ad boundary")
+            }
+            IconButton(onClick = { dispatch(SeekBy((-15).seconds)) }) {
+                SeekAmountIcon(AppIcons.Replay, amount = "15", contentDescription = "Back 15 seconds")
+            }
+            Button(
+                onClick = { dispatch(TogglePlayPause) },
+                modifier = Modifier.size(72.dp).testTag("playPauseButton"),
+            ) {
+                if (nowPlaying.isLoading) {
+                    CircularProgressIndicator(Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                } else {
+                    Icon(
+                        imageVector = if (nowPlaying.isPlaying) AppIcons.Pause else AppIcons.Play,
+                        contentDescription = if (nowPlaying.isPlaying) "Pause" else "Play",
+                        modifier = Modifier.size(36.dp),
+                    )
+                }
+            }
+            IconButton(onClick = { dispatch(SeekBy(30.seconds)) }) {
+                SeekAmountIcon(AppIcons.Forward, amount = "30", contentDescription = "Forward 30 seconds")
+            }
+            IconButton(
+                onClick = { dispatch(SkipToNextAdBoundary) },
+                enabled = next != null,
+                modifier = Modifier.testTag("skipToNextAdBoundary"),
+            ) {
+                Icon(AppIcons.SkipNext, contentDescription = "Skip to next ad boundary")
+            }
         }
-        Text(
-            text = prev?.let { (nowPlaying.position - it.position).formatTimestamp() } ?: "--:--",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.width(24.dp))
-        Text(
-            text = next?.let { (it.position - nowPlaying.position).formatTimestamp() } ?: "--:--",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        TextButton(
-            onClick = { onSkip(SkipToNextAdBoundary) },
-            enabled = next != null,
-            modifier = Modifier.testTag("skipToNextAdBoundary"),
-        ) {
-            Text("⇥", style = MaterialTheme.typography.titleMedium)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            AdBoundaryLabel(prev?.let { (nowPlaying.position - it.position).formatTimestamp() })
+            AdBoundaryLabel(next?.let { (it.position - nowPlaying.position).formatTimestamp() })
         }
+    }
+}
+
+@Composable
+private fun AdBoundaryLabel(text: String?) {
+    Text(
+        text = text ?: "--:--",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        // match the 48dp IconButton above so the countdown centers under its button
+        modifier = Modifier.width(48.dp),
+    )
+}
+
+/** A seek-arrow icon with the seek amount (in seconds) rendered inside the circle. */
+@Composable
+private fun SeekAmountIcon(icon: ImageVector, amount: String, contentDescription: String) {
+    Box(contentAlignment = Alignment.Center) {
+        Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(32.dp))
+        // the arrow's circle is centered slightly below the icon's midpoint
+        Text(
+            text = amount,
+            fontSize = 9.sp,
+            lineHeight = 9.sp,
+            modifier = Modifier.offset(y = 2.dp),
+        )
     }
 }
 

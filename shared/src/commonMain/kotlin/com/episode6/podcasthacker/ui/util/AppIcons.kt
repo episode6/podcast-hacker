@@ -56,6 +56,74 @@ internal object AppIcons {
         }
     }
 
+    /** Material "replay" (counterclockwise circular arrow). */
+    val Replay: ImageVector by lazy {
+        materialIcon("Replay") {
+            moveTo(12f, 5f)
+            verticalLineTo(1f)
+            lineTo(7f, 6f)
+            lineToRelative(5f, 5f)
+            verticalLineTo(7f)
+            curveToRelative(3.31f, 0f, 6f, 2.69f, 6f, 6f)
+            reflectiveCurveToRelative(-2.69f, 6f, -6f, 6f)
+            reflectiveCurveToRelative(-6f, -2.69f, -6f, -6f)
+            horizontalLineTo(4f)
+            curveToRelative(0f, 4.42f, 3.58f, 8f, 8f, 8f)
+            reflectiveCurveToRelative(8f, -3.58f, 8f, -8f)
+            reflectiveCurveToRelative(-3.58f, -8f, -8f, -8f)
+            close()
+        }
+    }
+
+    /** Clockwise circular arrow — the base of Material "forward_30" without the digits. */
+    val Forward: ImageVector by lazy {
+        materialIcon("Forward") {
+            moveTo(18f, 13f)
+            curveToRelative(0f, 3.31f, -2.69f, 6f, -6f, 6f)
+            reflectiveCurveToRelative(-6f, -2.69f, -6f, -6f)
+            reflectiveCurveToRelative(2.69f, -6f, 6f, -6f)
+            verticalLineToRelative(4f)
+            lineToRelative(5f, -5f)
+            lineToRelative(-5f, -5f)
+            verticalLineToRelative(4f)
+            curveToRelative(-4.42f, 0f, -8f, 3.58f, -8f, 8f)
+            reflectiveCurveToRelative(3.58f, 8f, 8f, 8f)
+            reflectiveCurveToRelative(8f, -3.58f, 8f, -8f)
+            horizontalLineToRelative(-2f)
+            close()
+        }
+    }
+
+    /** Material "skip_previous" (filled). */
+    val SkipPrevious: ImageVector by lazy {
+        materialIcon("SkipPrevious") {
+            moveTo(6f, 6f)
+            horizontalLineToRelative(2f)
+            verticalLineToRelative(12f)
+            horizontalLineTo(6f)
+            close()
+            moveTo(9.5f, 12f)
+            lineToRelative(8.5f, 6f)
+            verticalLineTo(6f)
+            close()
+        }
+    }
+
+    /** Material "skip_next" (filled). */
+    val SkipNext: ImageVector by lazy {
+        materialIcon("SkipNext") {
+            moveTo(6f, 18f)
+            lineToRelative(8.5f, -6f)
+            lineTo(6f, 6f)
+            close()
+            moveTo(16f, 6f)
+            verticalLineToRelative(12f)
+            horizontalLineToRelative(2f)
+            verticalLineTo(6f)
+            close()
+        }
+    }
+
     /** Material "download" (filled). */
     val Download: ImageVector by lazy {
         materialIcon("Download") {

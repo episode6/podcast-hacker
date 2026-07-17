@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +31,7 @@ import coil3.compose.AsyncImage
 import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.TogglePlayPause
 import com.episode6.podcasthacker.ui.nav.NowPlayingRoute
+import com.episode6.podcasthacker.ui.util.AppIcons
 import com.episode6.podcasthacker.ui.util.overlappedNavBarBottomPadding
 import com.episode6.podcasthacker.ui.util.stateOf
 
@@ -97,10 +99,10 @@ internal fun MiniPlayerBar(navController: NavController, modifier: Modifier = Mo
                         onClick = { store.dispatch(TogglePlayPause) },
                         modifier = Modifier.testTag("miniPlayerPlayPause"),
                     ) {
-                        Text(
-                            text = if (current?.isPlaying == true) "❚❚" else "▶",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary,
+                        Icon(
+                            imageVector = if (current?.isPlaying == true) AppIcons.Pause else AppIcons.Play,
+                            contentDescription = if (current?.isPlaying == true) "Pause" else "Play",
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                     }
                 }
