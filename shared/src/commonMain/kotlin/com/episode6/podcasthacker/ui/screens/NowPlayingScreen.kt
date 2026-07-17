@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -22,6 +23,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,6 +38,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -100,6 +103,7 @@ internal fun NowPlayingScreen(navController: NavController) {
             SeekBar(current, onSeek = { store.dispatch(SeekTo(it)) })
             Spacer(Modifier.height(16.dp))
             TransportControls(current, dispatch = { store.dispatch(it) })
+            Spacer(Modifier.height(16.dp))
             AdBoundaryFilterSlider(current, onFilterChange = { store.dispatch(SetAdBoundaryConfidenceFilter(it)) })
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -240,11 +244,30 @@ private fun AdBoundaryFilterSlider(nowPlaying: NowPlayingState, onFilterChange: 
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.width(12.dp))
+        // visually slimmer than the default expressive slider so the filter reads as a
+        // secondary control next to the seek bar
+        val enabled = nowPlaying.adBoundaries.isNotEmpty()
+        val interactionSource = remember { MutableInteractionSource() }
         Slider(
             value = nowPlaying.adBoundaryConfidenceFilter,
             onValueChange = onFilterChange,
-            enabled = nowPlaying.adBoundaries.isNotEmpty(),
-            modifier = Modifier.testTag("adBoundaryConfidenceFilter"),
+            enabled = enabled,
+            interactionSource = interactionSource,
+            thumb = {
+                SliderDefaults.Thumb(
+                    interactionSource = interactionSource,
+                    enabled = enabled,
+                    thumbSize = DpSize(4.dp, 22.dp),
+                )
+            },
+            track = { sliderState ->
+                SliderDefaults.Track(
+                    sliderState = sliderState,
+                    enabled = enabled,
+                    modifier = Modifier.height(6.dp),
+                )
+            },
+            modifier = Modifier.height(28.dp).testTag("adBoundaryConfidenceFilter"),
         )
     }
 }
