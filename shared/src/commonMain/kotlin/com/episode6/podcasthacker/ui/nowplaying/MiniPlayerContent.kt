@@ -33,6 +33,7 @@ import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.NowPlayingState
 import com.episode6.podcasthacker.store.TogglePlayPause
 import com.episode6.podcasthacker.ui.util.AppIcons
+import com.episode6.podcasthacker.ui.util.navBarOverlapPadding
 
 /**
  * The Now Playing sheet's collapsed face: a mini player bar with drag handle, artwork,
@@ -68,11 +69,14 @@ internal fun MiniPlayerContent(
         DragHandle()
         Row(
             // the row (not the whole bar) takes the horizontal safe-content insets so the
-            // progress bar above stays full-bleed
+            // progress bar above stays full-bleed; the bottom padding excludes the slice of
+            // the bar that overlaps the nav inset, centering the row between the drag
+            // handle and the system gesture pill
             modifier = Modifier
                 .windowInsetsPadding(WindowInsets.safeContent.only(WindowInsetsSides.Horizontal))
                 .padding(horizontal = 12.dp)
-                .weight(1f),
+                .weight(1f)
+                .padding(bottom = navBarOverlapPadding()),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             AsyncImage(

@@ -21,3 +21,14 @@ private val NAV_BAR_OVERLAP = 12.dp
 internal fun overlappedNavBarBottomPadding(): Dp =
     (WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() - NAV_BAR_OVERLAP)
         .coerceAtLeast(0.dp)
+
+/**
+ * The slice of the navigation-bar inset that [overlappedNavBarBottomPadding] lets content
+ * overlap. Content that centers itself vertically near the bottom edge can pad by this to
+ * stay visually centered above the gesture pill instead of crowding it. Zero on platforms
+ * with no bottom inset.
+ */
+@Composable
+internal fun navBarOverlapPadding(): Dp =
+    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        .coerceAtMost(NAV_BAR_OVERLAP)
