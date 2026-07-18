@@ -1,4 +1,4 @@
-package com.episode6.podcasthacker.ui.screens
+package com.episode6.podcasthacker.ui.nowplaying
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -6,12 +6,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,6 +33,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,10 +46,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
+import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
 import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.NowPlayingState
@@ -58,85 +67,118 @@ import com.episode6.podcasthacker.store.nextAdBoundary
 import com.episode6.podcasthacker.store.previousAdBoundary
 import com.episode6.podcasthacker.ui.util.AppIcons
 import com.episode6.podcasthacker.ui.util.formatTimestamp
-import com.episode6.podcasthacker.ui.util.stateOf
+import com.episode6.podcasthacker.ui.util.overlappedNavBarBottomPadding
 import com.episode6.redux.Action
 import kotlin.time.Duration.Companion.seconds
 
 private val SPEED_OPTIONS = listOf(0.8f, 1f, 1.2f, 1.5f, 2f)
 
+/**
+ * The Now Playing sheet's expanded face: drag handle, title row, and artwork above a
+ * scrollable column of seek bar, transport controls, ad-boundary filter, speed options,
+ * and Stop. Everything above the scrollable column is swipe-to-collapse territory.
+ * Stopping playback clears now-playing state, which hides the whole sheet.
+ */
 @Composable
-internal fun NowPlayingScreen(navController: NavController) {
+internal fun NowPlayingContent(
+    nowPlaying: NowPlayingState,
+    onCollapse: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val store = LocalAppGraph.current.appStore
-    val nowPlaying by store.stateOf { nowPlaying }
-    // surfaceVariant matches the MiniPlayerBar's grey: visually the screen is the bar
-    // expanded to full size, and an opaque background keeps the screen from sliding up
-    // transparent (the root background flashing in once the screen below is removed).
-    ScreenScaffold(
-        title = "Now Playing",
-        navController = navController,
-        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+    // matches ScreenScaffold's window-adaptive padding and content-width cap
+    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    val isCompact = !windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+    val screenPadding = if (isCompact) 16.dp else 24.dp
+    Column(
+        // top + horizontal safe-content insets apply here rather than on the shared
+        // sheet container: the collapsed bar never reaches the top of the window, and
+        // the mini player face manages its own horizontal insets
+        modifier = modifier
+            .fillMaxSize()
+            .windowInsetsPadding(
+                WindowInsets.safeContent.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+            ),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        val current = nowPlaying
-        if (current == null) {
-            Text(
-                "Nothing playing",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            return@ScreenScaffold
-        }
+        DragHandle()
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState()),
+                .padding(bottom = overlappedNavBarBottomPadding())
+                .padding(horizontal = screenPadding)
+                .widthIn(max = 840.dp)
+                .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                IconButton(onClick = onCollapse) {
+                    Icon(
+                        imageVector = AppIcons.CollapseDown,
+                        contentDescription = "Collapse",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Now Playing",
+                    style = MaterialTheme.typography.headlineMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Spacer(Modifier.height(24.dp))
+            // the artwork stays outside the scrollable column so vertical drags on it fall
+            // through to the sheet's anchoredDraggable, extending the swipe-to-collapse
+            // area from the drag handle down through the image
             AsyncImage(
-                model = current.artworkUrl,
+                model = nowPlaying.artworkUrl,
                 contentDescription = null,
                 modifier = Modifier.size(240.dp).clip(RoundedCornerShape(16.dp)),
             )
             Spacer(Modifier.height(24.dp))
-            Text(current.episodeTitle, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-            current.podcastTitle?.let {
-                Spacer(Modifier.height(4.dp))
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            current.error?.let {
-                Spacer(Modifier.height(8.dp))
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            }
-            Spacer(Modifier.height(24.dp))
-            SeekBar(current, onSeek = { store.dispatch(SeekTo(it)) })
-            Spacer(Modifier.height(16.dp))
-            TransportControls(current, dispatch = { store.dispatch(it) })
-            Spacer(Modifier.height(16.dp))
-            AdBoundaryFilterSlider(current, onFilterChange = { store.dispatch(SetAdBoundaryConfidenceFilter(it)) })
-            Spacer(Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SPEED_OPTIONS.forEach { speed ->
-                    val selected = current.speed == speed
-                    TextButton(onClick = { store.dispatch(SetPlaybackSpeed(speed)) }) {
-                        Text(
-                            text = "${speed.toString().removeSuffix(".0")}×",
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(nowPlaying.episodeTitle, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+                nowPlaying.podcastTitle?.let {
+                    Spacer(Modifier.height(4.dp))
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                nowPlaying.error?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
+                Spacer(Modifier.height(24.dp))
+                SeekBar(nowPlaying, onSeek = { store.dispatch(SeekTo(it)) })
+                Spacer(Modifier.height(16.dp))
+                TransportControls(nowPlaying, dispatch = { store.dispatch(it) })
+                Spacer(Modifier.height(16.dp))
+                AdBoundaryFilterSlider(nowPlaying, onFilterChange = { store.dispatch(SetAdBoundaryConfidenceFilter(it)) })
+                Spacer(Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SPEED_OPTIONS.forEach { speed ->
+                        val selected = nowPlaying.speed == speed
+                        TextButton(onClick = { store.dispatch(SetPlaybackSpeed(speed)) }) {
+                            Text(
+                                text = "${speed.toString().removeSuffix(".0")}×",
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                        }
                     }
                 }
-            }
-            Spacer(Modifier.height(24.dp))
-            OutlinedButton(
-                onClick = {
-                    store.dispatch(StopPlayback)
-                    navController.popBackStack()
-                },
-            ) {
-                Text("Stop")
+                Spacer(Modifier.height(24.dp))
+                OutlinedButton(onClick = { store.dispatch(StopPlayback) }) {
+                    Text("Stop")
+                }
             }
         }
     }

@@ -172,11 +172,11 @@ class AppUiIntegrationTest {
         onNodeWithText("Download").performClick()
         waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 30_000)
 
-        // play the downloaded episode → NowPlaying with live transport controls.
-        // matchers are scoped by tag (the icon's contentDescription merges into the
-        // button node): the mini player bar can briefly coexist with the NowPlaying
-        // screen during navigation animations, so a bare Pause/Play description can
-        // transiently match two nodes
+        // play the downloaded episode → the Now Playing sheet expands with live
+        // transport controls. matchers are scoped by tag (the icon's contentDescription
+        // merges into the button node): the mini player and the expanded sheet content
+        // coexist while the sheet is mid-drag/animation, so a bare Pause/Play
+        // description can transiently match two nodes
         val playingOnNowPlaying = hasTestTag("playPauseButton") and hasContentDescription("Pause")
         val pausedOnNowPlaying = hasTestTag("playPauseButton") and hasContentDescription("Play")
         val pausedOnMiniBar = hasTestTag("miniPlayerPlayPause") and hasContentDescription("Play")
@@ -186,9 +186,9 @@ class AppUiIntegrationTest {
         onNode(playingOnNowPlaying).performClick() // pause
         waitForExactlyOne(pausedOnNowPlaying, timeoutMillis = 10_000)
 
-        // back to episode detail: the mini player bar carries the paused state; tapping
-        // it returns to NowPlaying, where Stop clears playback + hides the bar
-        onNode(hasContentDescription("Back")).performClick()
+        // collapse the sheet: the mini player bar carries the paused state; tapping it
+        // re-expands NowPlaying, where Stop clears playback + hides the sheet
+        onNode(hasContentDescription("Collapse")).performClick()
         waitForExactlyOne(pausedOnMiniBar, timeoutMillis = 10_000)
         onNodeWithTag("miniPlayerBar").performClick()
         waitForExactlyOne(hasText("Stop"), timeoutMillis = 10_000)
@@ -230,7 +230,7 @@ class AppUiIntegrationTest {
         waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 30_000)
         onNodeWithText("Play").performClick()
         waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Pause"), timeoutMillis = 10_000)
-        // stopping pops NowPlaying back to episode detail
+        // stopping hides the Now Playing sheet, revealing episode detail
         onNodeWithText("Stop").performScrollTo().performClick()
         waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 10_000)
 
