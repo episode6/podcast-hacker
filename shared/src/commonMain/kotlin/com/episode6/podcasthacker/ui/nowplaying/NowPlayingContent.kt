@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
 import com.episode6.podcasthacker.inject.LocalAppGraph
+import com.episode6.podcasthacker.store.DownloadEpisode
 import com.episode6.podcasthacker.store.NowPlayingState
 import com.episode6.podcasthacker.store.SeekBy
 import com.episode6.podcasthacker.store.SeekTo
@@ -217,18 +218,48 @@ private fun TransportControls(nowPlaying: NowPlayingState, dispatch: (Action) ->
             IconButton(onClick = { dispatch(SeekBy((-15).seconds)) }) {
                 SeekAmountIcon(AppIcons.Replay, amount = "15", contentDescription = "Back 15 seconds")
             }
+            val buttonState = nowPlayingButtonState(nowPlaying)
             Button(
-                onClick = { dispatch(TogglePlayPause) },
+                onClick = {
+                    when (buttonState) {
+                        NowPlayingButtonState.PlayPause -> dispatch(TogglePlayPause)
+                        NowPlayingButtonState.Download -> dispatch(DownloadEpisode(nowPlaying.episodeGuid))
+                        else -> {}
+                    }
+                },
+                enabled = buttonState !is NowPlayingButtonState.DownloadProgress,
                 modifier = Modifier.size(72.dp).testTag("playPauseButton"),
             ) {
-                if (nowPlaying.isLoading) {
-                    CircularProgressIndicator(Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                } else {
-                    Icon(
-                        imageVector = if (nowPlaying.isPlaying) AppIcons.Pause else AppIcons.Play,
-                        contentDescription = if (nowPlaying.isPlaying) "Pause" else "Play",
+                when (buttonState) {
+                    NowPlayingButtonState.Download -> Icon(
+                        imageVector = AppIcons.Download,
+                        contentDescription = "Download",
                         modifier = Modifier.size(36.dp),
                     )
+                    NowPlayingButtonState.Queued -> Icon(
+                        imageVector = AppIcons.Schedule,
+                        contentDescription = "Queued",
+                        modifier = Modifier.size(36.dp),
+                    )
+                    is NowPlayingButtonState.DownloadProgress ->
+                        if (buttonState.percentComplete == null) {
+                            CircularProgressIndicator(Modifier.size(24.dp))
+                        } else {
+                            CircularProgressIndicator(
+                                progress = { buttonState.percentComplete },
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                    NowPlayingButtonState.PlayPause ->
+                        if (nowPlaying.isLoading) {
+                            CircularProgressIndicator(Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                        } else {
+                            Icon(
+                                imageVector = if (nowPlaying.isPlaying) AppIcons.Pause else AppIcons.Play,
+                                contentDescription = if (nowPlaying.isPlaying) "Pause" else "Play",
+                                modifier = Modifier.size(36.dp),
+                            )
+                        }
                 }
             }
             IconButton(onClick = { dispatch(SeekBy(30.seconds)) }) {

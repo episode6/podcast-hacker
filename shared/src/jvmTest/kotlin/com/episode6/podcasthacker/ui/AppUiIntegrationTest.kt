@@ -255,6 +255,58 @@ class AppUiIntegrationTest {
         onNode(hasContentDescription("Delete file") and isEnabled()).assertExists()
     }
 
+    /**
+     * When the now-playing episode's file goes away, both faces of the sheet swap their
+     * play button for a live download button (progress while the re-download runs), and
+     * playback works again once the re-download lands.
+     */
+    @Test
+    fun nowPlayingBar_fileDeleted_playButtonBecomesLiveDownloadButton() = runComposeUiTest {
+        setContent { App(testGraph()) }
+
+        // subscribe, download an episode, play it, then pause + collapse the sheet
+        onNodeWithText("Add Podcast", substring = true).performClick()
+        onNode(hasSetTextAction()).performTextInput(FEED_URL)
+        waitForExactlyOne(hasText("Subscribe to RSS url"))
+        onNodeWithText("Subscribe to RSS url").performClick()
+        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
+        onNodeWithText("Test Podcast").performClick()
+        waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
+        onNodeWithText("Episode Two").performClick()
+        waitForExactlyOne(hasText("Download"))
+        onNodeWithText("Download").performClick()
+        waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 30_000)
+        onNodeWithText("Play").performClick()
+        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Pause"), timeoutMillis = 10_000)
+        onNode(hasTestTag("playPauseButton") and hasContentDescription("Pause")).performClick()
+        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Play"), timeoutMillis = 10_000)
+        onNode(hasContentDescription("Collapse")).performClick()
+        waitForExactlyOne(hasTestTag("miniPlayerPlayPause") and hasContentDescription("Play"), timeoutMillis = 10_000)
+
+        // delete the file from Recently Played while the paused bar is up. navigation
+        // waits avoid hasText("Episode Two"): the visible mini player carries the same
+        // title, so that matcher would never resolve to exactly one node
+        onNode(hasContentDescription("Back")).performClick()
+        waitForExactlyOne(hasText("A test feed"), timeoutMillis = 10_000) // podcast detail header
+        onNode(hasContentDescription("Back")).performClick()
+        waitForExactlyOne(hasText("Recently Played", substring = true), timeoutMillis = 10_000)
+        onNodeWithText("Recently Played", substring = true).performClick()
+        waitForExactlyOne(hasContentDescription("Delete file"), timeoutMillis = 10_000)
+        onNode(hasContentDescription("Delete file")).performClick()
+
+        // the mini player's play button becomes a download button; expanding the sheet
+        // shows the same on the big transport button
+        waitForExactlyOne(hasTestTag("miniPlayerPlayPause") and hasContentDescription("Download"), timeoutMillis = 10_000)
+        onNodeWithTag("miniPlayerBar").performClick()
+        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Download"), timeoutMillis = 10_000)
+
+        // tapping it re-downloads through the real pipeline; play returns and works
+        onNode(hasTestTag("playPauseButton") and hasContentDescription("Download")).performClick()
+        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Play"), timeoutMillis = 30_000)
+        onNode(hasTestTag("playPauseButton") and hasContentDescription("Play")).performClick()
+        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Pause"), timeoutMillis = 10_000)
+    }
+
     @Test
     fun subscribeViaPastedUrl_unsubscribeViaLongPress() = runComposeUiTest {
         setContent { App(testGraph()) }
