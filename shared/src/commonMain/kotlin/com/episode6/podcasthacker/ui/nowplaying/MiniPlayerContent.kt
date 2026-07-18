@@ -48,13 +48,6 @@ internal fun MiniPlayerContent(
             .testTag("miniPlayerBar"),
     ) {
         DragHandle()
-        val progress = nowPlaying.duration
-            ?.takeIf { it.isPositive() }
-            ?.let { ((nowPlaying.position / it).toFloat()).coerceIn(0f, 1f) }
-        LinearProgressIndicator(
-            progress = { progress ?: 0f },
-            modifier = Modifier.fillMaxWidth().height(2.dp),
-        )
         Row(
             modifier = Modifier.padding(horizontal = 12.dp).weight(1f),
             verticalAlignment = Alignment.CenterVertically,
@@ -94,5 +87,12 @@ internal fun MiniPlayerContent(
                 )
             }
         }
+        val progress = nowPlaying.duration
+            ?.takeIf { it.isPositive() }
+            ?.let { ((nowPlaying.position / it).toFloat()).coerceIn(0f, 1f) }
+        LinearProgressIndicator(
+            progress = { progress ?: 0f },
+            modifier = Modifier.fillMaxWidth().height(2.dp),
+        )
     }
 }
