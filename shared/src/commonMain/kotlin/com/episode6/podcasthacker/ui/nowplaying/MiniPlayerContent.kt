@@ -47,14 +47,15 @@ internal fun MiniPlayerContent(
             .clickable(onClick = onClick)
             .testTag("miniPlayerBar"),
     ) {
-        DragHandle()
         val progress = nowPlaying.duration
             ?.takeIf { it.isPositive() }
             ?.let { ((nowPlaying.position / it).toFloat()).coerceIn(0f, 1f) }
+        // pinned to the sheet's top edge so it doubles as the mini player's top border
         LinearProgressIndicator(
             progress = { progress ?: 0f },
             modifier = Modifier.fillMaxWidth().height(2.dp),
         )
+        DragHandle()
         Row(
             modifier = Modifier.padding(horizontal = 12.dp).weight(1f),
             verticalAlignment = Alignment.CenterVertically,
