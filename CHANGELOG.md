@@ -2,6 +2,11 @@
 
 ### v1.0.20 - Unreleased
 
+- The Now Playing screen's skip-confidence slider now starts hidden behind its "skips"
+  label, which shows the range of skip counts the filter can reach (e.g. `skips: 2-8`,
+  or a single number when filtering can't change anything). Tapping the label reveals
+  the slider (when there's a range to scrub through) and tapping it again hides it;
+  while the slider is visible the label shows the current count as before.
 - Android debug builds now use a yellow launcher-icon background (overriding both the
   orange release background and the dark snapshot background) so debug installs are
   distinguishable at a glance. Only affects the adaptive icon (API 26+); the legacy
