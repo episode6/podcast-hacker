@@ -68,7 +68,14 @@ private val SPEED_OPTIONS = listOf(0.8f, 1f, 1.2f, 1.5f, 2f)
 internal fun NowPlayingScreen(navController: NavController) {
     val store = LocalAppGraph.current.appStore
     val nowPlaying by store.stateOf { nowPlaying }
-    ScreenScaffold(title = "Now Playing", navController = navController) {
+    // surfaceVariant matches the MiniPlayerBar's grey: visually the screen is the bar
+    // expanded to full size, and an opaque background keeps the screen from sliding up
+    // transparent (the root background flashing in once the screen below is removed).
+    ScreenScaffold(
+        title = "Now Playing",
+        navController = navController,
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
         val current = nowPlaying
         if (current == null) {
             Text(

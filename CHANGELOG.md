@@ -2,6 +2,12 @@
 
 ### v1.0.20 - Unreleased
 
+- Opening the Now Playing screen from the mini player bar now slides the screen up
+  from the bottom (and back down when leaving) while the bar's content fades out in
+  place, instead of the default cross-fade between screens. The Now Playing screen's
+  background is now the same grey as the bar (so it reads as the bar expanded), and
+  screens carry an opaque background during transitions instead of sliding up
+  see-through and flashing the root background in at the end.
 - Now Playing cleanup: the transport controls collapse into a single row (skip to
   previous ad boundary, back 15s, play/pause, forward 30s, skip to next ad boundary)
   with the ad-boundary countdowns shown under the outer buttons, and the text glyphs
