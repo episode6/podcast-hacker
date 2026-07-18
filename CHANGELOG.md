@@ -10,6 +10,12 @@
   a queued icon while an episode waits for a download slot, then a determinate
   progress ring with byte progress (indeterminate while starting and while ads are
   being cut) instead of a single indefinite spinner for every in-flight state.
+- Internal: the Now Playing sheet now derives its drag anchors from a layout modifier
+  (mirroring material3's internal draggableAnchors) instead of mutating anchor state
+  from a BoxWithConstraints subcomposition during the measure pass — Compose hygiene
+  aimed at the flaky `performMeasureAndLayout called during measure layout` crash that
+  hit the device-test suite on main. CI also retries the device tests once per run as
+  a backstop against that known-flaky compose-test race.
 - The mini player bar and Now Playing screen are now two faces of a single draggable
   sheet with a grab-handle pill at the top: drag the bar up to expand it into the full
   Now Playing UI and drag the screen back down to collapse it (tapping the bar, the new
