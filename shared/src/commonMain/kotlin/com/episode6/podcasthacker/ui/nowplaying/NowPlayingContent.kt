@@ -74,9 +74,10 @@ import kotlin.time.Duration.Companion.seconds
 private val SPEED_OPTIONS = listOf(0.8f, 1f, 1.2f, 1.5f, 2f)
 
 /**
- * The Now Playing sheet's expanded face: drag handle + title row above the artwork,
- * seek bar, transport controls, ad-boundary filter, speed options, and Stop. Stopping
- * playback clears now-playing state, which hides the whole sheet.
+ * The Now Playing sheet's expanded face: drag handle, title row, and artwork above a
+ * scrollable column of seek bar, transport controls, ad-boundary filter, speed options,
+ * and Stop. Everything above the scrollable column is swipe-to-collapse territory.
+ * Stopping playback clears now-playing state, which hides the whole sheet.
  */
 @Composable
 internal fun NowPlayingContent(
@@ -124,18 +125,21 @@ internal fun NowPlayingContent(
                 )
             }
             Spacer(Modifier.height(24.dp))
+            // the artwork stays outside the scrollable column so vertical drags on it fall
+            // through to the sheet's anchoredDraggable, extending the swipe-to-collapse
+            // area from the drag handle down through the image
+            AsyncImage(
+                model = nowPlaying.artworkUrl,
+                contentDescription = null,
+                modifier = Modifier.size(240.dp).clip(RoundedCornerShape(16.dp)),
+            )
+            Spacer(Modifier.height(24.dp))
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                AsyncImage(
-                    model = nowPlaying.artworkUrl,
-                    contentDescription = null,
-                    modifier = Modifier.size(240.dp).clip(RoundedCornerShape(16.dp)),
-                )
-                Spacer(Modifier.height(24.dp))
                 Text(nowPlaying.episodeTitle, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
                 nowPlaying.podcastTitle?.let {
                     Spacer(Modifier.height(4.dp))
