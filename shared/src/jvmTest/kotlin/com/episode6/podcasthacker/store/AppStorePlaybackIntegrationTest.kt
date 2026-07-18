@@ -1,8 +1,10 @@
 package com.episode6.podcasthacker.store
 
 import com.episode6.podcasthacker.data.model.Episode
+import com.episode6.podcasthacker.data.model.Podcast
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
+import com.episode6.podcasthacker.data.repo.SubscriptionRepository
 import com.episode6.podcasthacker.playback.PlaybackMetadata
 import com.episode6.podcasthacker.playback.PlayerState
 import com.episode6.podcasthacker.playback.PlayerStatus
@@ -63,6 +65,7 @@ class AppStorePlaybackIntegrationTest {
     }
     private val episodeRepository = mockk<EpisodeRepository> {
         coEvery { episode(episode.guid) } returns episode
+        coEvery { lastPlayedEpisode() } returns null
         coEvery { setPlaybackPosition(any(), any()) } just Runs
         coEvery { markPlayed(any(), any()) } just Runs
     }
@@ -70,6 +73,9 @@ class AppStorePlaybackIntegrationTest {
         every { downloadedFileExists(episode.guid) } returns true
         every { downloadFilePath(episode.guid) } returns "/downloads/abc.mp3".toPath()
         coEvery { adBoundaryCandidates(episode.guid) } returns emptyList()
+    }
+    private val subscriptionRepository = mockk<SubscriptionRepository> {
+        coEvery { podcast(episode.feedUrl) } returns Podcast(feedUrl = episode.feedUrl, title = "Test Podcast")
     }
 
     private fun CoroutineScope.playbackStore(): AppStore {
@@ -85,6 +91,7 @@ class AppStorePlaybackIntegrationTest {
                         playback.playEpisode(player, episodeRepository, downloadsRepository),
                         playback.playerCommands(player),
                         playback.persistPlaybackPosition(player, episodeRepository),
+                        playback.restoreNowPlaying(episodeRepository, subscriptionRepository, downloadsRepository),
                     )
                 )
             ),
@@ -119,5 +126,34 @@ class AppStorePlaybackIntegrationTest {
         store.dispatch(StopPlayback)
 
         store.first { it.nowPlaying == null }
+    }
+
+    // the coEvery overrides live in the storeBuilder lambdas below: the restore side
+    // effect reads lastPlayedEpisode() as soon as the store is built, before the test body
+
+    @Test
+    fun coldStart_restoresLastPlayedEpisodeAsPausedBar() = runStoreTest(storeBuilder = {
+        coEvery { episodeRepository.lastPlayedEpisode() } returns episode
+        playbackStore()
+    }) { store ->
+        val nowPlaying = store.first { it.nowPlaying != null }.nowPlaying!!
+
+        kotlin.test.assertEquals(episode.title, nowPlaying.episodeTitle)
+        kotlin.test.assertEquals("Test Podcast", nowPlaying.podcastTitle)
+        kotlin.test.assertEquals(90.seconds, nowPlaying.position)
+        kotlin.test.assertEquals(false, nowPlaying.isPlaying)
+    }
+
+    @Test
+    fun coldStart_playOnRestoredEpisode_loadsAndPlays() = runStoreTest(storeBuilder = {
+        coEvery { episodeRepository.lastPlayedEpisode() } returns episode
+        playbackStore()
+    }) { store ->
+        store.first { it.nowPlaying != null }
+
+        store.dispatch(TogglePlayPause)
+
+        val nowPlaying = store.first { it.nowPlaying?.isPlaying == true }.nowPlaying!!
+        kotlin.test.assertEquals(90.seconds, nowPlaying.position)
     }
 }

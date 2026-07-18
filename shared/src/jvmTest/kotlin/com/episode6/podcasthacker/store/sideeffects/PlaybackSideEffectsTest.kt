@@ -2,12 +2,14 @@ package com.episode6.podcasthacker.store.sideeffects
 
 import assertk.assertThat
 import assertk.assertions.containsExactly
+import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import com.episode6.podcasthacker.data.model.AdBoundary
 import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.data.model.Podcast
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
+import com.episode6.podcasthacker.data.repo.SubscriptionRepository
 import com.episode6.podcasthacker.playback.PlaybackMetadata
 import com.episode6.podcasthacker.playback.PlayerState
 import com.episode6.podcasthacker.playback.PlayerStatus
@@ -88,6 +90,9 @@ class PlaybackSideEffectsTest {
         every { downloadFilePath(episode.guid) } returns downloadPath
         coEvery { adBoundaryCandidates(episode.guid) } returns emptyList()
     }
+    private val subscriptionRepository = mockk<SubscriptionRepository> {
+        coEvery { podcast(episode.feedUrl) } returns podcast
+    }
 
     private fun boundary(position: Duration, confidence: Float = 0.5f) =
         AdBoundary(position, AdBoundary.Source.DiffCut, AdBoundary.Role.Start, confidence)
@@ -153,15 +158,29 @@ class PlaybackSideEffectsTest {
 
     @Test
     fun togglePlayPause_pausesWhilePlaying_playsWhilePaused() = runTest {
+        playerState.value = PlayerState(episodeGuid = episode.guid, status = PlayerStatus.Playing)
+
         sideEffects.playerCommands(player)
             .output(TogglePlayPause, state = AppState(nowPlaying = nowPlaying.copy(isPlaying = true)))
             .toList()
         verify(exactly = 1) { player.pause() }
 
+        playerState.value = PlayerState(episodeGuid = episode.guid, status = PlayerStatus.Paused)
         sideEffects.playerCommands(player)
             .output(TogglePlayPause, state = AppState(nowPlaying = nowPlaying.copy(isPlaying = false)))
             .toList()
         verify(exactly = 1) { player.play() }
+    }
+
+    @Test
+    fun togglePlayPause_episodeNotLoaded_runsFullPlayFlow() = runTest {
+        // player still idle (cold-start restore): nowPlaying exists but nothing is loaded
+        val actions = sideEffects.playerCommands(player)
+            .output(TogglePlayPause, state = AppState(nowPlaying = nowPlaying))
+            .toList()
+
+        assertThat(actions).containsExactly(PlayEpisode(episode.guid))
+        verify(exactly = 0) { player.play() }
     }
 
     @Test
@@ -296,6 +315,46 @@ class PlaybackSideEffectsTest {
         val action = sideEffects.observePlayerState(player).output().take(1).toList().single()
 
         assertThat(action).isEqualTo(SetPlayerState(state))
+    }
+
+    @Test
+    fun restoreNowPlaying_seedsPausedBarFromLastPlayedEpisode() = runTest {
+        coEvery { episodeRepository.lastPlayedEpisode() } returns episode
+        val boundaries = listOf(boundary(5.minutes))
+        coEvery { downloadsRepository.adBoundaryCandidates(episode.guid) } returns boundaries
+
+        val actions = sideEffects
+            .restoreNowPlaying(episodeRepository, subscriptionRepository, downloadsRepository)
+            .output()
+            .toList()
+
+        assertThat(actions).containsExactly(SetNowPlaying(nowPlaying.copy(adBoundaries = boundaries)))
+        verify(exactly = 0) { player.load(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun restoreNowPlaying_nothingEverPlayed_emitsNothing() = runTest {
+        coEvery { episodeRepository.lastPlayedEpisode() } returns null
+
+        val actions = sideEffects
+            .restoreNowPlaying(episodeRepository, subscriptionRepository, downloadsRepository)
+            .output()
+            .toList()
+
+        assertThat(actions).isEmpty()
+    }
+
+    @Test
+    fun restoreNowPlaying_somethingAlreadyPlaying_leavesItAlone() = runTest {
+        coEvery { episodeRepository.lastPlayedEpisode() } returns episode
+        val alreadyPlaying = nowPlaying.copy(episodeGuid = "guid-2", isPlaying = true)
+
+        val actions = sideEffects
+            .restoreNowPlaying(episodeRepository, subscriptionRepository, downloadsRepository)
+            .output(state = AppState(nowPlaying = alreadyPlaying))
+            .toList()
+
+        assertThat(actions).isEmpty()
     }
 
     @Test
