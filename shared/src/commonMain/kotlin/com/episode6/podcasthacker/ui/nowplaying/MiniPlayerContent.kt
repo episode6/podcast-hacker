@@ -63,10 +63,11 @@ internal fun MiniPlayerContent(
         )
         DragHandle()
         Row(
-            // the bottom padding excludes the slice of the bar that overlaps the nav
-            // inset, centering the row between the drag handle and the system gesture pill
+            // start padding is a touch wider so the artwork clears rounded display
+            // corners; the bottom padding excludes the slice of the bar that overlaps the
+            // nav inset, centering the row between the drag handle and the system gesture pill
             modifier = Modifier
-                .padding(horizontal = 12.dp)
+                .padding(start = 16.dp, end = 12.dp)
                 .weight(1f)
                 .padding(bottom = navBarOverlapPadding()),
             verticalAlignment = Alignment.CenterVertically,
