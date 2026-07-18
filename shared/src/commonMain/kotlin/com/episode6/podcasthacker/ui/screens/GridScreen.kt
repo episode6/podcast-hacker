@@ -5,11 +5,14 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -64,6 +67,7 @@ import com.episode6.podcasthacker.ui.util.rememberFileExportLauncher
 import com.episode6.podcasthacker.ui.util.rememberFileImportLauncher
 import com.episode6.podcasthacker.ui.util.stateOf
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -206,22 +210,34 @@ private fun OverflowMenu(store: AppStore, navController: NavController) {
     val updateChecker = LocalAppGraph.current.appUpdateChecker
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
-    // non-null shows the check-for-updates alert dialog (already-up-to-date or failure);
-    // an available update opens the browser instead of setting this
-    var updateMessage by remember { mutableStateOf<String?>(null) }
+    // non-null shows the check-for-updates alert dialog: a spinner while the github
+    // lookup is in flight, then the already-up-to-date or failure message. An available
+    // update opens the browser and dismisses the dialog instead of showing a message.
+    var updateCheck by remember { mutableStateOf<UpdateCheckDialog?>(null) }
+    var updateCheckJob by remember { mutableStateOf<Job?>(null) }
+
+    fun dismissUpdateCheck() {
+        updateCheckJob?.cancel()
+        updateCheck = null
+    }
 
     fun checkForUpdates() {
-        scope.launch {
+        updateCheck = UpdateCheckDialog.Checking
+        updateCheckJob = scope.launch {
             try {
                 when (val result = updateChecker.checkForUpdate()) {
-                    is UpdateCheckResult.UpdateAvailable -> uriHandler.openUri(result.url)
-                    is UpdateCheckResult.UpToDate ->
-                        updateMessage = "You're already on the latest version (${result.versionLabel})."
+                    is UpdateCheckResult.UpdateAvailable -> {
+                        uriHandler.openUri(result.url)
+                        updateCheck = null
+                    }
+                    is UpdateCheckResult.UpToDate -> updateCheck = UpdateCheckDialog.Message(
+                        "You're already on the latest version (${result.versionLabel})."
+                    )
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                updateMessage = "Update check failed: ${e.message ?: "unknown error"}"
+                updateCheck = UpdateCheckDialog.Message("Update check failed: ${e.message ?: "unknown error"}")
             }
         }
     }
@@ -274,16 +290,33 @@ private fun OverflowMenu(store: AppStore, navController: NavController) {
             }
         }
     }
-    updateMessage?.let { message ->
+    updateCheck?.let { check ->
         AlertDialog(
-            onDismissRequest = { updateMessage = null },
+            onDismissRequest = ::dismissUpdateCheck,
             title = { Text("Check for updates") },
-            text = { Text(message) },
+            text = {
+                when (check) {
+                    is UpdateCheckDialog.Checking -> Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Checking for updates…")
+                    }
+                    is UpdateCheckDialog.Message -> Text(check.text)
+                }
+            },
             confirmButton = {
-                TextButton(onClick = { updateMessage = null }) { Text("OK") }
+                TextButton(onClick = ::dismissUpdateCheck) {
+                    Text(if (check is UpdateCheckDialog.Checking) "Cancel" else "OK")
+                }
             },
         )
     }
+}
+
+/** State of the check-for-updates dialog; dismissing it mid-[Checking] cancels the lookup. */
+private sealed interface UpdateCheckDialog {
+    data object Checking : UpdateCheckDialog
+    data class Message(val text: String) : UpdateCheckDialog
 }
 
 @OptIn(ExperimentalFoundationApi::class)
