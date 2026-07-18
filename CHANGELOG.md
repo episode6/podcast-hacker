@@ -19,6 +19,11 @@
 - On a cold start, if an episode was played in a previous run, the now-playing bar now
   shows that episode by default (paused at its saved position) instead of starting
   hidden. Tapping play resumes the episode from where it left off.
+- When the now-playing episode's file isn't downloaded (its download was deleted, or
+  the play history came from a library import), the play buttons on the mini player
+  bar and the Now Playing screen become download buttons — with the same live download
+  detail as the episode-list rows (queued icon, then a progress ring) — instead of a
+  play button that can't play anything.
 - The mini player bar and Now Playing screen are now two faces of a single draggable
   sheet with a grab-handle pill at the top: drag the bar up to expand it into the full
   Now Playing UI and drag the screen back down to collapse it (tapping the bar, the new

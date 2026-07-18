@@ -25,8 +25,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.episode6.podcasthacker.inject.LocalAppGraph
+import com.episode6.podcasthacker.store.DownloadEpisode
 import com.episode6.podcasthacker.store.NowPlayingState
 import com.episode6.podcasthacker.store.TogglePlayPause
+import com.episode6.podcasthacker.ui.screens.EpisodeRowProgress
+import com.episode6.podcasthacker.ui.screens.EpisodeRowQueuedIcon
 import com.episode6.podcasthacker.ui.util.AppIcons
 import com.episode6.podcasthacker.ui.util.navBarOverlapPadding
 
@@ -96,15 +99,29 @@ internal fun MiniPlayerContent(
                 }
             }
             Spacer(Modifier.width(12.dp))
-            IconButton(
-                onClick = { store.dispatch(TogglePlayPause) },
-                modifier = Modifier.testTag("miniPlayerPlayPause"),
-            ) {
-                Icon(
-                    imageVector = if (nowPlaying.isPlaying) AppIcons.Pause else AppIcons.Play,
-                    contentDescription = if (nowPlaying.isPlaying) "Pause" else "Play",
-                    tint = MaterialTheme.colorScheme.primary,
-                )
+            when (val buttonState = nowPlayingButtonState(nowPlaying)) {
+                NowPlayingButtonState.Queued -> EpisodeRowQueuedIcon()
+                is NowPlayingButtonState.DownloadProgress -> EpisodeRowProgress(buttonState.percentComplete)
+                NowPlayingButtonState.Download -> IconButton(
+                    onClick = { store.dispatch(DownloadEpisode(nowPlaying.episodeGuid)) },
+                    modifier = Modifier.testTag("miniPlayerPlayPause"),
+                ) {
+                    Icon(
+                        imageVector = AppIcons.Download,
+                        contentDescription = "Download",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                NowPlayingButtonState.PlayPause -> IconButton(
+                    onClick = { store.dispatch(TogglePlayPause) },
+                    modifier = Modifier.testTag("miniPlayerPlayPause"),
+                ) {
+                    Icon(
+                        imageVector = if (nowPlaying.isPlaying) AppIcons.Pause else AppIcons.Play,
+                        contentDescription = if (nowPlaying.isPlaying) "Pause" else "Play",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
         }
     }
