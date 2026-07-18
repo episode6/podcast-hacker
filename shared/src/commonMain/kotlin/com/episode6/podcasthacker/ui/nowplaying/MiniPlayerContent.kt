@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,10 +51,14 @@ internal fun MiniPlayerContent(
         val progress = nowPlaying.duration
             ?.takeIf { it.isPositive() }
             ?.let { ((nowPlaying.position / it).toFloat()).coerceIn(0f, 1f) }
-        // pinned to the sheet's top edge so it doubles as the mini player's top border
+        // pinned to the sheet's top edge so it doubles as the mini player's top border;
+        // square caps, no gap, and no stop dot so it draws as a solid edge-to-edge line
         LinearProgressIndicator(
             progress = { progress ?: 0f },
             modifier = Modifier.fillMaxWidth().height(2.dp),
+            strokeCap = StrokeCap.Butt,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
         )
         DragHandle()
         Row(
