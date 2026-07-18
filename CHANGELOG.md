@@ -2,6 +2,10 @@
 
 ### v1.0.20 - Unreleased
 
+- Android debug builds now use a yellow launcher-icon background (overriding both the
+  orange release background and the dark snapshot background) so debug installs are
+  distinguishable at a glance. Only affects the adaptive icon (API 26+); the legacy
+  API 24/25 fallback PNGs are unchanged.
 - The mini player bar and Now Playing screen are now two faces of a single draggable
   sheet with a grab-handle pill at the top: drag the bar up to expand it into the full
   Now Playing UI and drag the screen back down to collapse it (tapping the bar, the new
