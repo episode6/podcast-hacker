@@ -2,6 +2,12 @@
 
 ### v1.0.20 - Unreleased
 
+- The overflow (3-dots) menu gains a "Check for updates" option. Snapshot builds compare
+  their embedded git sha against the latest commit on main and open that commit's first
+  comment in the browser (where CI posts the APK download link; the bare commit page if
+  it has no comments); release builds compare their version against the latest GitHub
+  release and open its release page. When already current, an alert dialog says so and
+  shows the running version (or short sha for snapshots).
 - The Now Playing screen's skip-confidence slider now starts hidden behind its "skips"
   label, which shows the range of skip counts the filter can reach (e.g. `skips: 2-8`,
   or a single number when filtering can't change anything). Tapping the label reveals

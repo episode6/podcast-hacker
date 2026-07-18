@@ -112,16 +112,19 @@ kotlin {
 val selfVersionCode: Int by rootProject.extra
 val selfIsSnapshot: Boolean by rootProject.extra
 val selfAppName: String by rootProject.extra
+val selfGitSha: String by rootProject.extra
 val generateBuildInfo = tasks.register("generateBuildInfo") {
     val versionName = self.versions.name.get()
     val versionCode = selfVersionCode
     val isSnapshot = selfIsSnapshot
     val appName = selfAppName
+    val gitSha = selfGitSha
     val outDir = layout.buildDirectory.dir("generated/buildInfo/kotlin")
     inputs.property("versionName", versionName)
     inputs.property("versionCode", versionCode)
     inputs.property("isSnapshot", isSnapshot)
     inputs.property("appName", appName)
+    inputs.property("gitSha", gitSha)
     outputs.dir(outDir)
     doLast {
         val outFile = outDir.get().file("com/episode6/podcasthacker/BuildInfo.kt").asFile
@@ -140,6 +143,9 @@ val generateBuildInfo = tasks.register("generateBuildInfo") {
             |
             |    /** User-facing app name; snapshot builds carry a " (SNAPSHOT)" suffix. */
             |    const val APP_NAME: String = "$appName"
+            |
+            |    /** Full sha of the commit this build was made from. */
+            |    const val GIT_SHA: String = "$gitSha"
             |}
             |""".trimMargin()
         )
