@@ -1,7 +1,6 @@
 package com.episode6.podcasthacker.ui.screens
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -254,34 +253,3 @@ private fun EpisodeRowIconButton(
     }
 }
 
-/** Deliberately not a button: a queued episode has no action yet, the icon just marks
- * it as waiting for one of the download slots. Sized like the buttons so rows don't
- * jump as states change. */
-@Composable
-private fun EpisodeRowQueuedIcon() {
-    Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-        Icon(
-            imageVector = AppIcons.Schedule,
-            contentDescription = "Queued",
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(EPISODE_ROW_ICON_SIZE),
-        )
-    }
-}
-
-private val EPISODE_ROW_ICON_SIZE = 32.dp
-
-@Composable
-private fun EpisodeRowProgress(percentComplete: Float? = null) {
-    // matches the buttons' min touch-target height so rows don't jump as states change
-    Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-        if (percentComplete == null) {
-            CircularProgressIndicator(Modifier.size(24.dp))
-        } else {
-            CircularProgressIndicator(
-                progress = { percentComplete },
-                modifier = Modifier.size(24.dp),
-            )
-        }
-    }
-}
