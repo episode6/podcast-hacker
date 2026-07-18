@@ -91,11 +91,14 @@ internal fun NowPlayingContent(
     val isCompact = !windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
     val screenPadding = if (isCompact) 16.dp else 24.dp
     Column(
-        // top safe-content inset (status bar) applies here rather than on the shared
-        // sheet container: the collapsed bar never reaches the top of the window
+        // top + horizontal safe-content insets apply here rather than on the shared
+        // sheet container: the collapsed bar never reaches the top of the window, and
+        // the mini player face manages its own horizontal insets
         modifier = modifier
             .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.safeContent.only(WindowInsetsSides.Top)),
+            .windowInsetsPadding(
+                WindowInsets.safeContent.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         DragHandle()

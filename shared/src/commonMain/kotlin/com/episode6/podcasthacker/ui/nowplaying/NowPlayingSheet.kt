@@ -13,16 +13,11 @@ import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.gestures.snapTo
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -155,11 +150,9 @@ internal fun NowPlayingSheet(state: NowPlayingSheetState, modifier: Modifier = M
                 tonalElevation = 3.dp,
             ) {
                 val current = displayed ?: return@Surface
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .windowInsetsPadding(WindowInsets.safeContent.only(WindowInsetsSides.Horizontal)),
-                ) {
+                // horizontal safe-content insets are applied inside each face (not here) so
+                // full-bleed elements like the mini player's progress bar can span the window
+                Box(modifier = Modifier.fillMaxSize()) {
                     // compose each layer only while it's at all visible so the hidden one
                     // can't swallow clicks or confuse test matchers
                     val showExpanded by remember { derivedStateOf { state.expandFraction() > 0f } }
