@@ -67,6 +67,10 @@ val gitSnapshotVersionCode: Int by lazy {
     requireNotNull(mainRef) { "snapshot versionCode needs a main ref (origin/main or main) to merge-base against" }
     git("rev-list", "--count", git("merge-base", mainRef, "HEAD")).toInt()
 }
+// HEAD's full sha, embedded into BuildInfo so the in-app update check can tell whether
+// a snapshot build matches the latest commit on main
+val selfGitSha: String by extra(git("rev-parse", "HEAD"))
+
 val selfVersionName: String = self.versions.name.get()
 val selfReleaseVersionCode: Int = run {
     val segments = selfVersionName.split(".")

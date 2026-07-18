@@ -5,15 +5,19 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -24,16 +28,19 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -42,6 +49,7 @@ import coil3.compose.AsyncImage
 import com.episode6.podcasthacker.data.backup.libraryBackupDocument
 import com.episode6.podcasthacker.data.backup.parseLibraryImport
 import com.episode6.podcasthacker.data.model.Podcast
+import com.episode6.podcasthacker.data.network.UpdateCheckResult
 import com.episode6.podcasthacker.data.opml.OpmlFeed
 import com.episode6.podcasthacker.data.opml.opmlDocument
 import com.episode6.podcasthacker.inject.LocalAppGraph
@@ -58,6 +66,9 @@ import com.episode6.podcasthacker.ui.util.platformUsesPullToRefresh
 import com.episode6.podcasthacker.ui.util.rememberFileExportLauncher
 import com.episode6.podcasthacker.ui.util.rememberFileImportLauncher
 import com.episode6.podcasthacker.ui.util.stateOf
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -160,7 +171,10 @@ private fun PodcastGrid(
  * the file carries. Export offers a format submenu: OPML for interop with other podcast
  * apps, json for the full library (subscriptions + progress); both disabled with nothing
  * to export. Import/export are hidden on platforms without file dialogs; the license
- * notices item is always present.
+ * notices and check-for-updates items are always present. Check for updates asks github
+ * for the newest build (latest main commit for snapshots, latest release otherwise) and
+ * either opens its download page in the browser or reports the app is already current
+ * via an alert dialog — see [com.episode6.podcasthacker.data.network.AppUpdateChecker].
  */
 @Composable
 private fun OverflowMenu(store: AppStore, navController: NavController) {
@@ -193,6 +207,41 @@ private fun OverflowMenu(store: AppStore, navController: NavController) {
     var menuOpen by remember { mutableStateOf(false) }
     var showExportFormats by remember { mutableStateOf(false) }
 
+    val updateChecker = LocalAppGraph.current.appUpdateChecker
+    val uriHandler = LocalUriHandler.current
+    val scope = rememberCoroutineScope()
+    // non-null shows the check-for-updates alert dialog: a spinner while the github
+    // lookup is in flight, then the already-up-to-date or failure message. An available
+    // update opens the browser and dismisses the dialog instead of showing a message.
+    var updateCheck by remember { mutableStateOf<UpdateCheckDialog?>(null) }
+    var updateCheckJob by remember { mutableStateOf<Job?>(null) }
+
+    fun dismissUpdateCheck() {
+        updateCheckJob?.cancel()
+        updateCheck = null
+    }
+
+    fun checkForUpdates() {
+        updateCheck = UpdateCheckDialog.Checking
+        updateCheckJob = scope.launch {
+            try {
+                when (val result = updateChecker.checkForUpdate()) {
+                    is UpdateCheckResult.UpdateAvailable -> {
+                        uriHandler.openUri(result.url)
+                        updateCheck = null
+                    }
+                    is UpdateCheckResult.UpToDate -> updateCheck = UpdateCheckDialog.Message(
+                        "You're already on the latest version (${result.versionLabel})."
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                updateCheck = UpdateCheckDialog.Message("Update check failed: ${e.message ?: "unknown error"}")
+            }
+        }
+    }
+
     fun openMenu() {
         showExportFormats = false
         menuOpen = true
@@ -224,6 +273,10 @@ private fun OverflowMenu(store: AppStore, navController: NavController) {
                     )
                 }
                 DropdownMenuItem(
+                    text = { Text("Check for updates") },
+                    onClick = menuAction(::checkForUpdates),
+                )
+                DropdownMenuItem(
                     text = { Text("Third-party license notices") },
                     onClick = menuAction { navController.navigate(LicensesRoute) },
                 )
@@ -237,6 +290,33 @@ private fun OverflowMenu(store: AppStore, navController: NavController) {
             }
         }
     }
+    updateCheck?.let { check ->
+        AlertDialog(
+            onDismissRequest = ::dismissUpdateCheck,
+            title = { Text("Check for updates") },
+            text = {
+                when (check) {
+                    is UpdateCheckDialog.Checking -> Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Checking for updates…")
+                    }
+                    is UpdateCheckDialog.Message -> Text(check.text)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = ::dismissUpdateCheck) {
+                    Text(if (check is UpdateCheckDialog.Checking) "Cancel" else "OK")
+                }
+            },
+        )
+    }
+}
+
+/** State of the check-for-updates dialog; dismissing it mid-[Checking] cancels the lookup. */
+private sealed interface UpdateCheckDialog {
+    data object Checking : UpdateCheckDialog
+    data class Message(val text: String) : UpdateCheckDialog
 }
 
 @OptIn(ExperimentalFoundationApi::class)

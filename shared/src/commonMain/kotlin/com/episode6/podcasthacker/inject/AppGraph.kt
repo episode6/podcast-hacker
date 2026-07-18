@@ -7,6 +7,7 @@ import com.episode6.podcasthacker.appDirs
 import com.episode6.podcasthacker.coroutines.ioDispatcher
 import com.episode6.podcasthacker.data.db.AppDatabase
 import com.episode6.podcasthacker.data.db.appDatabaseBuilder
+import com.episode6.podcasthacker.data.network.AppUpdateChecker
 import com.episode6.podcasthacker.data.network.ItunesSearchClient
 import com.episode6.podcasthacker.data.network.platformHttpClient
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
@@ -51,6 +52,7 @@ interface AppGraph {
     val appDirs: AppDirs
     val httpClient: HttpClient
     val itunesSearchClient: ItunesSearchClient
+    val appUpdateChecker: AppUpdateChecker
     val subscriptionRepository: SubscriptionRepository
     val episodeRepository: EpisodeRepository
 
