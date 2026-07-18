@@ -12,11 +12,9 @@ import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.gestures.snapTo
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -37,9 +35,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.NowPlayingState
@@ -120,30 +118,21 @@ internal fun NowPlayingSheet(state: NowPlayingSheetState, modifier: Modifier = M
     val scope = rememberCoroutineScope()
     BackHandler(enabled = visible && state.isExpanded) { scope.launch { state.collapse() } }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val containerHeightPx = constraints.maxHeight.toFloat()
+    Box(modifier = modifier.fillMaxSize()) {
         val collapsedHeight = MINI_PLAYER_HEIGHT + overlappedNavBarBottomPadding()
         val collapsedHeightPx = with(LocalDensity.current) { collapsedHeight.toPx() }
-        remember(containerHeightPx, collapsedHeightPx) {
-            state.draggable.updateAnchors(
-                DraggableAnchors {
-                    NowPlayingSheetValue.Collapsed at containerHeightPx - collapsedHeightPx
-                    NowPlayingSheetValue.Expanded at 0f
-                },
-            )
-        }
         AnimatedVisibility(
             visible = visible,
             enter = slideInVertically(tween(SHEET_VISIBILITY_TRANSITION_MILLIS)) { it },
             exit = slideOutVertically(tween(SHEET_VISIBILITY_TRANSITION_MILLIS)) { it },
         ) {
-            // The surface is always full-window-sized and simply offset down to its anchor,
-            // so dragging never re-measures content. Surface also consumes stray touches,
-            // keeping taps from falling through to the nav content beneath.
+            // The surface is always full-window-sized and simply placed at its anchor offset
+            // (see sheetAnchors), so dragging never re-measures content. Surface also consumes
+            // stray touches, keeping taps from falling through to the nav content beneath.
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
-                    .offset { IntOffset(0, state.draggable.requireOffset().roundToInt()) }
+                    .sheetAnchors(state, collapsedHeightPx)
                     .anchoredDraggable(state.draggable, Orientation.Vertical)
                     .testTag("nowPlayingSheet"),
                 color = MaterialTheme.colorScheme.surfaceVariant,
@@ -182,6 +171,29 @@ internal fun NowPlayingSheet(state: NowPlayingSheetState, modifier: Modifier = M
                 }
             }
         }
+    }
+}
+
+/**
+ * Derives the sheet's anchors from the incoming (full-window) constraints and places the
+ * content at the draggable's current offset. Anchors are computed inside the measure pass —
+ * never from composition — so they're always set before the first placement reads the
+ * offset, and no subcomposition (BoxWithConstraints) or snapshot writes from composition
+ * are needed. This mirrors material3's internal draggableAnchors modifier.
+ */
+private fun Modifier.sheetAnchors(
+    state: NowPlayingSheetState,
+    collapsedHeightPx: Float,
+): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    state.draggable.updateAnchors(
+        DraggableAnchors {
+            NowPlayingSheetValue.Collapsed at constraints.maxHeight - collapsedHeightPx
+            NowPlayingSheetValue.Expanded at 0f
+        },
+    )
+    layout(placeable.width, placeable.height) {
+        placeable.place(0, state.draggable.requireOffset().roundToInt())
     }
 }
 

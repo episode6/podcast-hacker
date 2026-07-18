@@ -39,7 +39,11 @@ jobs:
           # the default AVD is a 320x640 relic; use a realistic phone screen
           profile: pixel_6
           disable-animations: true
-          script: ./gradlew :androidApp:connectedDebugAndroidTest
+          # retry once in the same emulator session: the compose test harness has a
+          # known flaky espresso/render race ("performMeasureAndLayout called during
+          # measure layout", issuetracker.google.com/325299275) that can fail an
+          # otherwise-green run
+          script: ./gradlew :androidApp:connectedDebugAndroidTest || ./gradlew :androidApp:connectedDebugAndroidTest
       - name: Upload test results on failure
         if: failure()
         uses: actions/upload-artifact@v7
