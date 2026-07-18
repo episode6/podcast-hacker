@@ -12,7 +12,16 @@ esac
 ./gradlew :desktopApp:createDistributable
 
 APP_DIR="desktopApp/build/compose/binaries/main/app"
+# packageName is "PodcastHacker-SNAPSHOT" for snapshot builds, "PodcastHacker" for releases
 case "$PLATFORM" in
-    mac)   open "$APP_DIR/PodcastHacker.app" ;;
-    linux) exec "$APP_DIR/PodcastHacker/bin/PodcastHacker" ;;
+    mac)
+        APP_BUNDLE=$(find "$APP_DIR" -maxdepth 1 -name "PodcastHacker*.app" | head -n 1)
+        [ -n "$APP_BUNDLE" ] || { echo "No app bundle found in $APP_DIR" >&2; exit 1; }
+        open "$APP_BUNDLE"
+        ;;
+    linux)
+        BINARY=$(find "$APP_DIR" -maxdepth 3 -path "*/bin/PodcastHacker*" -type f | head -n 1)
+        [ -n "$BINARY" ] || { echo "No binary found in $APP_DIR" >&2; exit 1; }
+        exec "$BINARY"
+        ;;
 esac
