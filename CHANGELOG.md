@@ -1,6 +1,6 @@
 # Podcast Hacker Changelog
 
-### v1.0.20 - Unreleased
+### v1.1.0 - Unreleased
 
 - The overflow (3-dots) menu gains a "Check for updates" option. Snapshot builds compare
   their embedded git sha against the latest commit on main and open that commit's first
