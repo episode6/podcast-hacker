@@ -5,6 +5,7 @@ import com.episode6.podcasthacker.data.repo.EpisodeRepository
 import com.episode6.podcasthacker.data.repo.SubscriptionRepository
 import com.episode6.podcasthacker.store.AppState
 import com.episode6.podcasthacker.store.ImportLibrary
+import com.episode6.podcasthacker.store.RestoreNowPlaying
 import com.episode6.redux.sideeffects.SideEffect
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesTo
@@ -50,7 +51,14 @@ interface LibraryImportSideEffects {
                         }
                     },
                 )
-                action.backup.episodes.forEach { episodeRepository.applyProgress(it) }
+                var importedPlayed = false
+                action.backup.episodes.forEach { entry ->
+                    val applied = episodeRepository.applyProgress(entry)
+                    if (applied && entry.lastPlayedAtMs != null) importedPlayed = true
+                }
+                // the backup carried play history that landed: pop the now-playing bar
+                // like it would have on the source device (no-op if something's playing)
+                if (importedPlayed) emit(RestoreNowPlaying)
             }
         }
     }

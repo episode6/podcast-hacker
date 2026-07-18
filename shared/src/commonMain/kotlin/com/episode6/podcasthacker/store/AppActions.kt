@@ -61,3 +61,9 @@ data object StopPlayback : AsyncAction
 /** Imports a library backup (parsed from an OPML or json file): subscribes to its new
  * feeds, then applies its listening state once every subscribe has finished. */
 data class ImportLibrary(val backup: LibraryBackup) : AsyncAction
+
+/** Re-runs the cold-start now-playing restore: seeds the bar from the most recently
+ * played episode when nothing is playing (no-op otherwise). Emitted after an import
+ * applies played-episode listening state, so the bar pops up like it would have on
+ * the device the backup came from. */
+data object RestoreNowPlaying : AsyncAction

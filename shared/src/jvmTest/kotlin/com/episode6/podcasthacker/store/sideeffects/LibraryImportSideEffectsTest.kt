@@ -1,6 +1,7 @@
 package com.episode6.podcasthacker.store.sideeffects
 
 import assertk.assertThat
+import assertk.assertions.containsExactly
 import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.hasSize
 import assertk.assertions.isEmpty
@@ -13,6 +14,7 @@ import com.episode6.podcasthacker.data.repo.EpisodeRepository
 import com.episode6.podcasthacker.data.repo.SubscriptionRepository
 import com.episode6.podcasthacker.store.AppState
 import com.episode6.podcasthacker.store.ImportLibrary
+import com.episode6.podcasthacker.store.RestoreNowPlaying
 import com.episode6.podcasthacker.store.SetFeedSyncError
 import com.episode6.podcasthacker.store.SetFeedSyncing
 import com.episode6.redux.Action
@@ -111,12 +113,34 @@ class LibraryImportSideEffectsTest {
             )
             .toList()
 
-        assertThat(actions).isEmpty()
+        // the applied play history also pops the now-playing bar
+        assertThat(actions).containsExactly(RestoreNowPlaying)
         coVerify(exactly = 0) { subscriptionRepo.subscribe(any()) }
         coVerify(exactly = 1) {
             episodeRepo.setPlaybackPosition("existing-ep", 500.milliseconds)
             episodeRepo.markPlayed("existing-ep", Instant.fromEpochMilliseconds(42))
         }
+    }
+
+    @Test
+    fun import_playedEpisodeMissing_doesNotTriggerNowPlayingRestore() = runTest {
+        val subscriptionRepo = mockk<SubscriptionRepository>()
+        val episodeRepo = mockk<EpisodeRepository>(relaxUnitFun = true) {
+            coEvery { episode("gone-ep") } returns null
+        }
+
+        val actions = sideEffects.importLibrary(subscriptionRepo, episodeRepo)
+            .output(
+                ImportLibrary(
+                    LibraryBackup(
+                        episodes = listOf(EpisodeProgress(feedUrl, "gone-ep", positionMs = 500, lastPlayedAtMs = 42)),
+                    ),
+                ),
+            )
+            .toList()
+
+        assertThat(actions).isEmpty()
+        coVerify(exactly = 0) { episodeRepo.markPlayed(any(), any()) }
     }
 
     @Test

@@ -24,6 +24,11 @@
   bar and the Now Playing screen become download buttons — with the same live download
   detail as the episode-list rows (queued icon, then a progress ring) — instead of a
   play button that can't play anything.
+- Importing a library backup that carries played episodes now pops up the now-playing
+  bar with the most recently played of them (paused, offering a download) once the
+  import lands, matching what a cold start would show — instead of the bar staying
+  hidden until the next app restart. Imports without play history (e.g. OPML) don't
+  touch the bar, and an actively playing episode is never interrupted.
 - The mini player bar and Now Playing screen are now two faces of a single draggable
   sheet with a grab-handle pill at the top: drag the bar up to expand it into the full
   Now Playing UI and drag the screen back down to collapse it (tapping the bar, the new
