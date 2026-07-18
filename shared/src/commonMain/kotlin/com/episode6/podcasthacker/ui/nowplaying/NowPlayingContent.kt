@@ -1,5 +1,6 @@
 package com.episode6.podcasthacker.ui.nowplaying
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -310,45 +312,62 @@ private fun SeekAmountIcon(icon: ImageVector, amount: String, contentDescription
 /**
  * Confidence filter for the skip row: at 0 every boundary is a skip target, at 1 only the
  * episode's top-confidence tier remains (see NowPlayingState.filteredAdBoundaries). The
- * label shows how many boundaries survive so dragging gives immediate feedback.
+ * slider starts hidden behind its "skips" label, which shows the reachable count range
+ * (min-max, or a single number when the filter can't change anything). Tapping the label
+ * toggles the slider when there's a range to scrub through; while the slider is visible
+ * the label shows the current surviving count so dragging gives immediate feedback.
  */
 @Composable
 private fun AdBoundaryFilterSlider(nowPlaying: NowPlayingState, onFilterChange: (Float) -> Unit) {
+    // the counts at the filter's extremes: every boundary at 0, top tier only at 1
+    val maxSkips = nowPlaying.adBoundaries.size
+    val minSkips = nowPlaying.copy(adBoundaryConfidenceFilter = 1f).filteredAdBoundaries().size
+    val hasRange = minSkips != maxSkips
+    var revealed by remember(nowPlaying.episodeGuid) { mutableStateOf(false) }
+    val showSlider = revealed && hasRange
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.widthIn(max = 320.dp),
+        // keep the row at the slider's height while collapsed so toggling doesn't
+        // shift the controls below
+        modifier = Modifier.widthIn(max = 320.dp).heightIn(min = 28.dp),
     ) {
         Text(
-            text = "skips: ${nowPlaying.filteredAdBoundaries().size}",
+            text = when {
+                showSlider -> "skips: ${nowPlaying.filteredAdBoundaries().size}"
+                hasRange -> "skips: $minSkips-$maxSkips"
+                else -> "skips: $maxSkips"
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .clickable(enabled = hasRange) { revealed = !revealed }
+                .testTag("skipsLabel")
+                .padding(vertical = 6.dp),
         )
-        Spacer(Modifier.width(12.dp))
-        // visually slimmer than the default expressive slider so the filter reads as a
-        // secondary control next to the seek bar
-        val enabled = nowPlaying.adBoundaries.isNotEmpty()
-        val interactionSource = remember { MutableInteractionSource() }
-        Slider(
-            value = nowPlaying.adBoundaryConfidenceFilter,
-            onValueChange = onFilterChange,
-            enabled = enabled,
-            interactionSource = interactionSource,
-            thumb = {
-                SliderDefaults.Thumb(
-                    interactionSource = interactionSource,
-                    enabled = enabled,
-                    thumbSize = DpSize(4.dp, 22.dp),
-                )
-            },
-            track = { sliderState ->
-                SliderDefaults.Track(
-                    sliderState = sliderState,
-                    enabled = enabled,
-                    modifier = Modifier.height(6.dp),
-                )
-            },
-            modifier = Modifier.height(28.dp).testTag("adBoundaryConfidenceFilter"),
-        )
+        if (showSlider) {
+            Spacer(Modifier.width(12.dp))
+            // visually slimmer than the default expressive slider so the filter reads as a
+            // secondary control next to the seek bar
+            val interactionSource = remember { MutableInteractionSource() }
+            Slider(
+                value = nowPlaying.adBoundaryConfidenceFilter,
+                onValueChange = onFilterChange,
+                interactionSource = interactionSource,
+                thumb = {
+                    SliderDefaults.Thumb(
+                        interactionSource = interactionSource,
+                        thumbSize = DpSize(4.dp, 22.dp),
+                    )
+                },
+                track = { sliderState ->
+                    SliderDefaults.Track(
+                        sliderState = sliderState,
+                        modifier = Modifier.height(6.dp),
+                    )
+                },
+                modifier = Modifier.height(28.dp).testTag("adBoundaryConfidenceFilter"),
+            )
+        }
     }
 }
 
