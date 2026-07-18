@@ -1,5 +1,6 @@
 package com.episode6.podcasthacker.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -25,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -46,6 +48,7 @@ internal fun ScreenScaffold(
     title: String,
     navController: NavController,
     constrainContentWidth: Boolean = true,
+    containerColor: Color = MaterialTheme.colorScheme.background,
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
@@ -56,9 +59,12 @@ internal fun ScreenScaffold(
 
     // Safe-content padding everywhere except the bottom, where the nav bar inset is
     // deliberately overlapped so content isn't cut off high above the gesture pill.
+    // The opaque background keeps screens from being see-through while a navigation
+    // transition slides them over another screen.
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(containerColor)
             .windowInsetsPadding(
                 WindowInsets.safeContent.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
             )
