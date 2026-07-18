@@ -23,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,10 +39,11 @@ import com.episode6.podcasthacker.store.DownloadEpisode
 import com.episode6.podcasthacker.store.EpisodeDownloadStatus
 import com.episode6.podcasthacker.store.PlayEpisode
 import com.episode6.podcasthacker.ui.nav.EpisodeDetailRoute
-import com.episode6.podcasthacker.ui.nav.NowPlayingRoute
+import com.episode6.podcasthacker.ui.nowplaying.LocalNowPlayingSheetState
 import com.episode6.podcasthacker.ui.util.basicHtmlToAnnotatedString
 import com.episode6.podcasthacker.ui.util.episodeSubtitle
 import com.episode6.podcasthacker.ui.util.stateOf
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun EpisodeDetailScreen(navController: NavController, route: EpisodeDetailRoute) {
@@ -91,11 +93,13 @@ internal fun EpisodeDetailScreen(navController: NavController, route: EpisodeDet
             Row {
                 // playback is download-first (tacita needs whole files), so Play waits
                 // for the episode to finish downloading
+                val nowPlayingSheet = LocalNowPlayingSheetState.current
+                val scope = rememberCoroutineScope()
                 Button(
                     enabled = current.downloadState == DownloadState.Downloaded,
                     onClick = {
                         store.dispatch(PlayEpisode(current.guid))
-                        navController.navigate(NowPlayingRoute)
+                        scope.launch { nowPlayingSheet.expand() }
                     },
                 ) {
                     Text("Play")

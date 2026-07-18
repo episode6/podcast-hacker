@@ -174,11 +174,11 @@ class AppDeviceIntegrationTest {
         compose.onNodeWithText("Download").performClick()
         compose.waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 60_000)
 
-        // play the download → NowPlaying driven by the real MediaController session.
-        // matchers are scoped by tag (the icon's contentDescription merges into the
-        // button node): the mini player bar can briefly coexist with the NowPlaying
-        // screen during navigation animations, so a bare Pause/Play description can
-        // transiently match two nodes
+        // play the download → the Now Playing sheet expands, driven by the real
+        // MediaController session. matchers are scoped by tag (the icon's
+        // contentDescription merges into the button node): the mini player and the
+        // expanded sheet content coexist while the sheet is mid-drag/animation, so a
+        // bare Pause/Play description can transiently match two nodes
         val playingOnNowPlaying = hasTestTag("playPauseButton") and hasContentDescription("Pause")
         val pausedOnNowPlaying = hasTestTag("playPauseButton") and hasContentDescription("Play")
         val pausedOnMiniBar = hasTestTag("miniPlayerPlayPause") and hasContentDescription("Play")
@@ -189,9 +189,9 @@ class AppDeviceIntegrationTest {
         compose.onNode(playingOnNowPlaying).performClick() // pause
         compose.waitForExactlyOne(pausedOnNowPlaying, timeoutMillis = 10_000)
 
-        // back to episode detail: the mini player bar carries the paused state; tapping
-        // it returns to NowPlaying, where Stop clears playback + hides the bar
-        compose.onNode(hasContentDescription("Back")).performClick()
+        // collapse the sheet: the mini player bar carries the paused state; tapping it
+        // re-expands NowPlaying, where Stop clears playback + hides the sheet
+        compose.onNode(hasContentDescription("Collapse")).performClick()
         compose.waitForExactlyOne(pausedOnMiniBar, timeoutMillis = 10_000)
         compose.onNodeWithTag("miniPlayerBar").performClick()
         compose.waitForExactlyOne(hasText("Stop"), timeoutMillis = 10_000)

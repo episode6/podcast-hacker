@@ -124,6 +124,19 @@ internal object AppIcons {
         }
     }
 
+    /** Material "keyboard_arrow_down" (filled chevron). */
+    val CollapseDown: ImageVector by lazy {
+        materialIcon("CollapseDown") {
+            moveTo(7.41f, 8.59f)
+            lineTo(12f, 13.17f)
+            lineToRelative(4.59f, -4.58f)
+            lineTo(18f, 10f)
+            lineToRelative(-6f, 6f)
+            lineToRelative(-6f, -6f)
+            close()
+        }
+    }
+
     /** Material "download" (filled). */
     val Download: ImageVector by lazy {
         materialIcon("Download") {

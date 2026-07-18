@@ -2,6 +2,13 @@
 
 ### v1.0.20 - Unreleased
 
+- The mini player bar and Now Playing screen are now two faces of a single draggable
+  sheet with a grab-handle pill at the top: drag the bar up to expand it into the full
+  Now Playing UI and drag the screen back down to collapse it (tapping the bar, the new
+  collapse chevron, and android's back gesture still work too, and the sheet tracks the
+  finger with a cross-fade between the two layouts). Now Playing is no longer a
+  navigation destination, so it never participates in the back stack; playing an
+  episode expands the sheet, and Stop hides it in place instead of popping a screen.
 - Opening the Now Playing screen from the mini player bar now slides the screen up
   from the bottom (and back down when leaving) while the bar's content fades out in
   place, instead of the default cross-fade between screens. The Now Playing screen's
