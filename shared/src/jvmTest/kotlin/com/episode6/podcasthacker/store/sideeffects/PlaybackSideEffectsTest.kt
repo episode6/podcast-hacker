@@ -17,6 +17,7 @@ import com.episode6.podcasthacker.playback.PodcastPlayer
 import com.episode6.podcasthacker.store.AppState
 import com.episode6.podcasthacker.store.NowPlayingState
 import com.episode6.podcasthacker.store.PlayEpisode
+import com.episode6.podcasthacker.store.RestoreNowPlaying
 import com.episode6.podcasthacker.store.SeekBy
 import com.episode6.podcasthacker.store.SeekTo
 import com.episode6.podcasthacker.store.SetNowPlaying
@@ -330,6 +331,20 @@ class PlaybackSideEffectsTest {
 
         assertThat(actions).containsExactly(SetNowPlaying(nowPlaying.copy(adBoundaries = boundaries)))
         verify(exactly = 0) { player.load(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun restoreNowPlaying_runsAgainOnRestoreAction() = runTest {
+        coEvery { episodeRepository.lastPlayedEpisode() } returns episode
+
+        val actions = sideEffects
+            .restoreNowPlaying(episodeRepository, subscriptionRepository, downloadsRepository)
+            .output(RestoreNowPlaying)
+            .toList()
+
+        // one restore from the cold-start trigger, one from the action (e.g. a library
+        // import that brought played episodes with it)
+        assertThat(actions).containsExactly(SetNowPlaying(nowPlaying), SetNowPlaying(nowPlaying))
     }
 
     @Test

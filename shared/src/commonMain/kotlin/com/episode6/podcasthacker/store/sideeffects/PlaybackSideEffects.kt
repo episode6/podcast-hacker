@@ -10,6 +10,7 @@ import com.episode6.podcasthacker.playback.PodcastPlayer
 import com.episode6.podcasthacker.store.AppState
 import com.episode6.podcasthacker.store.NowPlayingState
 import com.episode6.podcasthacker.store.PlayEpisode
+import com.episode6.podcasthacker.store.RestoreNowPlaying
 import com.episode6.podcasthacker.store.SeekBy
 import com.episode6.podcasthacker.store.SeekTo
 import com.episode6.podcasthacker.store.SetNowPlaying
@@ -27,10 +28,13 @@ import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.IntoSet
 import dev.zacsweers.metro.Provides
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.transform
@@ -106,18 +110,22 @@ interface PlaybackSideEffects {
     }
 
     /**
-     * Cold-start restore: when a previous run played an episode, seed a paused
-     * [NowPlayingState] from the db so the now-playing bar comes back showing it.
-     * Ui-state only — nothing is loaded into the player until the user hits play,
+     * When a previous run played an episode, seed a paused [NowPlayingState] from the
+     * db so the now-playing bar comes back showing it. Runs once at cold start, and
+     * again on [RestoreNowPlaying] (a library import that brought played episodes with
+     * it). Ui-state only — nothing is loaded into the player until the user hits play,
      * at which point [playerCommands] falls back to a fresh [PlayEpisode].
      */
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Provides @IntoSet fun restoreNowPlaying(
         episodeRepository: EpisodeRepository,
         subscriptionRepository: SubscriptionRepository,
         downloadsRepository: DownloadsRepository,
     ): SideEffect<AppState> = sideEffect {
         merge(
-            actions.filter { false },
+            actions.filterIsInstance<RestoreNowPlaying>(),
+            flowOf(RestoreNowPlaying), // cold start
+        ).flatMapMerge {
             flow {
                 val episode = episodeRepository.lastPlayedEpisode() ?: return@flow
                 val podcast = subscriptionRepository.podcast(episode.feedUrl)
@@ -130,10 +138,11 @@ interface PlaybackSideEffects {
                     duration = episode.duration,
                     adBoundaries = downloadsRepository.adBoundaryCandidates(episode.guid),
                 )
-                // don't clobber playback the user started before the db reads finished
+                // don't clobber playback that's already up (an active episode, or the
+                // user racing the db reads)
                 if (currentState().nowPlaying == null) emit(SetNowPlaying(nowPlaying))
-            },
-        )
+            }
+        }
     }
 
     /** A failing player command mustn't kill the whole command pipeline. */
