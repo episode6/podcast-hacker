@@ -16,6 +16,9 @@
   aimed at the flaky `performMeasureAndLayout called during measure layout` crash that
   hit the device-test suite on main. CI also retries the device tests once per run as
   a backstop against that known-flaky compose-test race.
+- On a cold start, if an episode was played in a previous run, the now-playing bar now
+  shows that episode by default (paused at its saved position) instead of starting
+  hidden. Tapping play resumes the episode from where it left off.
 - The mini player bar and Now Playing screen are now two faces of a single draggable
   sheet with a grab-handle pill at the top: drag the bar up to expand it into the full
   Now Playing UI and drag the screen back down to collapse it (tapping the bar, the new

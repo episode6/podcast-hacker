@@ -24,6 +24,9 @@ class EpisodeRepository(private val db: AppDatabase) {
 
     suspend fun episode(guid: String): Episode? = db.episodeDao().get(guid)?.toDomain()
 
+    /** The most recently played episode, if any — the cold-start now-playing restore target. */
+    suspend fun lastPlayedEpisode(): Episode? = db.episodeDao().getLastPlayed()?.toDomain()
+
     fun observeEpisode(guid: String): Flow<Episode?> =
         db.episodeDao().observe(guid).map { it?.toDomain() }
 

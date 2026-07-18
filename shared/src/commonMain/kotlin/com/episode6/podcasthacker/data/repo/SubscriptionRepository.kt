@@ -18,6 +18,8 @@ class SubscriptionRepository(
     fun observeSubscriptions(): Flow<List<Podcast>> =
         db.podcastDao().observeAll().map { podcasts -> podcasts.map { it.toDomain() } }
 
+    suspend fun podcast(feedUrl: String): Podcast? = db.podcastDao().get(feedUrl)?.toDomain()
+
     suspend fun subscribe(feedUrl: String) = feedRepository.sync(feedUrl)
 
     suspend fun unsubscribe(feedUrl: String) {

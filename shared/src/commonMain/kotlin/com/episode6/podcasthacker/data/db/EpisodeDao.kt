@@ -22,6 +22,9 @@ interface EpisodeDao {
     @Query("SELECT * FROM episodes WHERE guid = :guid")
     fun observe(guid: String): Flow<EpisodeEntity?>
 
+    @Query("SELECT * FROM episodes WHERE lastPlayedEpochMillis IS NOT NULL ORDER BY lastPlayedEpochMillis DESC LIMIT 1")
+    suspend fun getLastPlayed(): EpisodeEntity?
+
     @Upsert
     suspend fun upsertAll(episodes: List<EpisodeEntity>)
 

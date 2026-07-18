@@ -2,6 +2,7 @@ package com.episode6.podcasthacker.store.sideeffects
 
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
+import com.episode6.podcasthacker.data.repo.SubscriptionRepository
 import com.episode6.podcasthacker.playback.PlaybackMetadata
 import com.episode6.podcasthacker.playback.PlayerState
 import com.episode6.podcasthacker.playback.PlayerStatus
@@ -104,6 +105,37 @@ interface PlaybackSideEffects {
         }
     }
 
+    /**
+     * Cold-start restore: when a previous run played an episode, seed a paused
+     * [NowPlayingState] from the db so the now-playing bar comes back showing it.
+     * Ui-state only — nothing is loaded into the player until the user hits play,
+     * at which point [playerCommands] falls back to a fresh [PlayEpisode].
+     */
+    @Provides @IntoSet fun restoreNowPlaying(
+        episodeRepository: EpisodeRepository,
+        subscriptionRepository: SubscriptionRepository,
+        downloadsRepository: DownloadsRepository,
+    ): SideEffect<AppState> = sideEffect {
+        merge(
+            actions.filter { false },
+            flow {
+                val episode = episodeRepository.lastPlayedEpisode() ?: return@flow
+                val podcast = subscriptionRepository.podcast(episode.feedUrl)
+                val nowPlaying = NowPlayingState(
+                    episodeGuid = episode.guid,
+                    episodeTitle = episode.title,
+                    podcastTitle = podcast?.title,
+                    artworkUrl = podcast?.artworkUrl,
+                    position = episode.playbackPosition,
+                    duration = episode.duration,
+                    adBoundaries = downloadsRepository.adBoundaryCandidates(episode.guid),
+                )
+                // don't clobber playback the user started before the db reads finished
+                if (currentState().nowPlaying == null) emit(SetNowPlaying(nowPlaying))
+            },
+        )
+    }
+
     /** A failing player command mustn't kill the whole command pipeline. */
     @Provides @IntoSet fun playerCommands(player: PodcastPlayer): SideEffect<AppState> =
         sideEffect {
@@ -111,7 +143,14 @@ interface PlaybackSideEffects {
                 val nowPlaying = currentState().nowPlaying
                 val result = runCatching {
                     when (action) {
-                        TogglePlayPause -> if (nowPlaying?.isPlaying == true) player.pause() else player.play()
+                        TogglePlayPause -> when {
+                            nowPlaying?.isPlaying == true -> player.pause()
+                            // a restored (cold-start) episode isn't loaded in the player;
+                            // play() would silently no-op, so run the full play flow
+                            nowPlaying != null && player.state.value.episodeGuid != nowPlaying.episodeGuid ->
+                                emit(PlayEpisode(nowPlaying.episodeGuid))
+                            else -> player.play()
+                        }
                         is SeekTo -> player.seekTo(action.position.clampedTo(nowPlaying))
                         is SeekBy -> nowPlaying?.let { player.seekTo((it.position + action.offset).clampedTo(it)) }
                         SkipToNextAdBoundary -> nowPlaying?.nextAdBoundary()
