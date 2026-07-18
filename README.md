@@ -1,6 +1,6 @@
 # Podcast Hacker
 
-A podcast app that cuts the injected ads out of your episodes.
+A vibe-coded podcast app that cuts the injected ads out of your episodes.
 
 Podcast Hacker is a Kotlin Multiplatform podcast player (Android + Desktop first-class,
 iOS best-effort) built around [tacita](https://github.com/episode6/tacita), which
