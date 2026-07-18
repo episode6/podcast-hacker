@@ -1,6 +1,8 @@
 package com.episode6.podcasthacker.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,6 +52,9 @@ internal fun MiniPlayerBar(navController: NavController, modifier: Modifier = Mo
     AnimatedVisibility(
         visible = current != null && !onNowPlayingScreen,
         modifier = modifier,
+        // Fade out in place (rather than the default shrink+fade) so the bar dissolves
+        // while the NowPlaying screen slides up over it.
+        exit = fadeOut(animationSpec = tween(NOW_PLAYING_TRANSITION_MILLIS)),
     ) {
         Surface(
             onClick = { navController.navigate(NowPlayingRoute) },
