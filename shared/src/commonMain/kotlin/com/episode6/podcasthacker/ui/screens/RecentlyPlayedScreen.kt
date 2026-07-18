@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,7 +46,10 @@ import com.episode6.podcasthacker.ui.util.stateOf
  * (pause, for the episode currently playing) or delete the downloaded file; deleting
  * keeps the episode's row (and its play history), it only frees the disk space. Without
  * a downloaded file the play button becomes a (re-)download button — kept in the accent
- * color while the rest of the row greys out — with a spinner while the download runs.
+ * color while the rest of the row greys out. While a download runs the row shows the
+ * same detail as the episode-list rows: a queued icon while waiting for a download
+ * slot, then a progress bar — determinate with byte progress, indeterminate while
+ * starting and while tacita is cutting ads.
  */
 @Composable
 internal fun RecentlyPlayedScreen(navController: NavController) {
@@ -144,24 +146,27 @@ private fun RecentlyPlayedRow(
             }
         }
         Spacer(Modifier.width(8.dp))
-        val downloadInFlight = downloadStatus != null && downloadStatus !is EpisodeDownloadStatus.Failure
-        when {
-            downloaded -> RowIconButton(
-                icon = if (isPlaying) AppIcons.Pause else AppIcons.Play,
-                contentDescription = if (isPlaying) "Pause" else "Resume",
-                enabled = true,
-                onClick = if (isPlaying) onPause else onResume,
-            )
-            // sized like RowIconButton so the delete buttons stay column-aligned
-            downloadInFlight -> IconButton(onClick = {}, enabled = false) {
-                CircularProgressIndicator(Modifier.size(24.dp))
-            }
-            else -> RowIconButton(
-                icon = AppIcons.Download,
-                contentDescription = "Download",
-                enabled = true,
-                onClick = onDownload,
-            )
+        when (downloadStatus) {
+            EpisodeDownloadStatus.Queued -> EpisodeRowQueuedIcon()
+            EpisodeDownloadStatus.Starting,
+            EpisodeDownloadStatus.CuttingAds -> EpisodeRowProgress()
+            is EpisodeDownloadStatus.Downloading -> EpisodeRowProgress(downloadStatus.percentComplete)
+            is EpisodeDownloadStatus.Failure, null ->
+                if (downloaded) {
+                    RowIconButton(
+                        icon = if (isPlaying) AppIcons.Pause else AppIcons.Play,
+                        contentDescription = if (isPlaying) "Pause" else "Resume",
+                        enabled = true,
+                        onClick = if (isPlaying) onPause else onResume,
+                    )
+                } else {
+                    RowIconButton(
+                        icon = AppIcons.Download,
+                        contentDescription = "Download",
+                        enabled = true,
+                        onClick = onDownload,
+                    )
+                }
         }
         RowIconButton(
             icon = AppIcons.Delete,
@@ -189,7 +194,7 @@ private fun RowIconButton(
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
             },
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(EPISODE_ROW_ICON_SIZE),
         )
     }
 }

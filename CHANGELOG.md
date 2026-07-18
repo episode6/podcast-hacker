@@ -6,6 +6,10 @@
   orange release background and the dark snapshot background) so debug installs are
   distinguishable at a glance. Only affects the adaptive icon (API 26+); the legacy
   API 24/25 fallback PNGs are unchanged.
+- Recently Played rows now show the same download detail as the episode-list rows:
+  a queued icon while an episode waits for a download slot, then a determinate
+  progress ring with byte progress (indeterminate while starting and while ads are
+  being cut) instead of a single indefinite spinner for every in-flight state.
 - The mini player bar and Now Playing screen are now two faces of a single draggable
   sheet with a grab-handle pill at the top: drag the bar up to expand it into the full
   Now Playing UI and drag the screen back down to collapse it (tapping the bar, the new
