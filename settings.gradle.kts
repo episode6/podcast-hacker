@@ -29,6 +29,7 @@ dependencyResolutionManagement {
             url = uri("https://central.sonatype.com/repository/maven-snapshots/")
             mavenContent {
                 includeGroup("com.episode6.tacita")
+                includeGroup("com.episode6.redux")
                 snapshotsOnly()
             }
         }

@@ -23,47 +23,32 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.merge
 
 /**
  * The repo work below runs inside flatMapMerge (not inline in the action-collection
- * path via transform): SideEffectMiddleware relays actions through a zero-buffer shared
- * flow, so a side effect that suspends between emissions stalls action delivery to
- * *every* side effect until it finishes — a feed sync used to freeze download taps.
+ * path via transform) so syncs run in parallel instead of queueing behind each other
+ * in this effect's action buffer.
  */
 @ContributesTo(AppScope::class)
 interface SubscriptionSideEffects {
 
-    /**
-     * Room is the source of truth: subscriptions flow into AppState from the db.
-     *
-     * SideEffectMiddleware doesn't relay any actions until every side effect has
-     * subscribed to [com.episode6.redux.sideeffects.SideEffectContext.actions], so this
-     * observe-only effect must still subscribe (with an empty filter) or it silently
-     * starves all the other side effects of their input.
-     */
+    /** Room is the source of truth: subscriptions flow into AppState from the db.
+     * Observe-only — ignoring `actions` opts this effect out of the middleware's relay. */
     @Provides @IntoSet fun observeSubscriptions(repo: SubscriptionRepository): SideEffect<AppState> =
         sideEffect {
-            merge(
-                actions.filter { false },
-                repo.observeSubscriptions().mapActions { listOf(SetSubscriptions(it)) },
-            )
+            repo.observeSubscriptions().mapActions { listOf(SetSubscriptions(it)) }
         }
 
     /** All episodes flow into AppState through one app-lifetime observer: per-screen
      * Room flow collections proved unreliable (TODO.md Risk 10). */
     @Provides @IntoSet fun observeEpisodes(repo: EpisodeRepository): SideEffect<AppState> =
         sideEffect {
-            merge(
-                actions.filter { false },
-                repo.observeAllEpisodes().mapActions { episodes ->
-                    listOf(SetEpisodes(episodes.groupBy { it.feedUrl }))
-                },
-            )
+            repo.observeAllEpisodes().mapActions { episodes ->
+                listOf(SetEpisodes(episodes.groupBy { it.feedUrl }))
+            }
         }
 
     @OptIn(ExperimentalCoroutinesApi::class)

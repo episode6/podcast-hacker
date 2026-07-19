@@ -19,9 +19,7 @@ import dev.zacsweers.metro.IntoSet
 import dev.zacsweers.metro.Provides
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.FlowCollector
-import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
@@ -55,11 +53,8 @@ interface DownloadSideEffects {
     ): SideEffect<AppState> = sideEffect {
         actions.filterIsInstance<DownloadEpisode>()
             // At full concurrency flatMapMerge suspends its upstream collector until a
-            // slot frees, which would stall the middleware's zero-buffer action relay
-            // (and with it every side effect — taps beyond the first queued episode
-            // went dead). Park pending requests in an unbounded buffer instead so the
-            // collect path always accepts actions immediately.
-            .buffer(Channel.UNLIMITED)
+            // slot frees; pending requests wait in this effect's own middleware buffer
+            // without affecting any other side effect.
             .flatMapMerge(concurrency = MAX_CONCURRENT_DOWNLOADS) { action ->
                 flow { downloadEpisode(action.episodeGuid, tacita, episodeRepository, downloadsRepository) }
             }
@@ -94,7 +89,7 @@ interface DownloadSideEffects {
     }
 
     /** File deletion runs inside flatMapMerge rather than inline in the collect path,
-     * for the same relay-stalling reason as [downloadEpisodes] above. */
+     * so deletes run in parallel instead of queueing behind each other. */
     @OptIn(ExperimentalCoroutinesApi::class)
     @Provides @IntoSet fun deleteDownloads(
         downloadsRepository: DownloadsRepository,
@@ -124,9 +119,9 @@ private suspend fun FlowCollector<Action>.downloadEpisode(
         return
     }
     // Tacita reports progress once per 8KB chunk (thousands of emissions per episode);
-    // dispatching each one floods the store's side-effect relay and stalls delivery of
-    // every other action (e.g. a newly tapped DownloadEpisode). Quantizing to whole
-    // percents + dropping repeats keeps it to ~100 actions per download.
+    // dispatching each one floods the store with reductions, state emissions and
+    // recompositions. Quantizing to whole percents + dropping repeats keeps it to
+    // ~100 actions per download.
     var lastStatus: EpisodeDownloadStatus? = null
     suspend fun emitStatus(status: EpisodeDownloadStatus) {
         if (status == lastStatus) return

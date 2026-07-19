@@ -30,7 +30,6 @@ import dev.zacsweers.metro.Provides
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
@@ -176,17 +175,16 @@ interface PlaybackSideEffects {
             }
         }
 
-    /** Persist playback position to Room: every ~10s of playback and when playback pauses/ends. */
+    /** Persist playback position to Room: every ~10s of playback and when playback
+     * pauses/ends. Observe-only — ignoring `actions` opts this effect out of the
+     * middleware's relay. */
     @Provides @IntoSet fun persistPlaybackPosition(
         player: PodcastPlayer,
         episodeRepository: EpisodeRepository,
     ): SideEffect<AppState> = sideEffect {
-        merge(
-            actions.filter { false },
-            player.state.positionsToPersist().transform {
-                episodeRepository.setPlaybackPosition(it.episodeGuid!!, it.position)
-            },
-        )
+        player.state.positionsToPersist().transform {
+            episodeRepository.setPlaybackPosition(it.episodeGuid!!, it.position)
+        }
     }
 }
 
