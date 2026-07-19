@@ -22,8 +22,9 @@
   confirmation failures (e.g. a range shorter than tacita's 5s floor) are logged and
   never disturb playback.
 - Internal: `AdBoundary.Source` gains `Fingerprint`; per-feed store files live under
-  `dataDir/fingerprints/` keyed by hashed feed url; a scoped `mavenLocal()` repo entry
-  (tacita snapshots only) supports developing against a locally-built tacita.
+  `dataDir/fingerprints/` keyed by hashed feed url; `mavenLocal()` + the Sonatype
+  snapshots repo are now scoped to all of `com.episode6.*` (snapshots only), so any
+  locally-built or snapshot episode6 library can be developed against.
 - While something is playing, every scrollable screen (podcast grid, podcast detail,
   recently played, add podcast search results, episode detail, license notices) now adds
   a trailing spacer the height of the mini player, so the end of the content can be

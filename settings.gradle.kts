@@ -17,12 +17,12 @@ pluginManagement {
 
 dependencyResolutionManagement {
     repositories {
-        // lets a locally-built tacita snapshot (./gradlew publishToMavenLocal in the
-        // tacita repo) take precedence while developing against unreleased tacita
+        // lets a locally-built episode6 library snapshot (./gradlew publishToMavenLocal
+        // in that library's repo) take precedence while developing against unreleased
         // changes; scoped + snapshotsOnly so it can never shadow released artifacts
         mavenLocal {
             mavenContent {
-                includeGroup("com.episode6.tacita")
+                includeGroupAndSubgroups("com.episode6")
                 snapshotsOnly()
             }
         }
@@ -37,7 +37,7 @@ dependencyResolutionManagement {
         maven {
             url = uri("https://central.sonatype.com/repository/maven-snapshots/")
             mavenContent {
-                includeGroup("com.episode6.tacita")
+                includeGroupAndSubgroups("com.episode6")
                 snapshotsOnly()
             }
         }
