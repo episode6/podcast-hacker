@@ -36,6 +36,13 @@ sealed interface EpisodeDownloadStatus {
     data object Starting : EpisodeDownloadStatus
     data class Downloading(val percentComplete: Float) : EpisodeDownloadStatus
     data object CuttingAds : EpisodeDownloadStatus
+
+    /** Terminal status: the file is on disk and the Room downloaded flag is written, but
+     * that flag hasn't round-tripped through Room's flow into [AppState.episodesByFeed]
+     * yet. Clearing the entry before then would flash the Download button between the
+     * progress indicator and the Play button, so the entry stays (rendered as progress)
+     * until the store's episode reads Downloaded. */
+    data object Finishing : EpisodeDownloadStatus
     data class Failure(val message: String) : EpisodeDownloadStatus
 }
 

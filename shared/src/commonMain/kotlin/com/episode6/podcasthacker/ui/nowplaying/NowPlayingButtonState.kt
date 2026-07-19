@@ -35,7 +35,8 @@ internal fun nowPlayingButtonState(
 ): NowPlayingButtonState = when (downloadStatus) {
     EpisodeDownloadStatus.Queued -> NowPlayingButtonState.Queued
     EpisodeDownloadStatus.Starting,
-    EpisodeDownloadStatus.CuttingAds -> NowPlayingButtonState.DownloadProgress(null)
+    EpisodeDownloadStatus.CuttingAds,
+    EpisodeDownloadStatus.Finishing -> NowPlayingButtonState.DownloadProgress(null)
     is EpisodeDownloadStatus.Downloading -> NowPlayingButtonState.DownloadProgress(downloadStatus.percentComplete)
     is EpisodeDownloadStatus.Failure, null ->
         // an unknown episode (null downloadState, e.g. the episode list hasn't loaded

@@ -57,4 +57,13 @@ class NowPlayingButtonStateTest {
             nowPlayingButtonState(EpisodeDownloadStatus.CuttingAds, DownloadState.Downloading)
         ).isEqualTo(NowPlayingButtonState.DownloadProgress(null))
     }
+
+    @Test
+    fun finishingDownload_staysOnProgress_untilRoomFlagLands() {
+        // the completion handshake: still NotDownloaded in the store, but the entry
+        // reads Finishing — keep showing progress, never flash the download button
+        assertThat(
+            nowPlayingButtonState(EpisodeDownloadStatus.Finishing, DownloadState.NotDownloaded)
+        ).isEqualTo(NowPlayingButtonState.DownloadProgress(null))
+    }
 }

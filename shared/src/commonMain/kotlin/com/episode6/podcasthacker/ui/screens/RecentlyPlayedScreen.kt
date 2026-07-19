@@ -151,7 +151,8 @@ private fun RecentlyPlayedRow(
         when (downloadStatus) {
             EpisodeDownloadStatus.Queued -> EpisodeRowQueuedIcon()
             EpisodeDownloadStatus.Starting,
-            EpisodeDownloadStatus.CuttingAds -> EpisodeRowProgress()
+            EpisodeDownloadStatus.CuttingAds,
+            EpisodeDownloadStatus.Finishing -> EpisodeRowProgress()
             is EpisodeDownloadStatus.Downloading -> EpisodeRowProgress(downloadStatus.percentComplete)
             is EpisodeDownloadStatus.Failure, null ->
                 if (downloaded) {
