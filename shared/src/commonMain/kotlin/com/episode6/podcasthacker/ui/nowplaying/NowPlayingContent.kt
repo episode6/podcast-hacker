@@ -29,6 +29,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
@@ -55,6 +56,7 @@ import androidx.compose.ui.unit.sp
 import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
 import com.episode6.podcasthacker.inject.LocalAppGraph
+import com.episode6.podcasthacker.store.ConfirmAdRange
 import com.episode6.podcasthacker.store.DownloadEpisode
 import com.episode6.podcasthacker.store.NowPlayingState
 import com.episode6.podcasthacker.store.SeekBy
@@ -65,6 +67,9 @@ import com.episode6.podcasthacker.store.SkipToNextAdBoundary
 import com.episode6.podcasthacker.store.SkipToPreviousAdBoundary
 import com.episode6.podcasthacker.store.StopPlayback
 import com.episode6.podcasthacker.store.TogglePlayPause
+import com.episode6.podcasthacker.store.UnconfirmAdRange
+import com.episode6.podcasthacker.store.bracketingAdBoundaries
+import com.episode6.podcasthacker.store.confirmedAdAtPlayhead
 import com.episode6.podcasthacker.store.filteredAdBoundaries
 import com.episode6.podcasthacker.store.nextAdBoundary
 import com.episode6.podcasthacker.store.previousAdBoundary
@@ -160,7 +165,11 @@ internal fun NowPlayingContent(
                 Spacer(Modifier.height(16.dp))
                 TransportControls(nowPlaying, dispatch = { store.dispatch(it) })
                 Spacer(Modifier.height(16.dp))
-                AdBoundaryFilterSlider(nowPlaying, onFilterChange = { store.dispatch(SetAdBoundaryConfidenceFilter(it)) })
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AdBoundaryFilterSlider(nowPlaying, onFilterChange = { store.dispatch(SetAdBoundaryConfidenceFilter(it)) })
+                    Spacer(Modifier.width(8.dp))
+                    ConfirmAdButton(nowPlaying, dispatch = { store.dispatch(it) })
+                }
                 Spacer(Modifier.height(16.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SPEED_OPTIONS.forEach { speed ->
@@ -279,6 +288,39 @@ private fun TransportControls(nowPlaying: NowPlayingState, dispatch: (Action) ->
             AdBoundaryLabel(prev?.let { (nowPlaying.position - it.position).formatTimestamp() })
             AdBoundaryLabel(next?.let { (it.position - nowPlaying.position).formatTimestamp() })
         }
+    }
+}
+
+/**
+ * Flags the ad the listener is hearing right now: confirms the range between the two
+ * boundary candidates bracketing the playhead into the feed's fingerprint store (the
+ * ear-check tacita's fingerprint matching is built on — future downloads of the feed
+ * flag recurrences of the creative). While the playhead sits inside an already-confirmed
+ * range the flag tints primary and the button becomes a toggle: tapping again revokes
+ * the fingerprint and clears the mark. Disabled when neither applies; strictly
+ * user-initiated.
+ */
+@Composable
+private fun ConfirmAdButton(nowPlaying: NowPlayingState, dispatch: (Action) -> Unit) {
+    val bracket = nowPlaying.bracketingAdBoundaries()
+    val confirmed = nowPlaying.confirmedAdAtPlayhead()
+    IconButton(
+        onClick = {
+            when {
+                confirmed != null ->
+                    dispatch(UnconfirmAdRange(nowPlaying.episodeGuid, confirmed.fingerprintId))
+                bracket != null ->
+                    dispatch(ConfirmAdRange(nowPlaying.episodeGuid, bracket.first.position, bracket.second.position))
+            }
+        },
+        enabled = bracket != null || confirmed != null,
+        modifier = Modifier.testTag("confirmAdButton"),
+    ) {
+        Icon(
+            imageVector = AppIcons.Flag,
+            contentDescription = if (confirmed != null) "Un-confirm ad" else "Confirm ad between boundaries",
+            tint = if (confirmed != null) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+        )
     }
 }
 

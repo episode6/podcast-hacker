@@ -64,6 +64,7 @@ internal fun AdBoundary.toEntity(episodeGuid: String): AdBoundaryCandidateEntity
         AdBoundary.Source.DiffCut -> "DIFF_CUT"
         AdBoundary.Source.DaiSlot -> "DAI_SLOT"
         AdBoundary.Source.Id3Chapter -> "ID3_CHAPTER"
+        AdBoundary.Source.Fingerprint -> "FINGERPRINT"
         AdBoundary.Source.Unknown -> "UNKNOWN"
     },
     role = when (role) {
@@ -82,6 +83,7 @@ internal fun AdBoundaryCandidateEntity.toDomain(): AdBoundary = AdBoundary(
         "DIFF_CUT" -> AdBoundary.Source.DiffCut
         "DAI_SLOT" -> AdBoundary.Source.DaiSlot
         "ID3_CHAPTER" -> AdBoundary.Source.Id3Chapter
+        "FINGERPRINT" -> AdBoundary.Source.Fingerprint
         else -> AdBoundary.Source.Unknown
     },
     role = when (role) {

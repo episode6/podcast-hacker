@@ -203,6 +203,23 @@ internal object AppIcons {
         }
     }
 
+    /** Material "flag" (filled). */
+    val Flag: ImageVector by lazy {
+        materialIcon("Flag") {
+            moveTo(14.4f, 6f)
+            lineTo(14f, 4f)
+            horizontalLineTo(5f)
+            verticalLineToRelative(17f)
+            horizontalLineToRelative(2f)
+            verticalLineToRelative(-7f)
+            horizontalLineToRelative(5.6f)
+            lineToRelative(0.4f, 2f)
+            horizontalLineToRelative(7f)
+            verticalLineTo(6f)
+            close()
+        }
+    }
+
     /** Material "refresh" (circular arrow). */
     val Refresh: ImageVector by lazy {
         materialIcon("Refresh") {

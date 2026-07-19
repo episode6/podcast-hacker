@@ -10,15 +10,20 @@ import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
 import com.episode6.podcasthacker.downloads.DownloadScheduler
 import com.episode6.podcasthacker.store.AppState
+import com.episode6.podcasthacker.store.ConfirmAdRange
 import com.episode6.podcasthacker.store.DeleteDownload
 import com.episode6.podcasthacker.store.DownloadEpisode
 import com.episode6.podcasthacker.store.EpisodeDownloadStatus
+import com.episode6.podcasthacker.store.MarkAdRangeConfirmed
+import com.episode6.podcasthacker.store.MarkAdRangeUnconfirmed
 import com.episode6.podcasthacker.store.SetEpisodeDownloadStatus
 import com.episode6.podcasthacker.store.SetEpisodes
+import com.episode6.podcasthacker.store.UnconfirmAdRange
 import com.episode6.redux.Action
 import com.episode6.redux.sideeffects.SideEffect
 import com.episode6.redux.sideeffects.SideEffectContext
 import com.episode6.tacita.AdBoundaryCandidate
+import com.episode6.tacita.AdFingerprintInfo
 import com.episode6.tacita.DownloadState
 import com.episode6.tacita.Tacita
 import io.mockk.coEvery
@@ -47,6 +52,7 @@ class DownloadSideEffectsTest {
     private val audioUrl = "https://example.com/ep.mp3"
     private val outputFile: Path = "/downloads/hash.mp3".toPath()
     private val referenceFile: Path = "/cache/hash.adref".toPath()
+    private val fingerprintStore: Path = "/data/fingerprints/feedhash.tacita-fp".toPath()
 
     private val sideEffects = object : DownloadSideEffects {}
 
@@ -67,6 +73,7 @@ class DownloadSideEffectsTest {
         every { downloadFilePath(guid) } returns outputFile
         every { referenceFilePath(guid) } returns referenceFile
         every { downloadedFileExists(guid) } returns false
+        every { fingerprintStorePath(any()) } returns fingerprintStore
         coEvery { markDownloaded(any(), any()) } returns Unit
         coEvery { deleteDownload(any()) } returns Unit
     }
@@ -84,7 +91,7 @@ class DownloadSideEffectsTest {
     fun mapsTacitaStates_toEpisodeStatuses() = runTest {
         val tacita = mockk<Tacita> {
             every {
-                downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds)
+                downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds, fingerprintStore)
             } returns flowOf(
                 DownloadState.Downloading(outputFile, 0.25f),
                 DownloadState.Downloading(outputFile, 0.75f),
@@ -117,7 +124,7 @@ class DownloadSideEffectsTest {
     fun progressUpdates_quantizedToWholePercents_andDeduped() = runTest {
         val tacita = mockk<Tacita> {
             every {
-                downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds)
+                downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds, fingerprintStore)
             } returns flowOf(
                 DownloadState.Downloading(outputFile, 0.0f),
                 DownloadState.Downloading(outputFile, 0.001f),
@@ -149,7 +156,7 @@ class DownloadSideEffectsTest {
     fun completedDownload_persistsAdBoundaryCandidates_beforeDownloadedFlag() = runTest {
         val tacita = mockk<Tacita> {
             every {
-                downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds)
+                downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds, fingerprintStore)
             } returns flowOf(
                 DownloadState.Complete(
                     listOf(
@@ -180,7 +187,7 @@ class DownloadSideEffectsTest {
         every { downloadsRepo.downloadedFileExists(guid) } returns true
         val tacita = mockk<Tacita> {
             every {
-                downloadPodcast(audioUrl, outputFile, referenceFile, true, true, enclosureBytes, duration.inWholeSeconds)
+                downloadPodcast(audioUrl, outputFile, referenceFile, true, true, enclosureBytes, duration.inWholeSeconds, fingerprintStore)
             } returns flowOf(
                 DownloadState.Complete(),
             )
@@ -190,7 +197,7 @@ class DownloadSideEffectsTest {
             .output(DownloadEpisode(guid)).toList()
 
         coVerify(exactly = 1) {
-            tacita.downloadPodcast(audioUrl, outputFile, referenceFile, true, true, enclosureBytes, duration.inWholeSeconds)
+            tacita.downloadPodcast(audioUrl, outputFile, referenceFile, true, true, enclosureBytes, duration.inWholeSeconds, fingerprintStore)
         }
     }
 
@@ -205,10 +212,10 @@ class DownloadSideEffectsTest {
         every { downloadsRepo.downloadedFileExists(otherGuid) } returns false
 
         val tacita = mockk<Tacita> {
-            every { downloadPodcast(audioUrl, outputFile, any(), any(), any(), any(), any()) } returns flow {
+            every { downloadPodcast(audioUrl, outputFile, any(), any(), any(), any(), any(), any()) } returns flow {
                 throw RuntimeException("boom")
             }
-            every { downloadPodcast(audioUrl, otherOutput, any(), any(), any(), any(), any()) } returns flowOf(
+            every { downloadPodcast(audioUrl, otherOutput, any(), any(), any(), any(), any(), any()) } returns flowOf(
                 DownloadState.Complete(),
             )
         }
@@ -239,7 +246,7 @@ class DownloadSideEffectsTest {
             every { downloadsRepo.downloadFilePath(g) } returns output
             every { downloadsRepo.referenceFilePath(g) } returns "/cache/$g.adref".toPath()
             every { downloadsRepo.downloadedFileExists(g) } returns false
-            every { tacita.downloadPodcast(audioUrl, output, any(), any(), any(), any(), any()) } returns flow {
+            every { tacita.downloadPodcast(audioUrl, output, any(), any(), any(), any(), any(), any()) } returns flow {
                 started += g
                 gates.getValue(g).await()
                 emit(DownloadState.Complete())
@@ -280,7 +287,7 @@ class DownloadSideEffectsTest {
             every { downloadsRepo.downloadFilePath(g) } returns output
             every { downloadsRepo.referenceFilePath(g) } returns "/cache/$g.adref".toPath()
             every { downloadsRepo.downloadedFileExists(g) } returns false
-            every { tacita.downloadPodcast(audioUrl, output, any(), any(), any(), any(), any()) } returns flow {
+            every { tacita.downloadPodcast(audioUrl, output, any(), any(), any(), any(), any(), any()) } returns flow {
                 started += g
                 gates.getValue(g).await()
                 emit(DownloadState.Complete())
@@ -397,6 +404,76 @@ class DownloadSideEffectsTest {
 
         val actions = sideEffects.clearFinishedDownloads()
             .output(SetEpisodes(state.episodesByFeed), state = state).toList()
+
+        assertThat(actions).isEmpty()
+    }
+
+    @Test
+    fun confirmAdRange_recordsFingerprintForTheEpisodesFeed() = runTest {
+        val tacita = mockk<Tacita> {
+            coEvery { confirmAd(outputFile, fingerprintStore, 60_000L, 90_000L) } returns
+                AdFingerprintInfo(
+                    id = "abc123",
+                    provenance = AdFingerprintInfo.Provenance.HUMAN_CONFIRMED,
+                    durationMs = 30_000L,
+                    sizeBytes = 480_000L,
+                )
+        }
+
+        val actions = sideEffects.confirmAds(tacita, episodeRepo, downloadsRepo)
+            .output(ConfirmAdRange(guid, 60.seconds, 90.seconds)).toList()
+
+        assertThat(actions).containsExactly(MarkAdRangeConfirmed(guid, 60.seconds, 90.seconds, "abc123"))
+        coVerify(exactly = 1) { tacita.confirmAd(outputFile, fingerprintStore, 60_000L, 90_000L) }
+        verify { downloadsRepo.fingerprintStorePath("feed") }
+    }
+
+    @Test
+    fun confirmAdRange_failureNeverPropagates() = runTest {
+        val tacita = mockk<Tacita> {
+            coEvery { confirmAd(any(), any(), any(), any()) } throws IllegalArgumentException("range is too short")
+        }
+
+        val actions = sideEffects.confirmAds(tacita, episodeRepo, downloadsRepo)
+            .output(ConfirmAdRange(guid, 60.seconds, 62.seconds)).toList()
+
+        assertThat(actions).isEmpty()
+    }
+
+    @Test
+    fun unconfirmAdRange_removesFingerprintAndUnmarks() = runTest {
+        val tacita = mockk<Tacita> {
+            coEvery { removeFingerprint(fingerprintStore, "abc123") } returns true
+        }
+
+        val actions = sideEffects.unconfirmAds(tacita, episodeRepo, downloadsRepo)
+            .output(UnconfirmAdRange(guid, "abc123")).toList()
+
+        assertThat(actions).containsExactly(MarkAdRangeUnconfirmed(guid, "abc123"))
+        coVerify(exactly = 1) { tacita.removeFingerprint(fingerprintStore, "abc123") }
+    }
+
+    @Test
+    fun unconfirmAdRange_fingerprintAlreadyGone_stillUnmarks() = runTest {
+        val tacita = mockk<Tacita> {
+            coEvery { removeFingerprint(any(), any()) } returns false
+        }
+
+        val actions = sideEffects.unconfirmAds(tacita, episodeRepo, downloadsRepo)
+            .output(UnconfirmAdRange(guid, "abc123")).toList()
+
+        // the store agrees the confirmation no longer exists, so the mark clears anyway
+        assertThat(actions).containsExactly(MarkAdRangeUnconfirmed(guid, "abc123"))
+    }
+
+    @Test
+    fun unconfirmAdRange_failureNeverPropagates_andLeavesTheMark() = runTest {
+        val tacita = mockk<Tacita> {
+            coEvery { removeFingerprint(any(), any()) } throws RuntimeException("store is corrupt")
+        }
+
+        val actions = sideEffects.unconfirmAds(tacita, episodeRepo, downloadsRepo)
+            .output(UnconfirmAdRange(guid, "abc123")).toList()
 
         assertThat(actions).isEmpty()
     }

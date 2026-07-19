@@ -33,6 +33,16 @@ class DownloadsRepository(
     fun referenceFilePath(episodeGuid: String): Path =
         appDirs.cacheDir / "adrefs" / "${episodeGuid.fileSafeHash()}.adref"
 
+    /**
+     * The tacita ad-creative fingerprint store for a feed. Per-feed (not per-episode):
+     * creatives are targeted per show, and tacita's docs call for per-feed scoping to
+     * avoid false positives from assets shared across a network's shows. Lives under
+     * dataDir — accumulated listener confirmations are durable data, not cache. Tacita
+     * creates the file (and this parent dir) on first use.
+     */
+    fun fingerprintStorePath(feedUrl: String): Path =
+        appDirs.dataDir / "fingerprints" / "${feedUrl.fileSafeHash()}.tacita-fp"
+
     fun downloadedFileExists(episodeGuid: String): Boolean = fs.exists(downloadFilePath(episodeGuid))
 
     /** Creates the parent dirs both download outputs need. */

@@ -65,7 +65,15 @@ data class NowPlayingState(
      * only this episode's top-confidence tier. Thresholds across the episode's observed
      * confidence range, so the max position always leaves at least one boundary. */
     val adBoundaryConfidenceFilter: Float = 0f,
+    /** Ranges the listener has ear-checked as ads, appended once tacita records each
+     * fingerprint and removed again when one is revoked. Session-scoped: cleared with
+     * the rest of this state when playback moves to another episode. */
+    val confirmedAdRanges: List<ConfirmedAd> = emptyList(),
 )
+
+/** An ad range the listener has ear-checked this session, kept with the store id of the
+ * fingerprint the confirmation recorded so a second tap on the flag can revoke it. */
+data class ConfirmedAd(val range: ClosedRange<Duration>, val fingerprintId: String)
 
 /** A previous boundary must sit at least this far behind the playhead, so repeated
  * back-presses walk backward instead of re-landing on the boundary just seeked to. */
@@ -84,6 +92,23 @@ fun NowPlayingState.filteredAdBoundaries(): List<AdBoundary> {
 
 fun NowPlayingState.nextAdBoundary(): AdBoundary? =
     filteredAdBoundaries().firstOrNull { it.position > position }
+
+/**
+ * The filtered-boundary pair bracketing the playhead — the range a "confirm ad" action
+ * would fingerprint. Null when the playhead isn't between two candidates. No grace
+ * window: while listening inside an ad, the boundary just crossed IS the ad's start.
+ */
+fun NowPlayingState.bracketingAdBoundaries(): Pair<AdBoundary, AdBoundary>? {
+    val boundaries = filteredAdBoundaries()
+    val prev = boundaries.lastOrNull { it.position <= position } ?: return null
+    val next = boundaries.firstOrNull { it.position > position } ?: return null
+    return prev to next
+}
+
+/** The confirmed range the playhead currently sits inside, or null outside them all —
+ * non-null tints the confirm-ad flag and routes its tap to a revoke instead. */
+fun NowPlayingState.confirmedAdAtPlayhead(): ConfirmedAd? =
+    confirmedAdRanges.firstOrNull { position in it.range }
 
 fun NowPlayingState.previousAdBoundary(): AdBoundary? =
     filteredAdBoundaries().lastOrNull { it.position <= position - SKIP_BACK_GRACE }
