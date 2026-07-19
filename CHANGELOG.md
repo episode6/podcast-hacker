@@ -24,6 +24,11 @@
   range reverses the ear-check, deleting the fingerprint from the store and clearing
   the mark. Confirmation failures (e.g. a range shorter than tacita's 5s floor) are
   logged and never disturb playback.
+- **Ad fingerprints screen** (podcast grid's overflow menu): lists every subscribed
+  feed's stored ad-creative fingerprints — provenance (ear-confirmed / diff-proven),
+  the creative's runtime, encoded size, and content id — with a per-fingerprint delete
+  button to revoke one (e.g. an ad confirmed in error). Deleting a fingerprint that is
+  currently marked confirmed on the playing episode clears that mark too.
 - Internal: `AdBoundary.Source` gains `Fingerprint`; per-feed store files live under
   `dataDir/fingerprints/` keyed by hashed feed url; `mavenLocal()` + the Sonatype
   snapshots repo are now scoped to all of `com.episode6.*` (snapshots only), so any

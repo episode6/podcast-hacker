@@ -1,6 +1,7 @@
 package com.episode6.podcasthacker.data.model
 
 import com.episode6.tacita.AdBoundaryCandidate
+import com.episode6.tacita.AdFingerprintInfo
 import kotlin.time.Duration.Companion.milliseconds
 
 internal fun AdBoundaryCandidate.toDomain(): AdBoundary = AdBoundary(
@@ -18,4 +19,14 @@ internal fun AdBoundaryCandidate.toDomain(): AdBoundary = AdBoundary(
         AdBoundaryCandidate.Role.END -> AdBoundary.Role.End
         AdBoundaryCandidate.Role.JOIN -> AdBoundary.Role.Join
     },
+)
+
+internal fun AdFingerprintInfo.toDomain(): AdFingerprint = AdFingerprint(
+    id = id,
+    provenance = when (provenance) {
+        AdFingerprintInfo.Provenance.DIFF_PROVEN -> AdFingerprint.Provenance.DiffProven
+        AdFingerprintInfo.Provenance.HUMAN_CONFIRMED -> AdFingerprint.Provenance.HumanConfirmed
+    },
+    duration = durationMs.milliseconds,
+    sizeBytes = sizeBytes,
 )

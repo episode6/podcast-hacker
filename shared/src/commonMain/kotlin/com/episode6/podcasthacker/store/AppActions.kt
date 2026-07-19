@@ -1,5 +1,6 @@
 package com.episode6.podcasthacker.store
 
+import com.episode6.podcasthacker.data.model.AdFingerprint
 import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.data.model.Podcast
 import com.episode6.podcasthacker.data.backup.LibraryBackup
@@ -47,6 +48,12 @@ data class MarkAdRangeConfirmed(
  * [MarkAdRangeConfirmed]. */
 data class MarkAdRangeUnconfirmed(val episodeGuid: String, val fingerprintId: String) : UpdateStateAction
 
+/** Replaces one feed's loaded ad-fingerprint list (fingerprint management screen data). */
+data class SetAdFingerprints(
+    val feedUrl: String,
+    val fingerprints: List<AdFingerprint>,
+) : UpdateStateAction
+
 /**
  * Requests handled by side effects (repo call → result actions).
  */
@@ -81,6 +88,13 @@ data class ConfirmAdRange(val episodeGuid: String, val start: Duration, val end:
  * unmarks its range. Only ever dispatched from the confirm-ad button while the playhead
  * sits inside an already-confirmed range. */
 data class UnconfirmAdRange(val episodeGuid: String, val fingerprintId: String) : AsyncAction
+
+/** Loads every subscribed feed's ad-fingerprint store for the management screen. */
+data object LoadAdFingerprints : AsyncAction
+
+/** Deletes one fingerprint from a feed's store (management-screen delete button); the
+ * side effect re-reads the store and emits a fresh [SetAdFingerprints] on completion. */
+data class RemoveAdFingerprint(val feedUrl: String, val fingerprintId: String) : AsyncAction
 data class SetPlaybackSpeed(val speed: Float) : AsyncAction
 data object StopPlayback : AsyncAction
 

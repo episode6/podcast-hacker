@@ -5,7 +5,9 @@ import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
 import com.episode6.podcasthacker.data.model.DownloadState as PersistedDownloadState
 import com.episode6.podcasthacker.data.model.AdBoundary
+import com.episode6.podcasthacker.data.model.AdFingerprint
 import com.episode6.podcasthacker.data.model.Episode
+import com.episode6.podcasthacker.data.model.Podcast
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
 import com.episode6.podcasthacker.downloads.DownloadScheduler
@@ -14,8 +16,12 @@ import com.episode6.podcasthacker.store.ConfirmAdRange
 import com.episode6.podcasthacker.store.DeleteDownload
 import com.episode6.podcasthacker.store.DownloadEpisode
 import com.episode6.podcasthacker.store.EpisodeDownloadStatus
+import com.episode6.podcasthacker.store.LoadAdFingerprints
 import com.episode6.podcasthacker.store.MarkAdRangeConfirmed
 import com.episode6.podcasthacker.store.MarkAdRangeUnconfirmed
+import com.episode6.podcasthacker.store.NowPlayingState
+import com.episode6.podcasthacker.store.RemoveAdFingerprint
+import com.episode6.podcasthacker.store.SetAdFingerprints
 import com.episode6.podcasthacker.store.SetEpisodeDownloadStatus
 import com.episode6.podcasthacker.store.SetEpisodes
 import com.episode6.podcasthacker.store.UnconfirmAdRange
@@ -474,6 +480,100 @@ class DownloadSideEffectsTest {
 
         val actions = sideEffects.unconfirmAds(tacita, episodeRepo, downloadsRepo)
             .output(UnconfirmAdRange(guid, "abc123")).toList()
+
+        assertThat(actions).isEmpty()
+    }
+
+    private val humanFingerprintInfo = AdFingerprintInfo(
+        id = "abc123",
+        provenance = AdFingerprintInfo.Provenance.HUMAN_CONFIRMED,
+        durationMs = 30_000L,
+        sizeBytes = 480_000L,
+    )
+    private val humanFingerprint =
+        AdFingerprint("abc123", AdFingerprint.Provenance.HumanConfirmed, 30.seconds, 480_000L)
+
+    @Test
+    fun loadAdFingerprints_emitsOneSetPerSubscribedFeed() = runTest {
+        val emptyStore = "/data/fingerprints/otherhash.tacita-fp".toPath()
+        every { downloadsRepo.fingerprintStorePath("feed-1") } returns fingerprintStore
+        every { downloadsRepo.fingerprintStorePath("feed-2") } returns emptyStore
+        val tacita = mockk<Tacita> {
+            coEvery { fingerprints(fingerprintStore) } returns listOf(humanFingerprintInfo)
+            coEvery { fingerprints(emptyStore) } returns emptyList()
+        }
+        val state = AppState(
+            subscriptions = listOf(
+                Podcast(feedUrl = "feed-1", title = "One"),
+                Podcast(feedUrl = "feed-2", title = "Two"),
+            ),
+        )
+
+        val actions = sideEffects.loadAdFingerprints(tacita, downloadsRepo)
+            .output(LoadAdFingerprints, state = state).toList()
+
+        assertThat(actions).containsExactly(
+            SetAdFingerprints("feed-1", listOf(humanFingerprint)),
+            SetAdFingerprints("feed-2", emptyList()),
+        )
+    }
+
+    @Test
+    fun loadAdFingerprints_unreadableStore_reportsEmpty() = runTest {
+        val tacita = mockk<Tacita> {
+            coEvery { fingerprints(any()) } throws RuntimeException("store is corrupt")
+        }
+        val state = AppState(subscriptions = listOf(Podcast(feedUrl = "feed-1", title = "One")))
+
+        val actions = sideEffects.loadAdFingerprints(tacita, downloadsRepo)
+            .output(LoadAdFingerprints, state = state).toList()
+
+        assertThat(actions).containsExactly(SetAdFingerprints("feed-1", emptyList()))
+    }
+
+    @Test
+    fun removeAdFingerprint_removesAndRefreshesTheFeed() = runTest {
+        every { downloadsRepo.fingerprintStorePath("feed-1") } returns fingerprintStore
+        val tacita = mockk<Tacita> {
+            coEvery { removeFingerprint(fingerprintStore, "abc123") } returns true
+            coEvery { fingerprints(fingerprintStore) } returns emptyList()
+        }
+
+        val actions = sideEffects.removeAdFingerprints(tacita, episodeRepo, downloadsRepo)
+            .output(RemoveAdFingerprint("feed-1", "abc123")).toList()
+
+        assertThat(actions).containsExactly(SetAdFingerprints("feed-1", emptyList()))
+        coVerify(exactly = 1) { tacita.removeFingerprint(fingerprintStore, "abc123") }
+    }
+
+    @Test
+    fun removeAdFingerprint_alsoUnmarksThePlayingEpisodeOfThatFeed() = runTest {
+        // the episode mock's feedUrl is "feed" (see episodeRepo above)
+        every { downloadsRepo.fingerprintStorePath("feed") } returns fingerprintStore
+        val tacita = mockk<Tacita> {
+            coEvery { removeFingerprint(any(), any()) } returns true
+            coEvery { fingerprints(any()) } returns emptyList()
+        }
+        val state = AppState(nowPlaying = NowPlayingState(episodeGuid = guid, episodeTitle = "Ep"))
+
+        val actions = sideEffects.removeAdFingerprints(tacita, episodeRepo, downloadsRepo)
+            .output(RemoveAdFingerprint("feed", "abc123"), state = state).toList()
+
+        assertThat(actions).containsExactly(
+            MarkAdRangeUnconfirmed(guid, "abc123"),
+            SetAdFingerprints("feed", emptyList()),
+        )
+    }
+
+    @Test
+    fun removeAdFingerprint_failureLeavesStateUntouched() = runTest {
+        every { downloadsRepo.fingerprintStorePath(any()) } returns fingerprintStore
+        val tacita = mockk<Tacita> {
+            coEvery { removeFingerprint(any(), any()) } throws RuntimeException("store is corrupt")
+        }
+
+        val actions = sideEffects.removeAdFingerprints(tacita, episodeRepo, downloadsRepo)
+            .output(RemoveAdFingerprint("feed-1", "abc123")).toList()
 
         assertThat(actions).isEmpty()
     }

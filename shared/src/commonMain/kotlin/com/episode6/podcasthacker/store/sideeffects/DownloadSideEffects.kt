@@ -1,6 +1,7 @@
 package com.episode6.podcasthacker.store.sideeffects
 
 import com.episode6.podcasthacker.data.model.DownloadState as PersistedDownloadState
+import com.episode6.podcasthacker.data.model.AdFingerprint
 import com.episode6.podcasthacker.data.model.toDomain
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
@@ -10,8 +11,11 @@ import com.episode6.podcasthacker.store.ConfirmAdRange
 import com.episode6.podcasthacker.store.DeleteDownload
 import com.episode6.podcasthacker.store.DownloadEpisode
 import com.episode6.podcasthacker.store.EpisodeDownloadStatus
+import com.episode6.podcasthacker.store.LoadAdFingerprints
 import com.episode6.podcasthacker.store.MarkAdRangeConfirmed
 import com.episode6.podcasthacker.store.MarkAdRangeUnconfirmed
+import com.episode6.podcasthacker.store.RemoveAdFingerprint
+import com.episode6.podcasthacker.store.SetAdFingerprints
 import com.episode6.podcasthacker.store.SetEpisodeDownloadStatus
 import com.episode6.podcasthacker.store.SetEpisodes
 import com.episode6.podcasthacker.store.UnconfirmAdRange
@@ -196,6 +200,63 @@ interface DownloadSideEffects {
             }
     }
 
+    /**
+     * Loads every subscribed feed's fingerprint store for the management screen, one
+     * [SetAdFingerprints] per feed as it reads. Unreadable stores report empty (see
+     * [readFingerprints]) so a single bad store can't wedge the screen. Runs in
+     * flatMapMerge for the same relay-stalling reason as [downloadEpisodes].
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Provides @IntoSet fun loadAdFingerprints(
+        tacita: Tacita,
+        downloadsRepository: DownloadsRepository,
+    ): SideEffect<AppState> = sideEffect {
+        actions.filterIsInstance<LoadAdFingerprints>()
+            .flatMapMerge {
+                flow<Action> {
+                    currentState().subscriptions.forEach { podcast ->
+                        emit(SetAdFingerprints(podcast.feedUrl, readFingerprints(tacita, downloadsRepository, podcast.feedUrl)))
+                    }
+                }
+            }
+    }
+
+    /**
+     * Deletes one fingerprint from a feed's store (management-screen delete), then
+     * re-reads the store so the screen reflects what's actually left. If the removed
+     * fingerprint is also marked confirmed on the playing episode of the same feed,
+     * the mark clears too — the store no longer backs it. Exceptional failures log
+     * and leave state untouched, like every other fingerprint side effect.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Provides @IntoSet fun removeAdFingerprints(
+        tacita: Tacita,
+        episodeRepository: EpisodeRepository,
+        downloadsRepository: DownloadsRepository,
+    ): SideEffect<AppState> = sideEffect {
+        actions.filterIsInstance<RemoveAdFingerprint>()
+            .flatMapMerge { action ->
+                flow<Action> {
+                    val result = runCatching {
+                        tacita.removeFingerprint(
+                            fingerprintStore = downloadsRepository.fingerprintStorePath(action.feedUrl),
+                            id = action.fingerprintId,
+                        )
+                    }
+                    result.exceptionOrNull()?.let {
+                        if (it is CancellationException) throw it
+                        println("tacita: removeFingerprint failed: ${it.message}")
+                        return@flow
+                    }
+                    val playingGuid = currentState().nowPlaying?.episodeGuid
+                    if (playingGuid != null && episodeRepository.episode(playingGuid)?.feedUrl == action.feedUrl) {
+                        emit(MarkAdRangeUnconfirmed(playingGuid, action.fingerprintId))
+                    }
+                    emit(SetAdFingerprints(action.feedUrl, readFingerprints(tacita, downloadsRepository, action.feedUrl)))
+                }
+            }
+    }
+
     /** File deletion runs inside flatMapMerge rather than inline in the collect path,
      * for the same relay-stalling reason as [downloadEpisodes] above. */
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -296,3 +357,17 @@ private suspend fun FlowCollector<Action>.downloadEpisode(
 }
 
 private fun Float.quantizedToWholePercent(): Float = (this * 100).toInt() / 100f
+
+/** A feed's fingerprint store mapped to domain; an unreadable store logs and reads as
+ * empty (tacita itself reads a *missing* store as empty). */
+private suspend fun readFingerprints(
+    tacita: Tacita,
+    downloadsRepository: DownloadsRepository,
+    feedUrl: String,
+): List<AdFingerprint> = runCatching {
+    tacita.fingerprints(downloadsRepository.fingerprintStorePath(feedUrl)).map { it.toDomain() }
+}.getOrElse {
+    if (it is CancellationException) throw it
+    println("tacita: fingerprints read failed: ${it.message}")
+    emptyList()
+}
