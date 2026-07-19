@@ -2,6 +2,14 @@
 
 ### v1.1.10 - Unreleased
 
+- Internal: upgraded redux-store-flow to v1.2.0-SNAPSHOT, which replaces the
+  side-effect middleware's shared zero-buffer action relay with a dedicated buffer per
+  side effect ([redux-store-flow issue 116](https://github.com/episode6/redux-store-flow/issues/116),
+  problem P1). Removed the workarounds that relay demanded: the
+  `merge(actions.filter { false }, ...)` idiom in observe-only side effects
+  (subscriptions/episodes observers, playback-position persistence) and the explicit
+  `buffer(Channel.UNLIMITED)` in the download queue. Cannot merge until
+  redux-store-flow v1.2.0 is released (the no-snapshot-deps check enforces this).
 - While something is playing, every scrollable screen (podcast grid, podcast detail,
   recently played, add podcast search results, episode detail, license notices) now adds
   a trailing spacer the height of the mini player, so the end of the content can be

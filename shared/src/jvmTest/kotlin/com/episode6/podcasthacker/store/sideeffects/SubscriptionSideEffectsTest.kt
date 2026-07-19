@@ -108,8 +108,8 @@ class SubscriptionSideEffectsTest {
         coVerify(exactly = 1) { repo.sync(feedUrl) }
     }
 
-    /** A slow sync must not hold up the action-collection path (it would starve the
-     * middleware's zero-buffer relay and stall every other side effect). */
+    /** A slow sync must not hold up the action-collection path: syncs run in
+     * parallel via flatMapMerge instead of queueing behind each other. */
     @Test
     fun refreshFeed_slowSync_doesNotBlockOtherRefreshes() = runTest {
         val otherFeed = "https://example.com/other.xml"
