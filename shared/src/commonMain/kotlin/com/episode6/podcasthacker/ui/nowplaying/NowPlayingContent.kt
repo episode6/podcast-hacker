@@ -68,7 +68,7 @@ import com.episode6.podcasthacker.store.SkipToPreviousAdBoundary
 import com.episode6.podcasthacker.store.StopPlayback
 import com.episode6.podcasthacker.store.TogglePlayPause
 import com.episode6.podcasthacker.store.UnconfirmAdRange
-import com.episode6.podcasthacker.store.bracketingAdBoundaries
+import com.episode6.podcasthacker.store.confirmableAdRange
 import com.episode6.podcasthacker.store.confirmedAdAtPlayhead
 import com.episode6.podcasthacker.store.filteredAdBoundaries
 import com.episode6.podcasthacker.store.nextAdBoundary
@@ -292,28 +292,29 @@ private fun TransportControls(nowPlaying: NowPlayingState, dispatch: (Action) ->
 }
 
 /**
- * Flags the ad the listener is hearing right now: confirms the range between the two
- * boundary candidates bracketing the playhead into the feed's fingerprint store (the
- * ear-check tacita's fingerprint matching is built on — future downloads of the feed
- * flag recurrences of the creative). While the playhead sits inside an already-confirmed
+ * Flags the ad the listener is hearing right now: confirms the range between the
+ * boundary candidates bracketing the playhead (episode start/end stand in at the edges,
+ * so pre- and post-rolls are flaggable) into the feed's fingerprint store — the
+ * ear-check tacita's fingerprint matching is built on; future downloads of the feed
+ * flag recurrences of the creative. While the playhead sits inside an already-confirmed
  * range the flag tints primary and the button becomes a toggle: tapping again revokes
  * the fingerprint and clears the mark. Disabled when neither applies; strictly
  * user-initiated.
  */
 @Composable
 private fun ConfirmAdButton(nowPlaying: NowPlayingState, dispatch: (Action) -> Unit) {
-    val bracket = nowPlaying.bracketingAdBoundaries()
+    val range = nowPlaying.confirmableAdRange()
     val confirmed = nowPlaying.confirmedAdAtPlayhead()
     IconButton(
         onClick = {
             when {
                 confirmed != null ->
                     dispatch(UnconfirmAdRange(nowPlaying.episodeGuid, confirmed.fingerprintId))
-                bracket != null ->
-                    dispatch(ConfirmAdRange(nowPlaying.episodeGuid, bracket.first.position, bracket.second.position))
+                range != null ->
+                    dispatch(ConfirmAdRange(nowPlaying.episodeGuid, range.start, range.endInclusive))
             }
         },
-        enabled = bracket != null || confirmed != null,
+        enabled = range != null || confirmed != null,
         modifier = Modifier.testTag("confirmAdButton"),
     ) {
         Icon(

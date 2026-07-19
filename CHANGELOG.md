@@ -23,7 +23,11 @@
   confirmed range, and the button becomes a toggle: tapping again while inside the
   range reverses the ear-check, deleting the fingerprint from the store and clearing
   the mark. Confirmation failures (e.g. a range shorter than tacita's 5s floor) are
-  logged and never disturb playback.
+  logged and never disturb playback. Pre- and post-rolls are flaggable too: the
+  episode's start and end stand in as implicit boundaries, so the button works before
+  the first ad-boundary marker and after the last one (previously the playhead had to
+  sit between two markers, leaving the first and last segments of an episode
+  unflaggable).
 - **Ad fingerprints screen** (podcast grid's overflow menu): lists every subscribed
   feed's stored ad-creative fingerprints — provenance (ear-confirmed / diff-proven),
   the creative's runtime, encoded size, and content id — with a per-fingerprint delete
