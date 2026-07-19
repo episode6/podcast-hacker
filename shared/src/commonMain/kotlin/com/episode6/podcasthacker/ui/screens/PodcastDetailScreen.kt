@@ -46,6 +46,7 @@ import com.episode6.podcasthacker.store.TogglePlayPause
 import com.episode6.podcasthacker.ui.nav.EpisodeDetailRoute
 import com.episode6.podcasthacker.ui.nav.PodcastDetailRoute
 import com.episode6.podcasthacker.data.model.Podcast
+import com.episode6.podcasthacker.ui.nowplaying.MiniPlayerSpacer
 import com.episode6.podcasthacker.ui.util.AppIcons
 import com.episode6.podcasthacker.ui.util.episodeSubtitle
 import com.episode6.podcasthacker.ui.util.platformUsesPullToRefresh
@@ -154,6 +155,7 @@ private fun EpisodeList(
             )
             HorizontalDivider()
         }
+        item(key = "mini-player-spacer") { MiniPlayerSpacer() }
     }
 }
 

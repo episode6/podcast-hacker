@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -61,6 +62,7 @@ import com.episode6.podcasthacker.ui.nav.AddPodcastRoute
 import com.episode6.podcasthacker.ui.nav.LicensesRoute
 import com.episode6.podcasthacker.ui.nav.PodcastDetailRoute
 import com.episode6.podcasthacker.ui.nav.RecentlyPlayedRoute
+import com.episode6.podcasthacker.ui.nowplaying.MiniPlayerSpacer
 import com.episode6.podcasthacker.ui.util.AppIcons
 import com.episode6.podcasthacker.ui.util.platformUsesPullToRefresh
 import com.episode6.podcasthacker.ui.util.rememberFileExportLauncher
@@ -158,6 +160,9 @@ private fun PodcastGrid(
                     label = "+\nAdd Podcast",
                     onClick = { navController.navigate(AddPodcastRoute) },
                 )
+            }
+            item(key = "mini-player-spacer", span = { GridItemSpan(maxLineSpan) }) {
+                MiniPlayerSpacer()
             }
         }
     }

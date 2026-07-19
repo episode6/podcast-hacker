@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.episode6.podcasthacker.LicenseNotices
+import com.episode6.podcasthacker.ui.nowplaying.MiniPlayerSpacer
 import com.episode6.podcasthacker.ui.util.MarkdownBlock
 import com.episode6.podcasthacker.ui.util.basicMarkdownToBlocks
 
@@ -53,6 +54,7 @@ internal fun LicensesScreen(navController: NavController) {
                     }
                 }
             }
+            MiniPlayerSpacer()
         }
     }
 }

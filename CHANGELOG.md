@@ -2,6 +2,12 @@
 
 ### v1.1.10 - Unreleased
 
+- While something is playing, every scrollable screen (podcast grid, podcast detail,
+  recently played, add podcast search results, episode detail, license notices) now adds
+  a trailing spacer the height of the mini player, so the end of the content can be
+  scrolled clear of the Now Playing bar instead of being hidden beneath it. The spacer
+  disappears when nothing is playing.
+
 ### v1.1.0 - 2026-07-18
 
 - The overflow (3-dots) menu gains a "Check for updates" option. Snapshot builds compare

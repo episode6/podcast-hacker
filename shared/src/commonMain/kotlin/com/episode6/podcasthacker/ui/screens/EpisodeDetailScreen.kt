@@ -40,6 +40,7 @@ import com.episode6.podcasthacker.store.EpisodeDownloadStatus
 import com.episode6.podcasthacker.store.PlayEpisode
 import com.episode6.podcasthacker.ui.nav.EpisodeDetailRoute
 import com.episode6.podcasthacker.ui.nowplaying.LocalNowPlayingSheetState
+import com.episode6.podcasthacker.ui.nowplaying.MiniPlayerSpacer
 import com.episode6.podcasthacker.ui.util.basicHtmlToAnnotatedString
 import com.episode6.podcasthacker.ui.util.episodeSubtitle
 import com.episode6.podcasthacker.ui.util.stateOf
@@ -134,6 +135,7 @@ internal fun EpisodeDetailScreen(navController: NavController, route: EpisodeDet
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            MiniPlayerSpacer()
         }
     }
 }
