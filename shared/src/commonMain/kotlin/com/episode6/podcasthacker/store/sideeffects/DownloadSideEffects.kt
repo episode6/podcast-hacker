@@ -10,6 +10,7 @@ import com.episode6.podcasthacker.store.ConfirmAdRange
 import com.episode6.podcasthacker.store.DeleteDownload
 import com.episode6.podcasthacker.store.DownloadEpisode
 import com.episode6.podcasthacker.store.EpisodeDownloadStatus
+import com.episode6.podcasthacker.store.MarkAdRangeConfirmed
 import com.episode6.podcasthacker.store.SetEpisodeDownloadStatus
 import com.episode6.podcasthacker.store.SetEpisodes
 import com.episode6.redux.Action
@@ -122,10 +123,10 @@ interface DownloadSideEffects {
     /**
      * Records the listener's ear-check of an ad range into the feed's fingerprint store
      * (tacita's HUMAN_CONFIRMED tier) so future downloads of the feed flag recurrences
-     * of the creative. Fire-and-forget: tacita logs the outcome through the injected
-     * log lambda, and a failed confirmation (range too short, file missing) must never
-     * disturb playback. Runs in flatMapMerge for the same relay-stalling reason as
-     * [downloadEpisodes].
+     * of the creative. A successful confirmation emits [MarkAdRangeConfirmed] so the UI
+     * can show the range as confirmed; a failed one (range too short, file missing) only
+     * logs — it must never disturb playback. Runs in flatMapMerge for the same
+     * relay-stalling reason as [downloadEpisodes].
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     @Provides @IntoSet fun confirmAds(
@@ -145,10 +146,13 @@ interface DownloadSideEffects {
                             endMs = action.end.inWholeMilliseconds,
                         )
                     }
-                    result.exceptionOrNull()?.let {
-                        if (it is CancellationException) throw it
-                        println("tacita: confirmAd failed: ${it.message}")
-                    }
+                    result.fold(
+                        onSuccess = { emit(MarkAdRangeConfirmed(action.episodeGuid, action.start, action.end)) },
+                        onFailure = {
+                            if (it is CancellationException) throw it
+                            println("tacita: confirmAd failed: ${it.message}")
+                        },
+                    )
                 }
             }
     }

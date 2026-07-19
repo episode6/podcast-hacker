@@ -65,6 +65,10 @@ data class NowPlayingState(
      * only this episode's top-confidence tier. Thresholds across the episode's observed
      * confidence range, so the max position always leaves at least one boundary. */
     val adBoundaryConfidenceFilter: Float = 0f,
+    /** Ranges the listener has ear-checked as ads, appended once tacita records each
+     * fingerprint. Session-scoped: cleared with the rest of this state when playback
+     * moves to another episode. */
+    val confirmedAdRanges: List<ClosedRange<Duration>> = emptyList(),
 )
 
 /** A previous boundary must sit at least this far behind the playhead, so repeated
@@ -96,6 +100,9 @@ fun NowPlayingState.bracketingAdBoundaries(): Pair<AdBoundary, AdBoundary>? {
     val next = boundaries.firstOrNull { it.position > position } ?: return null
     return prev to next
 }
+
+/** True while the playhead sits inside a range the listener has already confirmed. */
+fun NowPlayingState.isInConfirmedAd(): Boolean = confirmedAdRanges.any { position in it }
 
 fun NowPlayingState.previousAdBoundary(): AdBoundary? =
     filteredAdBoundaries().lastOrNull { it.position <= position - SKIP_BACK_GRACE }

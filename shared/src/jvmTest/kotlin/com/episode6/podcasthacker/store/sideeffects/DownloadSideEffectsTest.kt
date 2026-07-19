@@ -14,6 +14,7 @@ import com.episode6.podcasthacker.store.ConfirmAdRange
 import com.episode6.podcasthacker.store.DeleteDownload
 import com.episode6.podcasthacker.store.DownloadEpisode
 import com.episode6.podcasthacker.store.EpisodeDownloadStatus
+import com.episode6.podcasthacker.store.MarkAdRangeConfirmed
 import com.episode6.podcasthacker.store.SetEpisodeDownloadStatus
 import com.episode6.podcasthacker.store.SetEpisodes
 import com.episode6.redux.Action
@@ -420,7 +421,7 @@ class DownloadSideEffectsTest {
         val actions = sideEffects.confirmAds(tacita, episodeRepo, downloadsRepo)
             .output(ConfirmAdRange(guid, 60.seconds, 90.seconds)).toList()
 
-        assertThat(actions, name = "confirmations are fire-and-forget").isEmpty()
+        assertThat(actions).containsExactly(MarkAdRangeConfirmed(guid, 60.seconds, 90.seconds))
         coVerify(exactly = 1) { tacita.confirmAd(outputFile, fingerprintStore, 60_000L, 90_000L) }
         verify { downloadsRepo.fingerprintStorePath("feed") }
     }

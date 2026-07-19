@@ -2,7 +2,9 @@ package com.episode6.podcasthacker.store
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
 import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import com.episode6.podcasthacker.data.model.AdBoundary
 import kotlin.test.Test
 import kotlin.time.Duration
@@ -159,6 +161,31 @@ class NowPlayingStateTest {
         val state = mixedConfidenceState(filter = 1f).copy(position = 2.minutes + 30.seconds)
 
         assertThat(state.bracketingAdBoundaries()).isNull()
+    }
+
+    @Test
+    fun confirmedAd_playheadInsideARange_isTrue() {
+        val state = state(2.minutes).copy(confirmedAdRanges = listOf(1.minutes..5.minutes))
+
+        assertThat(state.isInConfirmedAd()).isTrue()
+    }
+
+    @Test
+    fun confirmedAd_rangeEndsAreInclusive() {
+        val ranges = listOf(1.minutes..5.minutes)
+
+        assertThat(state(1.minutes).copy(confirmedAdRanges = ranges).isInConfirmedAd(), name = "at the start").isTrue()
+        assertThat(state(5.minutes).copy(confirmedAdRanges = ranges).isInConfirmedAd(), name = "at the end").isTrue()
+    }
+
+    @Test
+    fun confirmedAd_playheadOutsideEveryRange_isFalse() {
+        val ranges = listOf(1.minutes..5.minutes, 10.minutes..12.minutes)
+
+        assertThat(state(30.seconds).copy(confirmedAdRanges = ranges).isInConfirmedAd(), name = "before").isFalse()
+        assertThat(state(7.minutes).copy(confirmedAdRanges = ranges).isInConfirmedAd(), name = "between").isFalse()
+        assertThat(state(13.minutes).copy(confirmedAdRanges = ranges).isInConfirmedAd(), name = "after").isFalse()
+        assertThat(state(3.minutes).isInConfirmedAd(), name = "no confirmations").isFalse()
     }
 
     @Test

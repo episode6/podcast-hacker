@@ -28,7 +28,13 @@ private fun AppState.reduceUpdateStateAction(action: UpdateStateAction): AppStat
     is SetAdBoundaryConfidenceFilter -> copy(
         nowPlaying = nowPlaying?.copy(adBoundaryConfidenceFilter = action.filter.coerceIn(0f, 1f)),
     )
+    is MarkAdRangeConfirmed -> copy(nowPlaying = nowPlaying?.withConfirmedRange(action))
 }
+
+/** Stale confirmations (playback moved to a different episode) leave the state untouched. */
+private fun NowPlayingState.withConfirmedRange(action: MarkAdRangeConfirmed): NowPlayingState =
+    if (action.episodeGuid != episodeGuid) this
+    else copy(confirmedAdRanges = confirmedAdRanges + (action.start..action.end))
 
 /** Stale player states (a different or unloaded episode) leave the ui state untouched. */
 private fun NowPlayingState.mergedWith(player: PlayerState): NowPlayingState =

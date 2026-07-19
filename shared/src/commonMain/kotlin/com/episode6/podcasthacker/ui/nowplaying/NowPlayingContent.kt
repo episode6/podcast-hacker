@@ -29,6 +29,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
@@ -68,6 +69,7 @@ import com.episode6.podcasthacker.store.StopPlayback
 import com.episode6.podcasthacker.store.TogglePlayPause
 import com.episode6.podcasthacker.store.bracketingAdBoundaries
 import com.episode6.podcasthacker.store.filteredAdBoundaries
+import com.episode6.podcasthacker.store.isInConfirmedAd
 import com.episode6.podcasthacker.store.nextAdBoundary
 import com.episode6.podcasthacker.store.previousAdBoundary
 import com.episode6.podcasthacker.ui.util.AppIcons
@@ -293,11 +295,13 @@ private fun TransportControls(nowPlaying: NowPlayingState, dispatch: (Action) ->
  * boundary candidates bracketing the playhead into the feed's fingerprint store (the
  * ear-check tacita's fingerprint matching is built on — future downloads of the feed
  * flag recurrences of the creative). Disabled when the playhead isn't between two
- * candidates; strictly user-initiated.
+ * candidates; strictly user-initiated. While the playhead sits inside an
+ * already-confirmed range the flag tints primary as feedback that the tap took.
  */
 @Composable
 private fun ConfirmAdButton(nowPlaying: NowPlayingState, dispatch: (Action) -> Unit) {
     val bracket = nowPlaying.bracketingAdBoundaries()
+    val confirmed = nowPlaying.isInConfirmedAd()
     IconButton(
         onClick = {
             bracket?.let { (start, end) ->
@@ -307,7 +311,11 @@ private fun ConfirmAdButton(nowPlaying: NowPlayingState, dispatch: (Action) -> U
         enabled = bracket != null,
         modifier = Modifier.testTag("confirmAdButton"),
     ) {
-        Icon(AppIcons.Flag, contentDescription = "Confirm ad between boundaries")
+        Icon(
+            imageVector = AppIcons.Flag,
+            contentDescription = if (confirmed) "Ad confirmed" else "Confirm ad between boundaries",
+            tint = if (confirmed) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+        )
     }
 }
 

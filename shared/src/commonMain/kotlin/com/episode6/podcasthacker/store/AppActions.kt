@@ -31,6 +31,11 @@ data class SetPlayerState(val playerState: PlayerState) : UpdateStateAction
 /** Moves the ad-boundary confidence-filter slider; clamped to 0..1 in the reducer. */
 data class SetAdBoundaryConfidenceFilter(val filter: Float) : UpdateStateAction
 
+/** Emitted by the [ConfirmAdRange] side effect once tacita has actually recorded the
+ * fingerprint, so the UI can show the range as confirmed. Ignored (stale) when the
+ * episode is no longer the one playing. */
+data class MarkAdRangeConfirmed(val episodeGuid: String, val start: Duration, val end: Duration) : UpdateStateAction
+
 /**
  * Requests handled by side effects (repo call → result actions).
  */
