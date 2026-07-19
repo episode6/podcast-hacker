@@ -12,6 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.episode6.podcasthacker.ui.nav.AdFingerprintsRoute
 import com.episode6.podcasthacker.ui.nav.AddPodcastRoute
 import com.episode6.podcasthacker.ui.nav.EpisodeDetailRoute
 import com.episode6.podcasthacker.ui.nav.GridRoute
@@ -21,6 +22,7 @@ import com.episode6.podcasthacker.ui.nav.RecentlyPlayedRoute
 import com.episode6.podcasthacker.ui.nowplaying.LocalNowPlayingSheetState
 import com.episode6.podcasthacker.ui.nowplaying.NowPlayingSheet
 import com.episode6.podcasthacker.ui.nowplaying.rememberNowPlayingSheetState
+import com.episode6.podcasthacker.ui.screens.AdFingerprintsScreen
 import com.episode6.podcasthacker.ui.screens.AddPodcastScreen
 import com.episode6.podcasthacker.ui.screens.EpisodeDetailScreen
 import com.episode6.podcasthacker.ui.screens.GridScreen
@@ -53,6 +55,7 @@ internal fun RootUi(openNowPlayingRequests: Flow<Unit>) {
                     composable<EpisodeDetailRoute> { EpisodeDetailScreen(navController, it.toRoute()) }
                     composable<RecentlyPlayedRoute> { RecentlyPlayedScreen(navController) }
                     composable<LicensesRoute> { LicensesScreen(navController) }
+                    composable<AdFingerprintsRoute> { AdFingerprintsScreen(navController) }
                 }
                 NowPlayingSheet(state = nowPlayingSheetState)
             }

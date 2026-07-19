@@ -6,6 +6,7 @@ import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
 import com.episode6.podcasthacker.data.model.AdBoundary
+import com.episode6.podcasthacker.data.model.AdFingerprint
 import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.data.model.Podcast
 import com.episode6.podcasthacker.playback.PlayerState
@@ -246,6 +247,20 @@ class AppStoreReducerTest {
         )
 
         assertThat(result.nowPlaying?.confirmedAdRanges).isEqualTo(ranges)
+    }
+
+    @Test
+    fun setAdFingerprints_replacesOnlyThatFeedsEntry() {
+        val existing = AdFingerprint("fp-a", AdFingerprint.Provenance.DiffProven, 30.seconds, 480_000L)
+        val state = AppState(adFingerprints = mapOf("feed-1" to listOf(existing)))
+        val incoming = listOf(AdFingerprint("fp-b", AdFingerprint.Provenance.HumanConfirmed, 45.seconds, 720_000L))
+
+        val replaced = state.reduce(SetAdFingerprints("feed-1", incoming))
+        assertThat(replaced.adFingerprints).isEqualTo(mapOf("feed-1" to incoming))
+
+        val added = state.reduce(SetAdFingerprints("feed-2", incoming))
+        assertThat(added.adFingerprints)
+            .isEqualTo(mapOf("feed-1" to listOf(existing), "feed-2" to incoming))
     }
 
     @Test

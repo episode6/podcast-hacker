@@ -30,6 +30,7 @@ private fun AppState.reduceUpdateStateAction(action: UpdateStateAction): AppStat
     )
     is MarkAdRangeConfirmed -> copy(nowPlaying = nowPlaying?.withConfirmedRange(action))
     is MarkAdRangeUnconfirmed -> copy(nowPlaying = nowPlaying?.withoutConfirmedRange(action))
+    is SetAdFingerprints -> copy(adFingerprints = adFingerprints + (action.feedUrl to action.fingerprints))
 }
 
 /** Stale confirmations (playback moved to a different episode) leave the state untouched.

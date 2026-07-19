@@ -58,6 +58,7 @@ import com.episode6.podcasthacker.store.AppStore
 import com.episode6.podcasthacker.store.ImportLibrary
 import com.episode6.podcasthacker.store.RefreshAllFeeds
 import com.episode6.podcasthacker.store.UnsubscribeFromPodcast
+import com.episode6.podcasthacker.ui.nav.AdFingerprintsRoute
 import com.episode6.podcasthacker.ui.nav.AddPodcastRoute
 import com.episode6.podcasthacker.ui.nav.LicensesRoute
 import com.episode6.podcasthacker.ui.nav.PodcastDetailRoute
@@ -169,7 +170,8 @@ private fun PodcastGrid(
 }
 
 /**
- * Overflow (3-dots) menu with library import/export and third-party license notices.
+ * Overflow (3-dots) menu with library import/export, the ad-fingerprint management
+ * screen, check-for-updates, and third-party license notices.
  * Import opens one picker, sniffs the chosen file — the app's json backup or an OPML
  * subscription list — and hands it to [ImportLibrary], which subscribes to any
  * not-yet-subscribed feeds (categories flattened) and then restores any listening state
@@ -277,6 +279,10 @@ private fun OverflowMenu(store: AppStore, navController: NavController) {
                         onClick = { showExportFormats = true },
                     )
                 }
+                DropdownMenuItem(
+                    text = { Text("Ad fingerprints") },
+                    onClick = menuAction { navController.navigate(AdFingerprintsRoute) },
+                )
                 DropdownMenuItem(
                     text = { Text("Check for updates") },
                     onClick = menuAction(::checkForUpdates),

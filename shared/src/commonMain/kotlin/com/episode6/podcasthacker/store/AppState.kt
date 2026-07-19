@@ -1,6 +1,7 @@
 package com.episode6.podcasthacker.store
 
 import com.episode6.podcasthacker.data.model.AdBoundary
+import com.episode6.podcasthacker.data.model.AdFingerprint
 import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.data.model.Podcast
 import kotlin.time.Duration
@@ -17,6 +18,9 @@ data class AppState(
     /** In-flight download status by episode guid; completed/deleted entries are removed
      * (Room's persisted downloadState is the source of truth once a download settles). */
     val downloads: Map<String, EpisodeDownloadStatus> = emptyMap(),
+    /** Each feed's known ad-creative fingerprints by feedUrl, loaded on demand for the
+     * management screen ([LoadAdFingerprints]); a missing key just hasn't loaded yet. */
+    val adFingerprints: Map<String, List<AdFingerprint>> = emptyMap(),
 ) {
     fun episode(guid: String): Episode? =
         episodesByFeed.values.firstNotNullOfOrNull { list -> list.firstOrNull { it.guid == guid } }
