@@ -167,6 +167,11 @@ private fun DownloadControl(
             Spacer(Modifier.width(8.dp))
             Text("Cutting ads…")
         }
+        EpisodeDownloadStatus.Finishing -> OutlinedButton(onClick = {}, enabled = false) {
+            CircularProgressIndicator(Modifier.size(16.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Finishing…")
+        }
         is EpisodeDownloadStatus.Failure -> OutlinedButton(onClick = onDownload) {
             Text("Retry Download")
         }

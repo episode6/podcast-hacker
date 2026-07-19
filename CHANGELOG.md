@@ -2,6 +2,13 @@
 
 ### v1.1.10 - Unreleased
 
+- Fixed a flicker at the end of every episode download where the progress indicator
+  briefly reverted to a download button before settling on the play button. The bug
+  lived in the store (the in-flight download entry was cleared before Room's persisted
+  downloaded flag reached the UI), so the same fix covers every surface that showed it:
+  the podcast-detail episode list, the episode detail screen, recently played rows, and
+  the now-playing/mini-player button. Downloads now show a terminal "finishing" progress
+  state until the downloaded flag lands, then switch straight to play.
 - While something is playing, every scrollable screen (podcast grid, podcast detail,
   recently played, add podcast search results, episode detail, license notices) now adds
   a trailing spacer the height of the mini player, so the end of the content can be

@@ -1,5 +1,6 @@
 package com.episode6.podcasthacker.store.sideeffects
 
+import com.episode6.podcasthacker.data.model.DownloadState as PersistedDownloadState
 import com.episode6.podcasthacker.data.model.toDomain
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
@@ -9,6 +10,7 @@ import com.episode6.podcasthacker.store.DeleteDownload
 import com.episode6.podcasthacker.store.DownloadEpisode
 import com.episode6.podcasthacker.store.EpisodeDownloadStatus
 import com.episode6.podcasthacker.store.SetEpisodeDownloadStatus
+import com.episode6.podcasthacker.store.SetEpisodes
 import com.episode6.redux.Action
 import com.episode6.redux.sideeffects.SideEffect
 import com.episode6.tacita.DownloadState
@@ -93,6 +95,29 @@ interface DownloadSideEffects {
         }
     }
 
+    /** Completion handshake for [downloadEpisodes]: a finished download leaves a
+     * Finishing entry (its Room downloaded flag is written but still in flight through
+     * Room's flow → SetEpisodes → [AppState.episodesByFeed]). Clear each entry only once
+     * the store's episode reads Downloaded, so the UI goes progress → play with no
+     * Download-button flash in between. Reacting to [SetEpisodeDownloadStatus] as well as
+     * [SetEpisodes] covers a re-download of an already-Downloaded episode, where the flag
+     * never changes and Room may never re-emit. An episode missing from the store (feed
+     * pruned mid-download) can never settle, so its entry is dropped too. */
+    @Provides @IntoSet fun clearFinishedDownloads(): SideEffect<AppState> = sideEffect {
+        actions.transform { action ->
+            if (action !is SetEpisodes && action !is SetEpisodeDownloadStatus) return@transform
+            // actions reach side effects post-reduction, so this state is fresh
+            val state = currentState()
+            state.downloads.forEach { (guid, status) ->
+                if (status != EpisodeDownloadStatus.Finishing) return@forEach
+                val downloadState = state.episode(guid)?.downloadState
+                if (downloadState == null || downloadState == PersistedDownloadState.Downloaded) {
+                    emit(SetEpisodeDownloadStatus(guid, null))
+                }
+            }
+        }
+    }
+
     /** File deletion runs inside flatMapMerge rather than inline in the collect path,
      * for the same relay-stalling reason as [downloadEpisodes] above. */
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -170,7 +195,9 @@ private suspend fun FlowCollector<Action>.downloadEpisode(
                     )
                     downloadsRepository.markDownloaded(episodeGuid, downloaded = true)
                     downloadsRepository.deleteReferenceFile(episodeGuid)
-                    emit(SetEpisodeDownloadStatus(episodeGuid, null))
+                    // not null: clearing now would flash the Download button until Room's
+                    // flow delivers the downloaded flag (see clearFinishedDownloads)
+                    emitStatus(EpisodeDownloadStatus.Finishing)
                 }
             }
         }

@@ -2,6 +2,8 @@ package com.episode6.podcasthacker.store.sideeffects
 
 import assertk.assertThat
 import assertk.assertions.containsExactly
+import assertk.assertions.isEmpty
+import com.episode6.podcasthacker.data.model.DownloadState as PersistedDownloadState
 import com.episode6.podcasthacker.data.model.AdBoundary
 import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
@@ -12,6 +14,7 @@ import com.episode6.podcasthacker.store.DeleteDownload
 import com.episode6.podcasthacker.store.DownloadEpisode
 import com.episode6.podcasthacker.store.EpisodeDownloadStatus
 import com.episode6.podcasthacker.store.SetEpisodeDownloadStatus
+import com.episode6.podcasthacker.store.SetEpisodes
 import com.episode6.redux.Action
 import com.episode6.redux.sideeffects.SideEffect
 import com.episode6.redux.sideeffects.SideEffectContext
@@ -100,7 +103,8 @@ class DownloadSideEffectsTest {
             SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Downloading(0.75f)),
             // reference-copy Downloading and CuttingAds collapse into one status
             SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.CuttingAds),
-            SetEpisodeDownloadStatus(guid, null),
+            // cleared by clearFinishedDownloads once Room delivers the downloaded flag
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Finishing),
         )
         coVerify(exactly = 1) { downloadsRepo.markDownloaded(guid, true) }
         coVerify(exactly = 1) { downloadsRepo.deleteReferenceFile(guid) }
@@ -137,7 +141,7 @@ class DownloadSideEffectsTest {
             SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Downloading(0.01f)),
             SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Downloading(0.02f)),
             SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.CuttingAds),
-            SetEpisodeDownloadStatus(guid, null),
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Finishing),
         )
     }
 
@@ -216,7 +220,7 @@ class DownloadSideEffectsTest {
             SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Starting),
             SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Failure("boom")),
             SetEpisodeDownloadStatus(otherGuid, EpisodeDownloadStatus.Starting),
-            SetEpisodeDownloadStatus(otherGuid, null),
+            SetEpisodeDownloadStatus(otherGuid, EpisodeDownloadStatus.Finishing),
         )
         coVerify(exactly = 1) { downloadsRepo.markDownloaded(otherGuid, true) }
         coVerify(exactly = 0) { downloadsRepo.markDownloaded(guid, any()) }
@@ -317,6 +321,84 @@ class DownloadSideEffectsTest {
         assertThat(actions).containsExactly(
             SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Failure("episode has no audio url")),
         )
+    }
+
+    private fun episodeInStore(downloadState: PersistedDownloadState) = Episode(
+        guid = guid,
+        feedUrl = "feed",
+        title = "Ep",
+        audioUrl = audioUrl,
+        downloadState = downloadState,
+    )
+
+    @Test
+    fun finishingEntry_clears_onceStoreEpisodeReadsDownloaded() = runTest {
+        val state = AppState(
+            episodesByFeed = mapOf("feed" to listOf(episodeInStore(PersistedDownloadState.Downloaded))),
+            downloads = mapOf(guid to EpisodeDownloadStatus.Finishing),
+        )
+
+        val actions = sideEffects.clearFinishedDownloads()
+            .output(SetEpisodes(state.episodesByFeed), state = state).toList()
+
+        assertThat(actions).containsExactly(SetEpisodeDownloadStatus(guid, null))
+    }
+
+    /** The whole point of Finishing: no clear (and thus no Download-button flash) while
+     * the Room downloaded flag is still in flight to the store. */
+    @Test
+    fun finishingEntry_lingers_whileStoreEpisodeStillReadsNotDownloaded() = runTest {
+        val state = AppState(
+            episodesByFeed = mapOf("feed" to listOf(episodeInStore(PersistedDownloadState.NotDownloaded))),
+            downloads = mapOf(guid to EpisodeDownloadStatus.Finishing),
+        )
+
+        val actions = sideEffects.clearFinishedDownloads()
+            .output(SetEpisodes(state.episodesByFeed), state = state).toList()
+
+        assertThat(actions).isEmpty()
+    }
+
+    /** Re-download of an already-Downloaded episode: the flag never changes so Room may
+     * never re-emit — the Finishing action itself must trigger the clear. */
+    @Test
+    fun finishingEntry_clears_whenFlagAlreadyDownloadedAsFinishingLands() = runTest {
+        val state = AppState(
+            episodesByFeed = mapOf("feed" to listOf(episodeInStore(PersistedDownloadState.Downloaded))),
+            downloads = mapOf(guid to EpisodeDownloadStatus.Finishing),
+        )
+
+        val actions = sideEffects.clearFinishedDownloads()
+            .output(SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Finishing), state = state).toList()
+
+        assertThat(actions).containsExactly(SetEpisodeDownloadStatus(guid, null))
+    }
+
+    /** An episode gone from the store (feed pruned mid-download) can never settle; drop
+     * its entry so it doesn't hold the download queue active forever. */
+    @Test
+    fun finishingEntry_clears_whenEpisodeMissingFromStore() = runTest {
+        val state = AppState(downloads = mapOf(guid to EpisodeDownloadStatus.Finishing))
+
+        val actions = sideEffects.clearFinishedDownloads()
+            .output(SetEpisodes(emptyMap()), state = state).toList()
+
+        assertThat(actions).containsExactly(SetEpisodeDownloadStatus(guid, null))
+    }
+
+    /** A lingering Failure on a downloaded episode is a retry affordance, not a
+     * completion handshake — it must survive. */
+    @Test
+    fun failureEntry_neverCleared_evenWhenEpisodeReadsDownloaded() = runTest {
+        val state = AppState(
+            episodesByFeed = mapOf("feed" to listOf(episodeInStore(PersistedDownloadState.Downloaded))),
+            downloads = mapOf(guid to EpisodeDownloadStatus.Failure("boom")),
+        )
+
+        val actions = sideEffects.clearFinishedDownloads()
+            .output(SetEpisodes(state.episodesByFeed), state = state).toList()
+
+        assertThat(actions).isEmpty()
     }
 
     @Test
