@@ -98,15 +98,22 @@ fun NowPlayingState.nextAdBoundary(): AdBoundary? =
     filteredAdBoundaries().firstOrNull { it.position > position }
 
 /**
- * The filtered-boundary pair bracketing the playhead — the range a "confirm ad" action
- * would fingerprint. Null when the playhead isn't between two candidates. No grace
+ * The range a "confirm ad" action would fingerprint: between the filtered boundaries
+ * bracketing the playhead, with the episode's start and end standing in as implicit
+ * boundaries — so a pre-roll (before the first candidate) and a post-roll (after the
+ * last) are flaggable too. Null when no candidates survive the filter at all (with no
+ * evidence of ads, the only range would be the whole episode) or when the playhead is
+ * past the last candidate but the player hasn't reported a duration yet. No grace
  * window: while listening inside an ad, the boundary just crossed IS the ad's start.
  */
-fun NowPlayingState.bracketingAdBoundaries(): Pair<AdBoundary, AdBoundary>? {
+fun NowPlayingState.confirmableAdRange(): ClosedRange<Duration>? {
     val boundaries = filteredAdBoundaries()
-    val prev = boundaries.lastOrNull { it.position <= position } ?: return null
-    val next = boundaries.firstOrNull { it.position > position } ?: return null
-    return prev to next
+    if (boundaries.isEmpty()) return null
+    val start = boundaries.lastOrNull { it.position <= position }?.position ?: Duration.ZERO
+    val end = boundaries.firstOrNull { it.position > position }?.position
+        ?: duration?.takeIf { it > start }
+        ?: return null
+    return start..end
 }
 
 /** The confirmed range the playhead currently sits inside, or null outside them all —

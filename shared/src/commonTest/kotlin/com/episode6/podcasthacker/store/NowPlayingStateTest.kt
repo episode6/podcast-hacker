@@ -128,37 +128,58 @@ class NowPlayingStateTest {
     }
 
     @Test
-    fun bracketing_playheadBetweenTwoBoundaries_returnsThePair() {
+    fun confirmableRange_playheadBetweenTwoBoundaries_returnsTheirSpan() {
         val state = state(2.minutes, listOf(1.minutes, 5.minutes, 10.minutes))
 
-        assertThat(state.bracketingAdBoundaries())
-            .isEqualTo(boundary(1.minutes) to boundary(5.minutes))
+        assertThat(state.confirmableAdRange()).isEqualTo(1.minutes..5.minutes)
     }
 
     @Test
-    fun bracketing_exactlyOnABoundary_treatsItAsTheRangeStart() {
+    fun confirmableRange_exactlyOnABoundary_treatsItAsTheRangeStart() {
         // no grace window: just after crossing a boundary, that boundary IS the ad start
         val state = state(1.minutes, listOf(1.minutes, 5.minutes))
 
-        assertThat(state.bracketingAdBoundaries())
-            .isEqualTo(boundary(1.minutes) to boundary(5.minutes))
+        assertThat(state.confirmableAdRange()).isEqualTo(1.minutes..5.minutes)
     }
 
     @Test
-    fun bracketing_outsideAnyPair_isNull() {
-        val boundaries = listOf(1.minutes, 5.minutes)
+    fun confirmableRange_beforeFirstBoundary_startsAtEpisodeStart() {
+        // a pre-roll ad has no boundary before it; episode start stands in
+        val state = state(30.seconds, listOf(1.minutes, 5.minutes))
 
-        assertThat(state(30.seconds, boundaries).bracketingAdBoundaries(), name = "before the first").isNull()
-        assertThat(state(6.minutes, boundaries).bracketingAdBoundaries(), name = "past the last").isNull()
-        assertThat(state(3.minutes).bracketingAdBoundaries(), name = "no boundaries at all").isNull()
+        assertThat(state.confirmableAdRange()).isEqualTo(Duration.ZERO..1.minutes)
     }
 
     @Test
-    fun bracketing_respectsTheConfidenceFilter() {
-        // at filter=1 only the 0.9 boundary at 3:00 survives — no pair to bracket with
+    fun confirmableRange_pastLastBoundary_endsAtEpisodeEnd() {
+        // a post-roll ad has no boundary after it; the episode's end stands in
+        val state = state(6.minutes, listOf(1.minutes, 5.minutes)).copy(duration = 7.minutes)
+
+        assertThat(state.confirmableAdRange()).isEqualTo(5.minutes..7.minutes)
+    }
+
+    @Test
+    fun confirmableRange_pastLastBoundary_withoutADuration_isNull() {
+        val state = state(6.minutes, listOf(1.minutes, 5.minutes))
+
+        assertThat(state.confirmableAdRange()).isNull()
+    }
+
+    @Test
+    fun confirmableRange_noBoundariesAtAll_isNull() {
+        // no ad evidence: the only range would be the whole episode, so nothing to flag
+        val state = state(3.minutes).copy(duration = 7.minutes)
+
+        assertThat(state.confirmableAdRange()).isNull()
+    }
+
+    @Test
+    fun confirmableRange_respectsTheConfidenceFilter() {
+        // at filter=1 only the 0.9 boundary at 3:00 survives, so the playhead at 2:30
+        // sits in the (implicit-start, 3:00) range instead of (2:00, 3:00)
         val state = mixedConfidenceState(filter = 1f).copy(position = 2.minutes + 30.seconds)
 
-        assertThat(state.bracketingAdBoundaries()).isNull()
+        assertThat(state.confirmableAdRange()).isEqualTo(Duration.ZERO..3.minutes)
     }
 
     @Test
