@@ -57,11 +57,13 @@ class AppEndToEndTest {
 
             onNodeWithText("Add Podcast", substring = true).performClick()
             onNode(hasSetTextAction()).performTextInput(feedUrl)
-            waitUntilExactlyOneExists(hasText("Subscribe to RSS url"), timeoutMillis = 5_000)
+            // 30s floor for every wait, matching AppUiIntegrationTest.waitForExactlyOne:
+            // cpu starvation on CI runners has blown through shorter waits
+            waitUntilExactlyOneExists(hasText("Subscribe to RSS url"), timeoutMillis = 30_000)
             onNodeWithText("Subscribe to RSS url").performClick()
 
             // tile appears once the feed round-trips through real sockets + Room
-            waitUntilExactlyOneExists(hasText("Test Podcast"), timeoutMillis = 15_000)
+            waitUntilExactlyOneExists(hasText("Test Podcast"), timeoutMillis = 30_000)
 
             // and the database landed on disk in the temp dir
             assertThat(FileSystem.SYSTEM.exists(dataDir / AppDatabase.FILE_NAME)).isTrue()
