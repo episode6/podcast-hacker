@@ -17,6 +17,15 @@ pluginManagement {
 
 dependencyResolutionManagement {
     repositories {
+        // lets a locally-built tacita snapshot (./gradlew publishToMavenLocal in the
+        // tacita repo) take precedence while developing against unreleased tacita
+        // changes; scoped + snapshotsOnly so it can never shadow released artifacts
+        mavenLocal {
+            mavenContent {
+                includeGroup("com.episode6.tacita")
+                snapshotsOnly()
+            }
+        }
         google {
             mavenContent {
                 includeGroupAndSubgroups("androidx")

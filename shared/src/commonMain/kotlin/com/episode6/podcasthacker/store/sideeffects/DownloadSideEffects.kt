@@ -6,6 +6,7 @@ import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
 import com.episode6.podcasthacker.downloads.DownloadScheduler
 import com.episode6.podcasthacker.store.AppState
+import com.episode6.podcasthacker.store.ConfirmAdRange
 import com.episode6.podcasthacker.store.DeleteDownload
 import com.episode6.podcasthacker.store.DownloadEpisode
 import com.episode6.podcasthacker.store.EpisodeDownloadStatus
@@ -118,6 +119,40 @@ interface DownloadSideEffects {
         }
     }
 
+    /**
+     * Records the listener's ear-check of an ad range into the feed's fingerprint store
+     * (tacita's HUMAN_CONFIRMED tier) so future downloads of the feed flag recurrences
+     * of the creative. Fire-and-forget: tacita logs the outcome through the injected
+     * log lambda, and a failed confirmation (range too short, file missing) must never
+     * disturb playback. Runs in flatMapMerge for the same relay-stalling reason as
+     * [downloadEpisodes].
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Provides @IntoSet fun confirmAds(
+        tacita: Tacita,
+        episodeRepository: EpisodeRepository,
+        downloadsRepository: DownloadsRepository,
+    ): SideEffect<AppState> = sideEffect {
+        actions.filterIsInstance<ConfirmAdRange>()
+            .flatMapMerge { action ->
+                flow<Action> {
+                    val feedUrl = episodeRepository.episode(action.episodeGuid)?.feedUrl ?: return@flow
+                    val result = runCatching {
+                        tacita.confirmAd(
+                            file = downloadsRepository.downloadFilePath(action.episodeGuid),
+                            fingerprintStore = downloadsRepository.fingerprintStorePath(feedUrl),
+                            startMs = action.start.inWholeMilliseconds,
+                            endMs = action.end.inWholeMilliseconds,
+                        )
+                    }
+                    result.exceptionOrNull()?.let {
+                        if (it is CancellationException) throw it
+                        println("tacita: confirmAd failed: ${it.message}")
+                    }
+                }
+            }
+    }
+
     /** File deletion runs inside flatMapMerge rather than inline in the collect path,
      * for the same relay-stalling reason as [downloadEpisodes] above. */
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -174,6 +209,10 @@ private suspend fun FlowCollector<Action>.downloadEpisode(
             // when the host injects sticky fill on every tier (blinding the ad-diff)
             declaredEnclosureBytes = episode.enclosureBytes,
             expectedDurationSeconds = episode.duration?.inWholeSeconds,
+            // per-feed creative fingerprints: diff cuts seed it, ear-checked confirmations
+            // strengthen it, and recurrences of known creatives come back as
+            // high-confidence boundary candidates
+            fingerprintStore = downloadsRepository.fingerprintStorePath(episode.feedUrl),
         ).collect { state ->
             when (state) {
                 is DownloadState.Downloading -> emitStatus(

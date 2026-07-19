@@ -17,7 +17,7 @@ data class AdBoundary(
     val confidence: Float,
 ) {
     /** Which detection signal produced the candidate. Mirrors tacita's Source. */
-    enum class Source { SegmentBoundary, DiffCut, DaiSlot, Id3Chapter, Unknown }
+    enum class Source { SegmentBoundary, DiffCut, DaiSlot, Id3Chapter, Fingerprint, Unknown }
 
     /** How [position] relates to a possible ad. Mirrors tacita's Role. */
     enum class Role { Start, End, Join, Unknown }

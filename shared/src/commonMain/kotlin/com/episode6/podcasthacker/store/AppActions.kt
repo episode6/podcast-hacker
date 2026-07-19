@@ -55,6 +55,11 @@ data class SeekBy(val offset: Duration) : AsyncAction
  * guesses and must never trigger an automatic skip. */
 data object SkipToNextAdBoundary : AsyncAction
 data object SkipToPreviousAdBoundary : AsyncAction
+
+/** The listener's ear-check that [start]..[end] of a downloaded episode really is an ad.
+ * Tacita fingerprints the range into the feed's store, so future downloads of the feed
+ * flag recurrences of the creative as high-confidence skippable boundaries. */
+data class ConfirmAdRange(val episodeGuid: String, val start: Duration, val end: Duration) : AsyncAction
 data class SetPlaybackSpeed(val speed: Float) : AsyncAction
 data object StopPlayback : AsyncAction
 

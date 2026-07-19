@@ -85,6 +85,18 @@ fun NowPlayingState.filteredAdBoundaries(): List<AdBoundary> {
 fun NowPlayingState.nextAdBoundary(): AdBoundary? =
     filteredAdBoundaries().firstOrNull { it.position > position }
 
+/**
+ * The filtered-boundary pair bracketing the playhead — the range a "confirm ad" action
+ * would fingerprint. Null when the playhead isn't between two candidates. No grace
+ * window: while listening inside an ad, the boundary just crossed IS the ad's start.
+ */
+fun NowPlayingState.bracketingAdBoundaries(): Pair<AdBoundary, AdBoundary>? {
+    val boundaries = filteredAdBoundaries()
+    val prev = boundaries.lastOrNull { it.position <= position } ?: return null
+    val next = boundaries.firstOrNull { it.position > position } ?: return null
+    return prev to next
+}
+
 fun NowPlayingState.previousAdBoundary(): AdBoundary? =
     filteredAdBoundaries().lastOrNull { it.position <= position - SKIP_BACK_GRACE }
 

@@ -128,6 +128,40 @@ class NowPlayingStateTest {
     }
 
     @Test
+    fun bracketing_playheadBetweenTwoBoundaries_returnsThePair() {
+        val state = state(2.minutes, listOf(1.minutes, 5.minutes, 10.minutes))
+
+        assertThat(state.bracketingAdBoundaries())
+            .isEqualTo(boundary(1.minutes) to boundary(5.minutes))
+    }
+
+    @Test
+    fun bracketing_exactlyOnABoundary_treatsItAsTheRangeStart() {
+        // no grace window: just after crossing a boundary, that boundary IS the ad start
+        val state = state(1.minutes, listOf(1.minutes, 5.minutes))
+
+        assertThat(state.bracketingAdBoundaries())
+            .isEqualTo(boundary(1.minutes) to boundary(5.minutes))
+    }
+
+    @Test
+    fun bracketing_outsideAnyPair_isNull() {
+        val boundaries = listOf(1.minutes, 5.minutes)
+
+        assertThat(state(30.seconds, boundaries).bracketingAdBoundaries(), name = "before the first").isNull()
+        assertThat(state(6.minutes, boundaries).bracketingAdBoundaries(), name = "past the last").isNull()
+        assertThat(state(3.minutes).bracketingAdBoundaries(), name = "no boundaries at all").isNull()
+    }
+
+    @Test
+    fun bracketing_respectsTheConfidenceFilter() {
+        // at filter=1 only the 0.9 boundary at 3:00 survives — no pair to bracket with
+        val state = mixedConfidenceState(filter = 1f).copy(position = 2.minutes + 30.seconds)
+
+        assertThat(state.bracketingAdBoundaries()).isNull()
+    }
+
+    @Test
     fun platformSkipTargets_usePlayerPositionNotStatePosition() {
         // state position (30s) would pick different targets than the player's live 6:00
         val state = state(30.seconds, listOf(1.minutes, 5.minutes, 10.minutes))

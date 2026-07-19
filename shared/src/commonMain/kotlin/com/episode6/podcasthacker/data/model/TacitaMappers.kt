@@ -11,6 +11,7 @@ internal fun AdBoundaryCandidate.toDomain(): AdBoundary = AdBoundary(
         AdBoundaryCandidate.Source.DIFF_CUT -> AdBoundary.Source.DiffCut
         AdBoundaryCandidate.Source.DAI_SLOT -> AdBoundary.Source.DaiSlot
         AdBoundaryCandidate.Source.ID3_CHAPTER -> AdBoundary.Source.Id3Chapter
+        AdBoundaryCandidate.Source.FINGERPRINT -> AdBoundary.Source.Fingerprint
     },
     role = when (role) {
         AdBoundaryCandidate.Role.START -> AdBoundary.Role.Start

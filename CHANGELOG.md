@@ -9,6 +9,21 @@
   the podcast-detail episode list, the episode detail screen, recently played rows, and
   the now-playing/mini-player button. Downloads now show a terminal "finishing" progress
   state until the downloaded flag lands, then switch straight to play.
+- **Ad-creative fingerprints** (tacita 0.0.4): every download now maintains a per-feed
+  fingerprint store — ads the ad-diff proves and cuts are fingerprinted automatically,
+  and when a known ad survives a later download (the sticky-fill blind spot) its
+  boundaries come back as high-confidence skippable markers. Nothing is ever auto-cut
+  or auto-skipped on a fingerprint match.
+- **Confirm-ad button** on the Now Playing sheet (flag icon beside the skips filter):
+  while the playhead sits between two ad-boundary markers, tapping it records the
+  listener's confirmation that the bracketed range is an ad. Confirmed creatives are
+  fingerprinted into the feed's store at tacita's strongest evidence tier, so future
+  episodes carrying the same ad flag it for skipping. Enabled only between two markers;
+  confirmation failures (e.g. a range shorter than tacita's 5s floor) are logged and
+  never disturb playback.
+- Internal: `AdBoundary.Source` gains `Fingerprint`; per-feed store files live under
+  `dataDir/fingerprints/` keyed by hashed feed url; a scoped `mavenLocal()` repo entry
+  (tacita snapshots only) supports developing against a locally-built tacita.
 - While something is playing, every scrollable screen (podcast grid, podcast detail,
   recently played, add podcast search results, episode detail, license notices) now adds
   a trailing spacer the height of the mini player, so the end of the content can be
