@@ -67,9 +67,10 @@ import com.episode6.podcasthacker.store.SkipToNextAdBoundary
 import com.episode6.podcasthacker.store.SkipToPreviousAdBoundary
 import com.episode6.podcasthacker.store.StopPlayback
 import com.episode6.podcasthacker.store.TogglePlayPause
+import com.episode6.podcasthacker.store.UnconfirmAdRange
 import com.episode6.podcasthacker.store.bracketingAdBoundaries
+import com.episode6.podcasthacker.store.confirmedAdAtPlayhead
 import com.episode6.podcasthacker.store.filteredAdBoundaries
-import com.episode6.podcasthacker.store.isInConfirmedAd
 import com.episode6.podcasthacker.store.nextAdBoundary
 import com.episode6.podcasthacker.store.previousAdBoundary
 import com.episode6.podcasthacker.ui.util.AppIcons
@@ -294,27 +295,31 @@ private fun TransportControls(nowPlaying: NowPlayingState, dispatch: (Action) ->
  * Flags the ad the listener is hearing right now: confirms the range between the two
  * boundary candidates bracketing the playhead into the feed's fingerprint store (the
  * ear-check tacita's fingerprint matching is built on — future downloads of the feed
- * flag recurrences of the creative). Disabled when the playhead isn't between two
- * candidates; strictly user-initiated. While the playhead sits inside an
- * already-confirmed range the flag tints primary as feedback that the tap took.
+ * flag recurrences of the creative). While the playhead sits inside an already-confirmed
+ * range the flag tints primary and the button becomes a toggle: tapping again revokes
+ * the fingerprint and clears the mark. Disabled when neither applies; strictly
+ * user-initiated.
  */
 @Composable
 private fun ConfirmAdButton(nowPlaying: NowPlayingState, dispatch: (Action) -> Unit) {
     val bracket = nowPlaying.bracketingAdBoundaries()
-    val confirmed = nowPlaying.isInConfirmedAd()
+    val confirmed = nowPlaying.confirmedAdAtPlayhead()
     IconButton(
         onClick = {
-            bracket?.let { (start, end) ->
-                dispatch(ConfirmAdRange(nowPlaying.episodeGuid, start.position, end.position))
+            when {
+                confirmed != null ->
+                    dispatch(UnconfirmAdRange(nowPlaying.episodeGuid, confirmed.fingerprintId))
+                bracket != null ->
+                    dispatch(ConfirmAdRange(nowPlaying.episodeGuid, bracket.first.position, bracket.second.position))
             }
         },
-        enabled = bracket != null,
+        enabled = bracket != null || confirmed != null,
         modifier = Modifier.testTag("confirmAdButton"),
     ) {
         Icon(
             imageVector = AppIcons.Flag,
-            contentDescription = if (confirmed) "Ad confirmed" else "Confirm ad between boundaries",
-            tint = if (confirmed) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+            contentDescription = if (confirmed != null) "Un-confirm ad" else "Confirm ad between boundaries",
+            tint = if (confirmed != null) MaterialTheme.colorScheme.primary else LocalContentColor.current,
         )
     }
 }

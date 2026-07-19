@@ -32,9 +32,20 @@ data class SetPlayerState(val playerState: PlayerState) : UpdateStateAction
 data class SetAdBoundaryConfidenceFilter(val filter: Float) : UpdateStateAction
 
 /** Emitted by the [ConfirmAdRange] side effect once tacita has actually recorded the
- * fingerprint, so the UI can show the range as confirmed. Ignored (stale) when the
- * episode is no longer the one playing. */
-data class MarkAdRangeConfirmed(val episodeGuid: String, val start: Duration, val end: Duration) : UpdateStateAction
+ * fingerprint, so the UI can show the range as confirmed; [fingerprintId] is what a
+ * later [UnconfirmAdRange] revokes. Ignored (stale) when the episode is no longer the
+ * one playing. */
+data class MarkAdRangeConfirmed(
+    val episodeGuid: String,
+    val start: Duration,
+    val end: Duration,
+    val fingerprintId: String,
+) : UpdateStateAction
+
+/** Emitted by the [UnconfirmAdRange] side effect once the fingerprint is out of the
+ * feed's store, clearing the range's confirmed mark. Same staleness rule as
+ * [MarkAdRangeConfirmed]. */
+data class MarkAdRangeUnconfirmed(val episodeGuid: String, val fingerprintId: String) : UpdateStateAction
 
 /**
  * Requests handled by side effects (repo call → result actions).
@@ -65,6 +76,11 @@ data object SkipToPreviousAdBoundary : AsyncAction
  * Tacita fingerprints the range into the feed's store, so future downloads of the feed
  * flag recurrences of the creative as high-confidence skippable boundaries. */
 data class ConfirmAdRange(val episodeGuid: String, val start: Duration, val end: Duration) : AsyncAction
+
+/** Reverses an ear-check: deletes the confirmed fingerprint from the feed's store and
+ * unmarks its range. Only ever dispatched from the confirm-ad button while the playhead
+ * sits inside an already-confirmed range. */
+data class UnconfirmAdRange(val episodeGuid: String, val fingerprintId: String) : AsyncAction
 data class SetPlaybackSpeed(val speed: Float) : AsyncAction
 data object StopPlayback : AsyncAction
 

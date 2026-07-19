@@ -170,35 +170,75 @@ class AppStoreReducerTest {
         assertThat(result.nowPlaying?.error).isEqualTo("boom")
     }
 
+    private val firstConfirmed = ConfirmedAd(1.minutes..2.minutes, fingerprintId = "fp-1")
+
     @Test
     fun markAdRangeConfirmed_appendsToConfirmedRanges() {
-        val state = AppState(nowPlaying = playing.copy(confirmedAdRanges = listOf(1.minutes..2.minutes)))
+        val state = AppState(nowPlaying = playing.copy(confirmedAdRanges = listOf(firstConfirmed)))
 
-        val result = state.reduce(MarkAdRangeConfirmed("guid-1", 5.minutes, 7.minutes))
+        val result = state.reduce(MarkAdRangeConfirmed("guid-1", 5.minutes, 7.minutes, "fp-2"))
 
         assertThat(result.nowPlaying?.confirmedAdRanges)
-            .isEqualTo(listOf(1.minutes..2.minutes, 5.minutes..7.minutes))
+            .isEqualTo(listOf(firstConfirmed, ConfirmedAd(5.minutes..7.minutes, "fp-2")))
+    }
+
+    @Test
+    fun markAdRangeConfirmed_reconfirmingSameFingerprint_doesNotDuplicate() {
+        // fingerprint ids are content-derived, so re-confirming the same creative
+        // hands back the same id
+        val state = AppState(nowPlaying = playing.copy(confirmedAdRanges = listOf(firstConfirmed)))
+
+        val result = state.reduce(MarkAdRangeConfirmed("guid-1", 1.minutes, 2.minutes, "fp-1"))
+
+        assertThat(result.nowPlaying?.confirmedAdRanges).isEqualTo(listOf(firstConfirmed))
     }
 
     @Test
     fun markAdRangeConfirmed_ignoresOtherEpisodes() {
         val state = AppState(nowPlaying = playing)
 
-        val result = state.reduce(MarkAdRangeConfirmed("other-guid", 5.minutes, 7.minutes))
+        val result = state.reduce(MarkAdRangeConfirmed("other-guid", 5.minutes, 7.minutes, "fp-2"))
 
         assertThat(result.nowPlaying).isEqualTo(playing)
     }
 
     @Test
     fun markAdRangeConfirmed_ignoredWhileNothingPlaying() {
-        val result = AppState().reduce(MarkAdRangeConfirmed("guid-1", 5.minutes, 7.minutes))
+        val result = AppState().reduce(MarkAdRangeConfirmed("guid-1", 5.minutes, 7.minutes, "fp-2"))
+
+        assertThat(result.nowPlaying).isNull()
+    }
+
+    @Test
+    fun markAdRangeUnconfirmed_removesTheMatchingRange() {
+        val other = ConfirmedAd(5.minutes..7.minutes, fingerprintId = "fp-2")
+        val state = AppState(nowPlaying = playing.copy(confirmedAdRanges = listOf(firstConfirmed, other)))
+
+        val result = state.reduce(MarkAdRangeUnconfirmed("guid-1", "fp-1"))
+
+        assertThat(result.nowPlaying?.confirmedAdRanges).isEqualTo(listOf(other))
+    }
+
+    @Test
+    fun markAdRangeUnconfirmed_ignoresOtherEpisodes() {
+        val marked = playing.copy(confirmedAdRanges = listOf(firstConfirmed))
+        val state = AppState(nowPlaying = marked)
+
+        val result = state.reduce(MarkAdRangeUnconfirmed("other-guid", "fp-1"))
+
+        assertThat(result.nowPlaying).isEqualTo(marked)
+    }
+
+    @Test
+    fun markAdRangeUnconfirmed_ignoredWhileNothingPlaying() {
+        val result = AppState().reduce(MarkAdRangeUnconfirmed("guid-1", "fp-1"))
 
         assertThat(result.nowPlaying).isNull()
     }
 
     @Test
     fun setPlayerState_preservesConfirmedRanges() {
-        val ranges = listOf(1.minutes..2.minutes)
+        val ranges = listOf(firstConfirmed)
         val state = AppState(nowPlaying = playing.copy(confirmedAdRanges = ranges))
 
         val result = state.reduce(

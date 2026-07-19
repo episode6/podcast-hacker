@@ -11,8 +11,10 @@ import com.episode6.podcasthacker.store.DeleteDownload
 import com.episode6.podcasthacker.store.DownloadEpisode
 import com.episode6.podcasthacker.store.EpisodeDownloadStatus
 import com.episode6.podcasthacker.store.MarkAdRangeConfirmed
+import com.episode6.podcasthacker.store.MarkAdRangeUnconfirmed
 import com.episode6.podcasthacker.store.SetEpisodeDownloadStatus
 import com.episode6.podcasthacker.store.SetEpisodes
+import com.episode6.podcasthacker.store.UnconfirmAdRange
 import com.episode6.redux.Action
 import com.episode6.redux.sideeffects.SideEffect
 import com.episode6.tacita.DownloadState
@@ -147,10 +149,47 @@ interface DownloadSideEffects {
                         )
                     }
                     result.fold(
-                        onSuccess = { emit(MarkAdRangeConfirmed(action.episodeGuid, action.start, action.end)) },
+                        onSuccess = { info ->
+                            emit(MarkAdRangeConfirmed(action.episodeGuid, action.start, action.end, info.id))
+                        },
                         onFailure = {
                             if (it is CancellationException) throw it
                             println("tacita: confirmAd failed: ${it.message}")
+                        },
+                    )
+                }
+            }
+    }
+
+    /**
+     * Reverses an ear-check: removes the fingerprint from the feed's store, then emits
+     * [MarkAdRangeUnconfirmed] to clear the range's confirmed mark. removeFingerprint
+     * returning false (fingerprint already gone) still unmarks — either way the store
+     * agrees the confirmation no longer exists; only an exceptional failure (which, like
+     * a failed confirm, must never disturb playback) leaves the mark in place. Runs in
+     * flatMapMerge for the same relay-stalling reason as [downloadEpisodes].
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Provides @IntoSet fun unconfirmAds(
+        tacita: Tacita,
+        episodeRepository: EpisodeRepository,
+        downloadsRepository: DownloadsRepository,
+    ): SideEffect<AppState> = sideEffect {
+        actions.filterIsInstance<UnconfirmAdRange>()
+            .flatMapMerge { action ->
+                flow<Action> {
+                    val feedUrl = episodeRepository.episode(action.episodeGuid)?.feedUrl ?: return@flow
+                    val result = runCatching {
+                        tacita.removeFingerprint(
+                            fingerprintStore = downloadsRepository.fingerprintStorePath(feedUrl),
+                            id = action.fingerprintId,
+                        )
+                    }
+                    result.fold(
+                        onSuccess = { emit(MarkAdRangeUnconfirmed(action.episodeGuid, action.fingerprintId)) },
+                        onFailure = {
+                            if (it is CancellationException) throw it
+                            println("tacita: removeFingerprint failed: ${it.message}")
                         },
                     )
                 }

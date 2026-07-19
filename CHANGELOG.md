@@ -20,8 +20,10 @@
   fingerprinted into the feed's store at tacita's strongest evidence tier, so future
   episodes carrying the same ad flag it for skipping. Once a confirmation is recorded,
   the flag icon tints the theme's primary color whenever the playhead is inside a
-  confirmed range. Enabled only between two markers; confirmation failures (e.g. a
-  range shorter than tacita's 5s floor) are logged and never disturb playback.
+  confirmed range, and the button becomes a toggle: tapping again while inside the
+  range reverses the ear-check, deleting the fingerprint from the store and clearing
+  the mark. Confirmation failures (e.g. a range shorter than tacita's 5s floor) are
+  logged and never disturb playback.
 - Internal: `AdBoundary.Source` gains `Fingerprint`; per-feed store files live under
   `dataDir/fingerprints/` keyed by hashed feed url; `mavenLocal()` + the Sonatype
   snapshots repo are now scoped to all of `com.episode6.*` (snapshots only), so any

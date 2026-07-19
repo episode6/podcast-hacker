@@ -15,8 +15,10 @@ import com.episode6.podcasthacker.store.DeleteDownload
 import com.episode6.podcasthacker.store.DownloadEpisode
 import com.episode6.podcasthacker.store.EpisodeDownloadStatus
 import com.episode6.podcasthacker.store.MarkAdRangeConfirmed
+import com.episode6.podcasthacker.store.MarkAdRangeUnconfirmed
 import com.episode6.podcasthacker.store.SetEpisodeDownloadStatus
 import com.episode6.podcasthacker.store.SetEpisodes
+import com.episode6.podcasthacker.store.UnconfirmAdRange
 import com.episode6.redux.Action
 import com.episode6.redux.sideeffects.SideEffect
 import com.episode6.redux.sideeffects.SideEffectContext
@@ -421,7 +423,7 @@ class DownloadSideEffectsTest {
         val actions = sideEffects.confirmAds(tacita, episodeRepo, downloadsRepo)
             .output(ConfirmAdRange(guid, 60.seconds, 90.seconds)).toList()
 
-        assertThat(actions).containsExactly(MarkAdRangeConfirmed(guid, 60.seconds, 90.seconds))
+        assertThat(actions).containsExactly(MarkAdRangeConfirmed(guid, 60.seconds, 90.seconds, "abc123"))
         coVerify(exactly = 1) { tacita.confirmAd(outputFile, fingerprintStore, 60_000L, 90_000L) }
         verify { downloadsRepo.fingerprintStorePath("feed") }
     }
@@ -434,6 +436,44 @@ class DownloadSideEffectsTest {
 
         val actions = sideEffects.confirmAds(tacita, episodeRepo, downloadsRepo)
             .output(ConfirmAdRange(guid, 60.seconds, 62.seconds)).toList()
+
+        assertThat(actions).isEmpty()
+    }
+
+    @Test
+    fun unconfirmAdRange_removesFingerprintAndUnmarks() = runTest {
+        val tacita = mockk<Tacita> {
+            coEvery { removeFingerprint(fingerprintStore, "abc123") } returns true
+        }
+
+        val actions = sideEffects.unconfirmAds(tacita, episodeRepo, downloadsRepo)
+            .output(UnconfirmAdRange(guid, "abc123")).toList()
+
+        assertThat(actions).containsExactly(MarkAdRangeUnconfirmed(guid, "abc123"))
+        coVerify(exactly = 1) { tacita.removeFingerprint(fingerprintStore, "abc123") }
+    }
+
+    @Test
+    fun unconfirmAdRange_fingerprintAlreadyGone_stillUnmarks() = runTest {
+        val tacita = mockk<Tacita> {
+            coEvery { removeFingerprint(any(), any()) } returns false
+        }
+
+        val actions = sideEffects.unconfirmAds(tacita, episodeRepo, downloadsRepo)
+            .output(UnconfirmAdRange(guid, "abc123")).toList()
+
+        // the store agrees the confirmation no longer exists, so the mark clears anyway
+        assertThat(actions).containsExactly(MarkAdRangeUnconfirmed(guid, "abc123"))
+    }
+
+    @Test
+    fun unconfirmAdRange_failureNeverPropagates_andLeavesTheMark() = runTest {
+        val tacita = mockk<Tacita> {
+            coEvery { removeFingerprint(any(), any()) } throws RuntimeException("store is corrupt")
+        }
+
+        val actions = sideEffects.unconfirmAds(tacita, episodeRepo, downloadsRepo)
+            .output(UnconfirmAdRange(guid, "abc123")).toList()
 
         assertThat(actions).isEmpty()
     }

@@ -29,12 +29,23 @@ private fun AppState.reduceUpdateStateAction(action: UpdateStateAction): AppStat
         nowPlaying = nowPlaying?.copy(adBoundaryConfidenceFilter = action.filter.coerceIn(0f, 1f)),
     )
     is MarkAdRangeConfirmed -> copy(nowPlaying = nowPlaying?.withConfirmedRange(action))
+    is MarkAdRangeUnconfirmed -> copy(nowPlaying = nowPlaying?.withoutConfirmedRange(action))
 }
 
-/** Stale confirmations (playback moved to a different episode) leave the state untouched. */
+/** Stale confirmations (playback moved to a different episode) leave the state untouched.
+ * Replaces-by-id rather than appending: re-confirming a range tacita already fingerprinted
+ * hands back the same id and must not duplicate the entry. */
 private fun NowPlayingState.withConfirmedRange(action: MarkAdRangeConfirmed): NowPlayingState =
     if (action.episodeGuid != episodeGuid) this
-    else copy(confirmedAdRanges = confirmedAdRanges + (action.start..action.end))
+    else copy(
+        confirmedAdRanges = confirmedAdRanges.filter { it.fingerprintId != action.fingerprintId } +
+            ConfirmedAd(action.start..action.end, action.fingerprintId),
+    )
+
+/** Same staleness rule as [withConfirmedRange]. */
+private fun NowPlayingState.withoutConfirmedRange(action: MarkAdRangeUnconfirmed): NowPlayingState =
+    if (action.episodeGuid != episodeGuid) this
+    else copy(confirmedAdRanges = confirmedAdRanges.filter { it.fingerprintId != action.fingerprintId })
 
 /** Stale player states (a different or unloaded episode) leave the ui state untouched. */
 private fun NowPlayingState.mergedWith(player: PlayerState): NowPlayingState =

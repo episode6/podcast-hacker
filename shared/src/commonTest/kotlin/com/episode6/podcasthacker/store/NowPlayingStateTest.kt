@@ -2,9 +2,7 @@ package com.episode6.podcasthacker.store
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import assertk.assertions.isFalse
 import assertk.assertions.isNull
-import assertk.assertions.isTrue
 import com.episode6.podcasthacker.data.model.AdBoundary
 import kotlin.test.Test
 import kotlin.time.Duration
@@ -164,28 +162,35 @@ class NowPlayingStateTest {
     }
 
     @Test
-    fun confirmedAd_playheadInsideARange_isTrue() {
-        val state = state(2.minutes).copy(confirmedAdRanges = listOf(1.minutes..5.minutes))
+    fun confirmedAd_playheadInsideARange_returnsIt() {
+        val confirmed = ConfirmedAd(1.minutes..5.minutes, fingerprintId = "fp-1")
+        val state = state(2.minutes).copy(confirmedAdRanges = listOf(confirmed))
 
-        assertThat(state.isInConfirmedAd()).isTrue()
+        assertThat(state.confirmedAdAtPlayhead()).isEqualTo(confirmed)
     }
 
     @Test
     fun confirmedAd_rangeEndsAreInclusive() {
-        val ranges = listOf(1.minutes..5.minutes)
+        val confirmed = ConfirmedAd(1.minutes..5.minutes, fingerprintId = "fp-1")
+        val ranges = listOf(confirmed)
 
-        assertThat(state(1.minutes).copy(confirmedAdRanges = ranges).isInConfirmedAd(), name = "at the start").isTrue()
-        assertThat(state(5.minutes).copy(confirmedAdRanges = ranges).isInConfirmedAd(), name = "at the end").isTrue()
+        assertThat(state(1.minutes).copy(confirmedAdRanges = ranges).confirmedAdAtPlayhead(), name = "at the start")
+            .isEqualTo(confirmed)
+        assertThat(state(5.minutes).copy(confirmedAdRanges = ranges).confirmedAdAtPlayhead(), name = "at the end")
+            .isEqualTo(confirmed)
     }
 
     @Test
-    fun confirmedAd_playheadOutsideEveryRange_isFalse() {
-        val ranges = listOf(1.minutes..5.minutes, 10.minutes..12.minutes)
+    fun confirmedAd_playheadOutsideEveryRange_isNull() {
+        val ranges = listOf(
+            ConfirmedAd(1.minutes..5.minutes, fingerprintId = "fp-1"),
+            ConfirmedAd(10.minutes..12.minutes, fingerprintId = "fp-2"),
+        )
 
-        assertThat(state(30.seconds).copy(confirmedAdRanges = ranges).isInConfirmedAd(), name = "before").isFalse()
-        assertThat(state(7.minutes).copy(confirmedAdRanges = ranges).isInConfirmedAd(), name = "between").isFalse()
-        assertThat(state(13.minutes).copy(confirmedAdRanges = ranges).isInConfirmedAd(), name = "after").isFalse()
-        assertThat(state(3.minutes).isInConfirmedAd(), name = "no confirmations").isFalse()
+        assertThat(state(30.seconds).copy(confirmedAdRanges = ranges).confirmedAdAtPlayhead(), name = "before").isNull()
+        assertThat(state(7.minutes).copy(confirmedAdRanges = ranges).confirmedAdAtPlayhead(), name = "between").isNull()
+        assertThat(state(13.minutes).copy(confirmedAdRanges = ranges).confirmedAdAtPlayhead(), name = "after").isNull()
+        assertThat(state(3.minutes).confirmedAdAtPlayhead(), name = "no confirmations").isNull()
     }
 
     @Test
