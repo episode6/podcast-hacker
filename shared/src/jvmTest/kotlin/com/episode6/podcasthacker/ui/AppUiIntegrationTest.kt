@@ -141,11 +141,11 @@ class AppUiIntegrationTest {
 
         // tapping the result subscribes + pops back to the grid, where the tile appears
         onNodeWithText("Test Podcast").performClick()
-        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Test Podcast"))
 
         // podcast detail: header + episodes from the synced feed
         onNodeWithText("Test Podcast").performClick()
-        waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Episode Two"))
         onNodeWithText("Test Author").assertExists()
 
         // episode detail: show notes rendered from the feed html
@@ -162,15 +162,15 @@ class AppUiIntegrationTest {
         onNode(hasSetTextAction()).performTextInput(FEED_URL)
         waitForExactlyOne(hasText("Subscribe to RSS url"))
         onNodeWithText("Subscribe to RSS url").performClick()
-        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Test Podcast"))
         onNodeWithText("Test Podcast").performClick()
-        waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Episode Two"))
         onNodeWithText("Episode Two").performClick()
         waitForExactlyOne(hasText("Download"))
 
         // download runs through the real tacita pipeline against MockEngine bytes
         onNodeWithText("Download").performClick()
-        waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 30_000)
+        waitForExactlyOne(hasText("Delete Download"))
 
         // play the downloaded episode → the Now Playing sheet expands with live
         // transport controls. matchers are scoped by tag (the icon's contentDescription
@@ -181,20 +181,20 @@ class AppUiIntegrationTest {
         val pausedOnNowPlaying = hasTestTag("playPauseButton") and hasContentDescription("Play")
         val pausedOnMiniBar = hasTestTag("miniPlayerPlayPause") and hasContentDescription("Play")
         onNodeWithText("Play").performClick()
-        waitForExactlyOne(playingOnNowPlaying, timeoutMillis = 10_000)
+        waitForExactlyOne(playingOnNowPlaying)
         onNode(hasContentDescription("Back 15 seconds")).assertExists()
         onNode(playingOnNowPlaying).performClick() // pause
-        waitForExactlyOne(pausedOnNowPlaying, timeoutMillis = 10_000)
+        waitForExactlyOne(pausedOnNowPlaying)
 
         // collapse the sheet: the mini player bar carries the paused state; tapping it
         // re-expands NowPlaying, where Stop clears playback + hides the sheet
         onNode(hasContentDescription("Collapse")).performClick()
-        waitForExactlyOne(pausedOnMiniBar, timeoutMillis = 10_000)
+        waitForExactlyOne(pausedOnMiniBar)
         onNodeWithTag("miniPlayerBar").performClick()
-        waitForExactlyOne(hasText("Stop"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Stop"))
         // the boundary-filter slider pushed Stop below the fold at this window size
         onNodeWithText("Stop").performScrollTo().performClick()
-        waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Delete Download"))
 
         // the episode row now carries the downloaded marker
         onNode(hasContentDescription("Back")).performClick()
@@ -204,7 +204,7 @@ class AppUiIntegrationTest {
         onNodeWithText("Episode Two").performClick()
         waitForExactlyOne(hasText("Delete Download"))
         onNodeWithText("Delete Download").performClick()
-        waitForExactlyOne(hasText("Download"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Download"))
     }
 
     @Test
@@ -221,37 +221,37 @@ class AppUiIntegrationTest {
         onNode(hasSetTextAction()).performTextInput(FEED_URL)
         waitForExactlyOne(hasText("Subscribe to RSS url"))
         onNodeWithText("Subscribe to RSS url").performClick()
-        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Test Podcast"))
         onNodeWithText("Test Podcast").performClick()
-        waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Episode Two"))
         onNodeWithText("Episode Two").performClick()
         waitForExactlyOne(hasText("Download"))
         onNodeWithText("Download").performClick()
-        waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 30_000)
+        waitForExactlyOne(hasText("Delete Download"))
         onNodeWithText("Play").performClick()
-        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Pause"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Pause"))
         // stopping hides the Now Playing sheet, revealing episode detail
         onNodeWithText("Stop").performScrollTo().performClick()
-        waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Delete Download"))
 
         // back on the grid, Recently Played now lists the episode with live actions
         onNode(hasContentDescription("Back")).performClick()
-        waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Episode Two"))
         onNode(hasContentDescription("Back")).performClick()
-        waitForExactlyOne(hasText("Recently Played", substring = true), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Recently Played", substring = true))
         onNodeWithText("Recently Played", substring = true).performClick()
-        waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Episode Two"))
 
         // trash deletes the file: the row stays (play history kept), the trash button
         // greys out, and the play button becomes a live download button
         onNode(hasContentDescription("Delete file")).performClick()
-        waitForExactlyOne(hasContentDescription("Delete file") and isNotEnabled(), timeoutMillis = 10_000)
+        waitForExactlyOne(hasContentDescription("Delete file") and isNotEnabled())
         waitForExactlyOne(hasContentDescription("Download") and isEnabled())
         onNodeWithText("Episode Two").assertExists()
 
         // re-downloading from the row restores playback + delete
         onNode(hasContentDescription("Download")).performClick()
-        waitForExactlyOne(hasContentDescription("Resume") and isEnabled(), timeoutMillis = 30_000)
+        waitForExactlyOne(hasContentDescription("Resume") and isEnabled())
         onNode(hasContentDescription("Delete file") and isEnabled()).assertExists()
     }
 
@@ -269,42 +269,42 @@ class AppUiIntegrationTest {
         onNode(hasSetTextAction()).performTextInput(FEED_URL)
         waitForExactlyOne(hasText("Subscribe to RSS url"))
         onNodeWithText("Subscribe to RSS url").performClick()
-        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Test Podcast"))
         onNodeWithText("Test Podcast").performClick()
-        waitForExactlyOne(hasText("Episode Two"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Episode Two"))
         onNodeWithText("Episode Two").performClick()
         waitForExactlyOne(hasText("Download"))
         onNodeWithText("Download").performClick()
-        waitForExactlyOne(hasText("Delete Download"), timeoutMillis = 30_000)
+        waitForExactlyOne(hasText("Delete Download"))
         onNodeWithText("Play").performClick()
-        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Pause"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Pause"))
         onNode(hasTestTag("playPauseButton") and hasContentDescription("Pause")).performClick()
-        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Play"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Play"))
         onNode(hasContentDescription("Collapse")).performClick()
-        waitForExactlyOne(hasTestTag("miniPlayerPlayPause") and hasContentDescription("Play"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasTestTag("miniPlayerPlayPause") and hasContentDescription("Play"))
 
         // delete the file from Recently Played while the paused bar is up. navigation
         // waits avoid hasText("Episode Two"): the visible mini player carries the same
         // title, so that matcher would never resolve to exactly one node
         onNode(hasContentDescription("Back")).performClick()
-        waitForExactlyOne(hasText("A test feed"), timeoutMillis = 10_000) // podcast detail header
+        waitForExactlyOne(hasText("A test feed")) // podcast detail header
         onNode(hasContentDescription("Back")).performClick()
-        waitForExactlyOne(hasText("Recently Played", substring = true), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Recently Played", substring = true))
         onNodeWithText("Recently Played", substring = true).performClick()
-        waitForExactlyOne(hasContentDescription("Delete file"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasContentDescription("Delete file"))
         onNode(hasContentDescription("Delete file")).performClick()
 
         // the mini player's play button becomes a download button; expanding the sheet
         // shows the same on the big transport button
-        waitForExactlyOne(hasTestTag("miniPlayerPlayPause") and hasContentDescription("Download"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasTestTag("miniPlayerPlayPause") and hasContentDescription("Download"))
         onNodeWithTag("miniPlayerBar").performClick()
-        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Download"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Download"))
 
         // tapping it re-downloads through the real pipeline; play returns and works
         onNode(hasTestTag("playPauseButton") and hasContentDescription("Download")).performClick()
-        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Play"), timeoutMillis = 30_000)
+        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Play"))
         onNode(hasTestTag("playPauseButton") and hasContentDescription("Play")).performClick()
-        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Pause"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Pause"))
     }
 
     @Test
@@ -316,13 +316,13 @@ class AppUiIntegrationTest {
         onNode(hasSetTextAction()).performTextInput(FEED_URL)
         waitForExactlyOne(hasText("Subscribe to RSS url"))
         onNodeWithText("Subscribe to RSS url").performClick()
-        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Test Podcast"))
 
         // long-press the tile → dropdown → unsubscribe empties the grid
         onNodeWithText("Test Podcast").performTouchInput { longClick() }
         waitForExactlyOne(hasText("Unsubscribe"))
         onNodeWithText("Unsubscribe").performClick()
-        waitForExactlyOne(hasText("No subscriptions yet"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("No subscriptions yet"))
     }
 
     /** Regression: the root grid used to keep a (dead) back button after popping back
@@ -339,7 +339,7 @@ class AppUiIntegrationTest {
         waitForExactlyOne(hasText("Nothing played yet"))
         onNode(hasContentDescription("Back")).performClick()
         waitForExactlyOne(hasText("No subscriptions yet"))
-        waitUntilDoesNotExist(hasContentDescription("Back"), timeoutMillis = 10_000)
+        waitUntilDoesNotExist(hasContentDescription("Back"), timeoutMillis = 30_000)
     }
 
     // the import/export menu tests never click Import or a format item: that would
@@ -362,7 +362,7 @@ class AppUiIntegrationTest {
         onNode(hasSetTextAction()).performTextInput(FEED_URL)
         waitForExactlyOne(hasText("Subscribe to RSS url"))
         onNodeWithText("Subscribe to RSS url").performClick()
-        waitForExactlyOne(hasText("Test Podcast"), timeoutMillis = 10_000)
+        waitForExactlyOne(hasText("Test Podcast"))
 
         onNode(hasContentDescription("More options")).performClick()
         waitForExactlyOne(hasText("Export") and isEnabled())
@@ -392,11 +392,13 @@ class AppUiIntegrationTest {
 
     /**
      * [waitUntilExactlyOneExists] but the failure says what the ui actually showed.
-     * The 10s default is the floor for every wait: CI runs these tests concurrently with
+     * The 30s default is the floor for every wait: CI runs these tests concurrently with
      * installer packaging on 2-core runners, and the resulting cpu starvation blew
-     * through a 5s wait at least once (flaked on windows-latest, 2026-07-11).
+     * through a 5s wait (flaked on windows-latest, 2026-07-11) and later a 10s wait
+     * (macos-latest, 2026-07-19, on the search-debounce wait). Waits return as soon as
+     * the matcher succeeds, so the padding costs nothing on healthy runs.
      */
-    private fun ComposeUiTest.waitForExactlyOne(matcher: SemanticsMatcher, timeoutMillis: Long = 10_000) {
+    private fun ComposeUiTest.waitForExactlyOne(matcher: SemanticsMatcher, timeoutMillis: Long = 30_000) {
         try {
             waitUntilExactlyOneExists(matcher, timeoutMillis)
         } catch (e: ComposeTimeoutException) {

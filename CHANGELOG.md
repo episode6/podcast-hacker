@@ -7,6 +7,12 @@
   a trailing spacer the height of the mini player, so the end of the content can be
   scrolled clear of the Now Playing bar instead of being hidden beneath it. The spacer
   disappears when nothing is playing.
+- Internal: raised the UI-test wait floor from 10s to 30s (and applied it to every wait,
+  including the end-to-end test's). CI runs these tests concurrently with installer
+  packaging on 2-core runners, and the resulting cpu starvation blew through a 10s wait
+  on macos-latest (2026-07-19) after previously blowing through a 5s wait on
+  windows-latest (2026-07-11). Waits return as soon as their condition holds, so the
+  padding costs nothing on healthy runs.
 
 ### v1.1.0 - 2026-07-18
 
