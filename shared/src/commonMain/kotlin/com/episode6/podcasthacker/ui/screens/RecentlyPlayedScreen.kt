@@ -37,6 +37,7 @@ import com.episode6.podcasthacker.store.EpisodeDownloadStatus
 import com.episode6.podcasthacker.store.PlayEpisode
 import com.episode6.podcasthacker.store.TogglePlayPause
 import com.episode6.podcasthacker.ui.nav.EpisodeDetailRoute
+import com.episode6.podcasthacker.ui.nowplaying.MiniPlayerSpacer
 import com.episode6.podcasthacker.ui.util.AppIcons
 import com.episode6.podcasthacker.ui.util.formatShortDate
 import com.episode6.podcasthacker.ui.util.stateOf
@@ -93,6 +94,7 @@ internal fun RecentlyPlayedScreen(navController: NavController) {
                 )
                 HorizontalDivider()
             }
+            item(key = "mini-player-spacer") { MiniPlayerSpacer() }
         }
     }
 }

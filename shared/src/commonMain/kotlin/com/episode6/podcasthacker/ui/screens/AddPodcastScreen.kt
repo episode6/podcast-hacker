@@ -32,6 +32,7 @@ import com.episode6.podcasthacker.store.SubscribeToPodcast
 import com.episode6.podcasthacker.ui.addpodcast.AddPodcastViewModel
 import com.episode6.podcasthacker.ui.addpodcast.PodcastSearchResult
 import com.episode6.podcasthacker.ui.addpodcast.SetQuery
+import com.episode6.podcasthacker.ui.nowplaying.MiniPlayerSpacer
 import com.episode6.redux.compose.collectAsState
 
 @Composable
@@ -74,6 +75,7 @@ internal fun AddPodcastScreen(navController: NavController) {
                 items(state.results, key = { it.feedUrl }) { result ->
                     SearchResultRow(result = result, onClick = { subscribeAndClose(result.feedUrl) })
                 }
+                item(key = "mini-player-spacer") { MiniPlayerSpacer() }
             }
         }
     }
