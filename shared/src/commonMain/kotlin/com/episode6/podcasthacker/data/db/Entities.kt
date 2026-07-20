@@ -57,3 +57,29 @@ data class AdBoundaryCandidateEntity(
     // rows written before confidence existed migrate to the mid value
     @ColumnInfo(defaultValue = "0.5") val confidence: Float = 0.5f,
 )
+
+/**
+ * One tacita log line from an episode's most recent download, kept only on snapshot
+ * builds and shown at the bottom of Now Playing — the ear-verification aid for tacita's
+ * fingerprint/acoustic matches, whose evidence (matched spans, match-pass timing) exists
+ * only in these lines.
+ */
+@Entity(
+    tableName = "download_log_lines",
+    foreignKeys = [
+        ForeignKey(
+            entity = EpisodeEntity::class,
+            parentColumns = ["guid"],
+            childColumns = ["episodeGuid"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("episodeGuid")],
+)
+data class DownloadLogLineEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val episodeGuid: String,
+    /** Emission order within the download. */
+    val seq: Int,
+    val line: String,
+)

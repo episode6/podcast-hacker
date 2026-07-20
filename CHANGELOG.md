@@ -6,6 +6,19 @@
   scroll position anchored to the Recently Played / Add Podcast tiles (the only items
   rendered while subscriptions loaded), so the podcasts were prepended above the
   viewport; the grid now snaps back to the top when the subscriptions first arrive.
+- **Download log on Now Playing (snapshot builds only)**: tacita's diagnostic log lines
+  from an episode's most recent download are now captured per episode, persisted, and
+  shown at the bottom of the Now Playing sheet's scrollable column. This is the
+  ear-verification workbench for tacita's ad-fingerprint matching: matched spans,
+  acoustic match-pass timing, clean-source resolution, and ad-cut outcomes exist only in
+  these lines. Selectable text, so a line can be copied off the device. Release builds
+  capture nothing and show nothing.
+- **Acoustic fingerprint store wired up (snapshot builds only, tacita 0.0.5)**:
+  downloads now pass tacita's globally-shared acoustic store and feed id, so diff-proven
+  ad cuts seed acoustic fingerprints that survive per-episode re-encoding
+  (Simplecast-class hosts), and recurrences in later downloads are reported — log-only,
+  pending real-feed ear verification via the download log above. Snapshot-gated because
+  the acoustic match pass costs a full-episode decode; release builds skip it entirely.
 - Fixed a flicker at the end of every episode download where the progress indicator
   briefly reverted to a download button before settling on the play button. The bug
   lived in the store (the in-flight download entry was cleared before Room's persisted

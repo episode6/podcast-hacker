@@ -90,6 +90,7 @@ class PlaybackSideEffectsTest {
         every { downloadedFileExists(episode.guid) } returns true
         every { downloadFilePath(episode.guid) } returns downloadPath
         coEvery { adBoundaryCandidates(episode.guid) } returns emptyList()
+        coEvery { downloadLog(episode.guid) } returns emptyList()
     }
     private val subscriptionRepository = mockk<SubscriptionRepository> {
         coEvery { podcast(episode.feedUrl) } returns podcast
