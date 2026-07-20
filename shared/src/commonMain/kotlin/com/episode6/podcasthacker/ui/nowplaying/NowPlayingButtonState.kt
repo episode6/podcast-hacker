@@ -24,8 +24,12 @@ internal sealed interface NowPlayingButtonState {
 @Composable
 internal fun nowPlayingButtonState(nowPlaying: NowPlayingState): NowPlayingButtonState {
     val store = LocalAppGraph.current.appStore
-    val downloadStatus by store.stateOf { downloads[nowPlaying.episodeGuid] }
-    val downloadState by store.stateOf { episode(nowPlaying.episodeGuid)?.downloadState }
+    // keyed on the guid: this composable stays composed while playback moves between
+    // episodes (the mini bar during an in-place episode switch), and an unkeyed stateOf
+    // would keep watching the first episode's download slot forever
+    val guid = nowPlaying.episodeGuid
+    val downloadStatus by store.stateOf(guid) { downloads[guid] }
+    val downloadState by store.stateOf(guid) { episode(guid)?.downloadState }
     return nowPlayingButtonState(downloadStatus, downloadState)
 }
 
