@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -129,6 +131,15 @@ private fun PodcastGrid(
     store: AppStore,
     subscriptions: List<Podcast>,
 ) {
+    // The grid anchors its scroll position to the first visible item's key. On a cold
+    // start subscriptions load async, so the first frame holds only the trailing label
+    // tiles; the podcasts are then prepended above that anchor, leaving the grid parked
+    // at the bottom. Snap back on the empty->populated transition so a cold start lands
+    // at the top; later prepends (new subscriptions, re-sorts) never flip the key.
+    val gridState = rememberLazyGridState()
+    LaunchedEffect(subscriptions.isEmpty()) {
+        if (subscriptions.isNotEmpty()) gridState.scrollToItem(0)
+    }
     Column(modifier = Modifier.fillMaxSize()) {
         if (subscriptions.isEmpty()) {
             Text(
@@ -139,6 +150,7 @@ private fun PodcastGrid(
         }
         LazyVerticalGrid(
             columns = GridCells.Adaptive(160.dp),
+            state = gridState,
             modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
