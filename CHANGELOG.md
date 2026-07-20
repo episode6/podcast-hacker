@@ -2,6 +2,10 @@
 
 ### v1.1.10 - Unreleased
 
+- Fixed the podcast grid starting scrolled to the bottom on a cold start. The grid's
+  scroll position anchored to the Recently Played / Add Podcast tiles (the only items
+  rendered while subscriptions loaded), so the podcasts were prepended above the
+  viewport; the grid now snaps back to the top when the subscriptions first arrive.
 - Fixed a flicker at the end of every episode download where the progress indicator
   briefly reverted to a download button before settling on the play button. The bug
   lived in the store (the in-flight download entry was cleared before Room's persisted
