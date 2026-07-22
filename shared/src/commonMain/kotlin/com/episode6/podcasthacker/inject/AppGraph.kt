@@ -13,6 +13,7 @@ import com.episode6.podcasthacker.data.network.platformHttpClient
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
 import com.episode6.podcasthacker.data.repo.SubscriptionRepository
 import com.episode6.podcasthacker.downloads.DownloadScheduler
+import com.episode6.podcasthacker.downloads.TacitaFactory
 import com.episode6.podcasthacker.downloads.createDownloadScheduler
 import com.episode6.podcasthacker.playback.PodcastPlayer
 import com.episode6.podcasthacker.playback.createPodcastPlayer
@@ -67,11 +68,15 @@ interface AppGraph {
         }
 
     @Provides @SingleIn(AppScope::class)
-    fun provideTacita(httpClient: HttpClient): Tacita =
+    fun provideTacitaFactory(httpClient: HttpClient): TacitaFactory =
         // tacita guards its internal passes (clean-source probes, the ad-boundary
-        // detector) and reports their failures only through this lambda — discard it and
-        // those passes fail invisibly
-        Tacita.withClient(reuse = true, log = { println("tacita: $it") }) { httpClient }
+        // detector) and reports their failures only through the log lambda — discard it
+        // and those passes fail invisibly
+        TacitaFactory { log -> Tacita.withClient(reuse = true, log = log) { httpClient } }
+
+    @Provides @SingleIn(AppScope::class)
+    fun provideTacita(tacitaFactory: TacitaFactory): Tacita =
+        tacitaFactory.create { println("tacita: $it") }
 
     @Provides @SingleIn(AppScope::class)
     fun provideAppDatabase(context: PlatformContext, appDirs: AppDirs): AppDatabase {

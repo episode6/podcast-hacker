@@ -1,5 +1,6 @@
 package com.episode6.podcasthacker.store.sideeffects
 
+import com.episode6.podcasthacker.BuildInfo
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
 import com.episode6.podcasthacker.data.repo.SubscriptionRepository
@@ -80,6 +81,7 @@ interface PlaybackSideEffects {
                 position = episode.playbackPosition,
                 duration = episode.duration,
                 adBoundaries = downloadsRepository.adBoundaryCandidates(episode.guid),
+                downloadLog = downloadsRepository.snapshotDownloadLog(episode.guid),
             )
             if (!downloadsRepository.downloadedFileExists(episode.guid)) {
                 emit(SetNowPlaying(nowPlaying.copy(error = "Episode isn't downloaded yet")))
@@ -137,6 +139,7 @@ interface PlaybackSideEffects {
                     position = episode.playbackPosition,
                     duration = episode.duration,
                     adBoundaries = downloadsRepository.adBoundaryCandidates(episode.guid),
+                    downloadLog = downloadsRepository.snapshotDownloadLog(episode.guid),
                 )
                 // don't clobber playback that's already up (an active episode, or the
                 // user racing the db reads)
@@ -217,3 +220,8 @@ internal fun Flow<PlayerState>.positionsToPersist(minProgress: Duration = 10.sec
         }
     }
 }
+
+/** The download log renders only on snapshot builds (Now Playing's debug section); skip
+ * the db read entirely everywhere else. */
+private suspend fun DownloadsRepository.snapshotDownloadLog(episodeGuid: String): List<String> =
+    if (BuildInfo.IS_SNAPSHOT) downloadLog(episodeGuid) else emptyList()

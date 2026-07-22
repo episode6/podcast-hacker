@@ -73,6 +73,10 @@ data class NowPlayingState(
      * fingerprint and removed again when one is revoked. Session-scoped: cleared with
      * the rest of this state when playback moves to another episode. */
     val confirmedAdRanges: List<ConfirmedAd> = emptyList(),
+    /** Tacita's log lines from this episode's last download — the evidence trail for
+     * ear-verifying fingerprint/acoustic matches. Populated on snapshot builds only and
+     * rendered at the bottom of Now Playing; always empty on release builds. */
+    val downloadLog: List<String> = emptyList(),
 )
 
 /** An ad range the listener has ear-checked this session, kept with the store id of the

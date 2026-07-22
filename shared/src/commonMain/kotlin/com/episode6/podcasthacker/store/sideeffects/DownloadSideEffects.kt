@@ -1,11 +1,13 @@
 package com.episode6.podcasthacker.store.sideeffects
 
 import com.episode6.podcasthacker.data.model.DownloadState as PersistedDownloadState
+import com.episode6.podcasthacker.BuildInfo
 import com.episode6.podcasthacker.data.model.AdFingerprint
 import com.episode6.podcasthacker.data.model.toDomain
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
 import com.episode6.podcasthacker.downloads.DownloadScheduler
+import com.episode6.podcasthacker.downloads.TacitaFactory
 import com.episode6.podcasthacker.store.AppState
 import com.episode6.podcasthacker.store.ConfirmAdRange
 import com.episode6.podcasthacker.store.DeleteDownload
@@ -59,7 +61,7 @@ interface DownloadSideEffects {
      * Failure without blocking the rest of the queue. */
     @OptIn(ExperimentalCoroutinesApi::class)
     @Provides @IntoSet fun downloadEpisodes(
-        tacita: Tacita,
+        tacitaFactory: TacitaFactory,
         episodeRepository: EpisodeRepository,
         downloadsRepository: DownloadsRepository,
     ): SideEffect<AppState> = sideEffect {
@@ -71,7 +73,7 @@ interface DownloadSideEffects {
             // collect path always accepts actions immediately.
             .buffer(Channel.UNLIMITED)
             .flatMapMerge(concurrency = MAX_CONCURRENT_DOWNLOADS) { action ->
-                flow { downloadEpisode(action.episodeGuid, tacita, episodeRepository, downloadsRepository) }
+                flow { downloadEpisode(action.episodeGuid, tacitaFactory, episodeRepository, downloadsRepository) }
             }
     }
 
@@ -277,7 +279,7 @@ interface DownloadSideEffects {
 
 private suspend fun FlowCollector<Action>.downloadEpisode(
     episodeGuid: String,
-    tacita: Tacita,
+    tacitaFactory: TacitaFactory,
     episodeRepository: EpisodeRepository,
     downloadsRepository: DownloadsRepository,
 ) {
@@ -300,6 +302,16 @@ private suspend fun FlowCollector<Action>.downloadEpisode(
     emitStatus(EpisodeDownloadStatus.Starting)
     val outputFile = downloadsRepository.downloadFilePath(episodeGuid)
     downloadsRepository.prepareForDownload(episodeGuid)
+    // A per-download tacita instance routes this download's log lines to this capture;
+    // on snapshot builds they're persisted below and shown at the bottom of Now Playing.
+    // The lines are the only evidence tacita's fingerprint/acoustic matches leave behind
+    // (matched spans, match-pass timing), and ear-verifying those matched spans is what
+    // graduates matching from log-only to actual candidates/cuts upstream.
+    val logLines = mutableListOf<String>()
+    val tacita = tacitaFactory.create { line ->
+        println("tacita: $line")
+        logLines += line
+    }
     val result = runCatching {
         tacita.downloadPodcast(
             url = audioUrl,
@@ -317,6 +329,12 @@ private suspend fun FlowCollector<Action>.downloadEpisode(
             // strengthen it, and recurrences of known creatives come back as
             // high-confidence boundary candidates
             fingerprintStore = downloadsRepository.fingerprintStorePath(episode.feedUrl),
+            // the globally-shared acoustic store, snapshot builds only: tacita's acoustic
+            // matching is log-only (pending real-feed ear verification via the download
+            // log above) and its match pass costs a full-episode decode — release builds
+            // shouldn't pay that for lines they never show
+            acousticFingerprintStore = downloadsRepository.acousticFingerprintStorePath().takeIf { BuildInfo.IS_SNAPSHOT },
+            feedId = episode.feedUrl.takeIf { BuildInfo.IS_SNAPSHOT },
         ).collect { state ->
             when (state) {
                 is DownloadState.Downloading -> emitStatus(
@@ -344,6 +362,15 @@ private suspend fun FlowCollector<Action>.downloadEpisode(
                 }
             }
         }
+    }
+    // persisted for success and failure alike — failure lines are diagnostics too — but
+    // never allowed to fail the download itself
+    if (BuildInfo.IS_SNAPSHOT) {
+        runCatching { downloadsRepository.saveDownloadLog(episodeGuid, logLines) }
+            .exceptionOrNull()?.let {
+                if (it is CancellationException) throw it
+                println("tacita: saving download log failed: ${it.message}")
+            }
     }
     result.exceptionOrNull()?.let {
         if (it is CancellationException) throw it

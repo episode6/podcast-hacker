@@ -2,6 +2,7 @@ package com.episode6.podcasthacker.data.repo
 
 import com.episode6.podcasthacker.AppDirs
 import com.episode6.podcasthacker.data.db.AppDatabase
+import com.episode6.podcasthacker.data.db.DownloadLogLineEntity
 import com.episode6.podcasthacker.data.model.AdBoundary
 import com.episode6.podcasthacker.data.model.DownloadState
 import com.episode6.podcasthacker.data.model.toDomain
@@ -43,6 +44,16 @@ class DownloadsRepository(
     fun fingerprintStorePath(feedUrl: String): Path =
         appDirs.dataDir / "fingerprints" / "${feedUrl.fileSafeHash()}.tacita-fp"
 
+    /**
+     * The tacita *acoustic* fingerprint store. One global file (not per-feed): tacita's
+     * acoustic store carries per-feed attributions internally, and its docs call for
+     * sharing one store across every followed feed so a creative confirmed on one feed
+     * can be recognized on another. Snapshot builds only for now — acoustic matching is
+     * log-only in tacita pending real-feed ear verification (see downloadEpisode).
+     */
+    fun acousticFingerprintStorePath(): Path =
+        appDirs.dataDir / "fingerprints" / "acoustic.tacita-afp"
+
     fun downloadedFileExists(episodeGuid: String): Boolean = fs.exists(downloadFilePath(episodeGuid))
 
     /** Creates the parent dirs both download outputs need. */
@@ -68,6 +79,7 @@ class DownloadsRepository(
         deleteReferenceFile(episodeGuid)
         markDownloaded(episodeGuid, downloaded = false)
         db.adBoundaryCandidateDao().deleteForEpisode(episodeGuid)
+        db.downloadLogDao().deleteForEpisode(episodeGuid)
     }
 
     /** Candidates describe the downloaded file's timeline, so a re-download replaces them. */
@@ -77,6 +89,18 @@ class DownloadsRepository(
 
     suspend fun adBoundaryCandidates(episodeGuid: String): List<AdBoundary> =
         db.adBoundaryCandidateDao().getForEpisode(episodeGuid).map { it.toDomain() }
+
+    /** Tacita's log lines from the episode's latest download attempt (snapshot builds
+     * only — see downloadEpisode); like ad-boundary candidates, a re-download replaces them. */
+    suspend fun saveDownloadLog(episodeGuid: String, lines: List<String>) {
+        db.downloadLogDao().replaceForEpisode(
+            guid = episodeGuid,
+            lines = lines.mapIndexed { i, line -> DownloadLogLineEntity(episodeGuid = episodeGuid, seq = i, line = line) },
+        )
+    }
+
+    suspend fun downloadLog(episodeGuid: String): List<String> =
+        db.downloadLogDao().getForEpisode(episodeGuid).map { it.line }
 }
 
 private fun String.fileSafeHash(): String = encodeUtf8().sha256().hex()

@@ -10,7 +10,9 @@ import com.episode6.podcasthacker.data.model.Episode
 import com.episode6.podcasthacker.data.model.Podcast
 import com.episode6.podcasthacker.data.repo.DownloadsRepository
 import com.episode6.podcasthacker.data.repo.EpisodeRepository
+import com.episode6.podcasthacker.BuildInfo
 import com.episode6.podcasthacker.downloads.DownloadScheduler
+import com.episode6.podcasthacker.downloads.TacitaFactory
 import com.episode6.podcasthacker.store.AppState
 import com.episode6.podcasthacker.store.ConfirmAdRange
 import com.episode6.podcasthacker.store.DeleteDownload
@@ -60,6 +62,12 @@ class DownloadSideEffectsTest {
     private val referenceFile: Path = "/cache/hash.adref".toPath()
     private val fingerprintStore: Path = "/data/fingerprints/feedhash.tacita-fp".toPath()
 
+    // production gates the acoustic store + feedId (and log persistence) on snapshot
+    // builds, so expectations here follow the same flag
+    private val acousticStorePath: Path = "/data/fingerprints/acoustic.tacita-afp".toPath()
+    private val acousticStore: Path? = acousticStorePath.takeIf { BuildInfo.IS_SNAPSHOT }
+    private val feedId: String? = "feed".takeIf { BuildInfo.IS_SNAPSHOT }
+
     private val sideEffects = object : DownloadSideEffects {}
 
     private val enclosureBytes = 59_568_000L
@@ -80,6 +88,7 @@ class DownloadSideEffectsTest {
         every { referenceFilePath(guid) } returns referenceFile
         every { downloadedFileExists(guid) } returns false
         every { fingerprintStorePath(any()) } returns fingerprintStore
+        every { acousticFingerprintStorePath() } returns acousticStorePath
         coEvery { markDownloaded(any(), any()) } returns Unit
         coEvery { deleteDownload(any()) } returns Unit
     }
@@ -97,7 +106,7 @@ class DownloadSideEffectsTest {
     fun mapsTacitaStates_toEpisodeStatuses() = runTest {
         val tacita = mockk<Tacita> {
             every {
-                downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds, fingerprintStore)
+                downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds, fingerprintStore, acousticStore, feedId)
             } returns flowOf(
                 DownloadState.Downloading(outputFile, 0.25f),
                 DownloadState.Downloading(outputFile, 0.75f),
@@ -107,7 +116,7 @@ class DownloadSideEffectsTest {
             )
         }
 
-        val actions = sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+        val actions = sideEffects.downloadEpisodes(TacitaFactory { tacita }, episodeRepo, downloadsRepo)
             .output(DownloadEpisode(guid)).toList()
 
         assertThat(actions).containsExactly(
@@ -130,7 +139,7 @@ class DownloadSideEffectsTest {
     fun progressUpdates_quantizedToWholePercents_andDeduped() = runTest {
         val tacita = mockk<Tacita> {
             every {
-                downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds, fingerprintStore)
+                downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds, fingerprintStore, acousticStore, feedId)
             } returns flowOf(
                 DownloadState.Downloading(outputFile, 0.0f),
                 DownloadState.Downloading(outputFile, 0.001f),
@@ -145,7 +154,7 @@ class DownloadSideEffectsTest {
             )
         }
 
-        val actions = sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+        val actions = sideEffects.downloadEpisodes(TacitaFactory { tacita }, episodeRepo, downloadsRepo)
             .output(DownloadEpisode(guid)).toList()
 
         assertThat(actions).containsExactly(
@@ -162,7 +171,7 @@ class DownloadSideEffectsTest {
     fun completedDownload_persistsAdBoundaryCandidates_beforeDownloadedFlag() = runTest {
         val tacita = mockk<Tacita> {
             every {
-                downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds, fingerprintStore)
+                downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds, fingerprintStore, acousticStore, feedId)
             } returns flowOf(
                 DownloadState.Complete(
                     listOf(
@@ -173,7 +182,7 @@ class DownloadSideEffectsTest {
             )
         }
 
-        sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+        sideEffects.downloadEpisodes(TacitaFactory { tacita }, episodeRepo, downloadsRepo)
             .output(DownloadEpisode(guid)).toList()
 
         coVerifyOrder {
@@ -193,17 +202,68 @@ class DownloadSideEffectsTest {
         every { downloadsRepo.downloadedFileExists(guid) } returns true
         val tacita = mockk<Tacita> {
             every {
-                downloadPodcast(audioUrl, outputFile, referenceFile, true, true, enclosureBytes, duration.inWholeSeconds, fingerprintStore)
+                downloadPodcast(audioUrl, outputFile, referenceFile, true, true, enclosureBytes, duration.inWholeSeconds, fingerprintStore, acousticStore, feedId)
             } returns flowOf(
                 DownloadState.Complete(),
             )
         }
 
-        sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+        sideEffects.downloadEpisodes(TacitaFactory { tacita }, episodeRepo, downloadsRepo)
             .output(DownloadEpisode(guid)).toList()
 
         coVerify(exactly = 1) {
-            tacita.downloadPodcast(audioUrl, outputFile, referenceFile, true, true, enclosureBytes, duration.inWholeSeconds, fingerprintStore)
+            tacita.downloadPodcast(audioUrl, outputFile, referenceFile, true, true, enclosureBytes, duration.inWholeSeconds, fingerprintStore, acousticStore, feedId)
+        }
+    }
+
+    /** The download log is the ear-verification evidence for tacita's fingerprint and
+     * acoustic matching — each download's lines land in the db keyed by episode (on
+     * snapshot builds), where Now Playing renders them. */
+    @Test
+    fun downloadLogLines_persistPerEpisode_onSnapshotBuilds() = runTest {
+        val tacita = mockk<Tacita>()
+        var log: ((String) -> Unit)? = null
+        every {
+            tacita.downloadPodcast(audioUrl, outputFile, referenceFile, false, true, enclosureBytes, duration.inWholeSeconds, fingerprintStore, acousticStore, feedId)
+        } returns flow {
+            log?.invoke("AdCutter: hash.mp3: AdsCut(adBreaksRemoved=1)")
+            emit(DownloadState.Complete())
+        }
+
+        sideEffects.downloadEpisodes(TacitaFactory { l -> log = l; tacita }, episodeRepo, downloadsRepo)
+            .output(DownloadEpisode(guid)).toList()
+
+        if (BuildInfo.IS_SNAPSHOT) {
+            coVerify(exactly = 1) { downloadsRepo.saveDownloadLog(guid, listOf("AdCutter: hash.mp3: AdsCut(adBreaksRemoved=1)")) }
+        } else {
+            coVerify(exactly = 0) { downloadsRepo.saveDownloadLog(any(), any()) }
+        }
+    }
+
+    /** Failure lines are diagnostics too — a failed download still records what tacita
+     * reported before it died. */
+    @Test
+    fun downloadLogLines_persist_evenWhenTheDownloadFails() = runTest {
+        val tacita = mockk<Tacita>()
+        var log: ((String) -> Unit)? = null
+        every {
+            tacita.downloadPodcast(audioUrl, outputFile, any(), any(), any(), any(), any(), any(), any(), any())
+        } returns flow {
+            log?.invoke("CleanSourceResolver: probe failed for $audioUrl: boom")
+            throw RuntimeException("boom")
+        }
+
+        val actions = sideEffects.downloadEpisodes(TacitaFactory { l -> log = l; tacita }, episodeRepo, downloadsRepo)
+            .output(DownloadEpisode(guid)).toList()
+
+        assertThat(actions).containsExactly(
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Starting),
+            SetEpisodeDownloadStatus(guid, EpisodeDownloadStatus.Failure("boom")),
+        )
+        if (BuildInfo.IS_SNAPSHOT) {
+            coVerify(exactly = 1) {
+                downloadsRepo.saveDownloadLog(guid, listOf("CleanSourceResolver: probe failed for $audioUrl: boom"))
+            }
         }
     }
 
@@ -218,15 +278,15 @@ class DownloadSideEffectsTest {
         every { downloadsRepo.downloadedFileExists(otherGuid) } returns false
 
         val tacita = mockk<Tacita> {
-            every { downloadPodcast(audioUrl, outputFile, any(), any(), any(), any(), any(), any()) } returns flow {
+            every { downloadPodcast(audioUrl, outputFile, any(), any(), any(), any(), any(), any(), any(), any()) } returns flow {
                 throw RuntimeException("boom")
             }
-            every { downloadPodcast(audioUrl, otherOutput, any(), any(), any(), any(), any(), any()) } returns flowOf(
+            every { downloadPodcast(audioUrl, otherOutput, any(), any(), any(), any(), any(), any(), any(), any()) } returns flowOf(
                 DownloadState.Complete(),
             )
         }
 
-        val actions = sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+        val actions = sideEffects.downloadEpisodes(TacitaFactory { tacita }, episodeRepo, downloadsRepo)
             .output(DownloadEpisode(guid), DownloadEpisode(otherGuid)).toList()
 
         assertThat(actions).containsExactly(
@@ -252,7 +312,7 @@ class DownloadSideEffectsTest {
             every { downloadsRepo.downloadFilePath(g) } returns output
             every { downloadsRepo.referenceFilePath(g) } returns "/cache/$g.adref".toPath()
             every { downloadsRepo.downloadedFileExists(g) } returns false
-            every { tacita.downloadPodcast(audioUrl, output, any(), any(), any(), any(), any(), any()) } returns flow {
+            every { tacita.downloadPodcast(audioUrl, output, any(), any(), any(), any(), any(), any(), any(), any()) } returns flow {
                 started += g
                 gates.getValue(g).await()
                 emit(DownloadState.Complete())
@@ -260,7 +320,7 @@ class DownloadSideEffectsTest {
         }
 
         val collector = launch {
-            sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+            sideEffects.downloadEpisodes(TacitaFactory { tacita }, episodeRepo, downloadsRepo)
                 .output(*guids.map { DownloadEpisode(it) }.toTypedArray())
                 .toList()
         }
@@ -293,7 +353,7 @@ class DownloadSideEffectsTest {
             every { downloadsRepo.downloadFilePath(g) } returns output
             every { downloadsRepo.referenceFilePath(g) } returns "/cache/$g.adref".toPath()
             every { downloadsRepo.downloadedFileExists(g) } returns false
-            every { tacita.downloadPodcast(audioUrl, output, any(), any(), any(), any(), any(), any()) } returns flow {
+            every { tacita.downloadPodcast(audioUrl, output, any(), any(), any(), any(), any(), any(), any(), any()) } returns flow {
                 started += g
                 gates.getValue(g).await()
                 emit(DownloadState.Complete())
@@ -310,7 +370,7 @@ class DownloadSideEffectsTest {
             }
             coEvery { currentState() } returns AppState()
         }
-        val effect = sideEffects.downloadEpisodes(tacita, episodeRepo, downloadsRepo)
+        val effect = sideEffects.downloadEpisodes(TacitaFactory { tacita }, episodeRepo, downloadsRepo)
 
         val collector = launch { with(effect) { context.act() }.toList() }
         runCurrent()
@@ -328,7 +388,7 @@ class DownloadSideEffectsTest {
         coEvery { episodeRepo.episode(guid) } returns
             Episode(guid = guid, feedUrl = "feed", title = "Ep", audioUrl = null)
 
-        val actions = sideEffects.downloadEpisodes(mockk(), episodeRepo, downloadsRepo)
+        val actions = sideEffects.downloadEpisodes(TacitaFactory { mockk() }, episodeRepo, downloadsRepo)
             .output(DownloadEpisode(guid)).toList()
 
         assertThat(actions).containsExactly(

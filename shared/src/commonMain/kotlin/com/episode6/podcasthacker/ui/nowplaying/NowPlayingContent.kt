@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
+import com.episode6.podcasthacker.BuildInfo
 import com.episode6.podcasthacker.inject.LocalAppGraph
 import com.episode6.podcasthacker.store.ConfirmAdRange
 import com.episode6.podcasthacker.store.DownloadEpisode
@@ -190,6 +193,46 @@ internal fun NowPlayingContent(
                 Spacer(Modifier.height(24.dp))
                 OutlinedButton(onClick = { store.dispatch(StopPlayback) }) {
                     Text("Stop")
+                }
+                if (BuildInfo.IS_SNAPSHOT && nowPlaying.downloadLog.isNotEmpty()) {
+                    Spacer(Modifier.height(32.dp))
+                    DownloadLogSection(nowPlaying.downloadLog)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Snapshot-build debug aid: tacita's log lines from this episode's last download,
+ * parked below the real controls in the scrollable column. This is the ear-verification
+ * workbench for tacita's fingerprint/acoustic matching — matched spans and match-pass
+ * timing exist only in these lines, and listening at those spans is what graduates
+ * matching from log-only toward real candidates/cuts. Selectable so a line can be
+ * copied off the device.
+ */
+@Composable
+private fun DownloadLogSection(lines: List<String>) {
+    Column(modifier = Modifier.fillMaxWidth().testTag("downloadLogSection")) {
+        Text(
+            text = "Download log (snapshot builds only)",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+        SelectionContainer {
+            Column {
+                lines.forEach { line ->
+                    Text(
+                        text = line,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            lineHeight = 14.sp,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 2.dp),
+                    )
                 }
             }
         }

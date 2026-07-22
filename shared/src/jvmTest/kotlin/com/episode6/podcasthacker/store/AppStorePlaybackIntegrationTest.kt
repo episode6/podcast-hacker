@@ -73,6 +73,7 @@ class AppStorePlaybackIntegrationTest {
         every { downloadedFileExists(episode.guid) } returns true
         every { downloadFilePath(episode.guid) } returns "/downloads/abc.mp3".toPath()
         coEvery { adBoundaryCandidates(episode.guid) } returns emptyList()
+        coEvery { downloadLog(episode.guid) } returns emptyList()
     }
     private val subscriptionRepository = mockk<SubscriptionRepository> {
         coEvery { podcast(episode.feedUrl) } returns Podcast(feedUrl = episode.feedUrl, title = "Test Podcast")
