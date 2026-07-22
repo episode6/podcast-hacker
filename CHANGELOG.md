@@ -2,6 +2,12 @@
 
 ### v1.1.10 - Unreleased
 
+- Fixed the now-playing bar's play/download button getting stuck on a previous episode:
+  after deleting the playing episode's file (bar correctly showing a download button)
+  and then playing a different downloaded episode, the bar showed the new episode's
+  info but kept the deleted episode's download button. The button's state subscription
+  captured the first episode's guid and was never re-keyed when playback moved to
+  another episode; it now re-subscribes whenever the now-playing episode changes.
 - Fixed the podcast grid starting scrolled to the bottom on a cold start. The grid's
   scroll position anchored to the Recently Played / Add Podcast tiles (the only items
   rendered while subscriptions loaded), so the podcasts were prepended above the

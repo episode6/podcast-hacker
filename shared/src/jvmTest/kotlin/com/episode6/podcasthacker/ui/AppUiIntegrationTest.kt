@@ -307,6 +307,62 @@ class AppUiIntegrationTest {
         waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Pause"))
     }
 
+    /**
+     * Regression: after the now-playing episode's file was deleted (bar showing the
+     * download button), playing a *different* episode left the bar's button stuck on
+     * the deleted episode — stateOf's unkeyed remember kept the button mapped to the
+     * first episode's guid. Playing from the podcast-detail row (which doesn't expand
+     * the sheet) keeps the mini player composed across the switch, pinning the bug.
+     */
+    @Test
+    fun nowPlayingBar_playDifferentEpisodeAfterDelete_buttonTracksNewEpisode() = runComposeUiTest {
+        setContent { App(testGraph()) }
+
+        // subscribe, then download + play episode A (Episode Two), pause, collapse
+        onNodeWithText("Add Podcast", substring = true).performClick()
+        onNode(hasSetTextAction()).performTextInput(FEED_URL)
+        waitForExactlyOne(hasText("Subscribe to RSS url"))
+        onNodeWithText("Subscribe to RSS url").performClick()
+        waitForExactlyOne(hasText("Test Podcast"))
+        onNodeWithText("Test Podcast").performClick()
+        waitForExactlyOne(hasText("Episode Two"))
+        onNodeWithText("Episode Two").performClick()
+        waitForExactlyOne(hasText("Download"))
+        onNodeWithText("Download").performClick()
+        waitForExactlyOne(hasText("Delete Download"))
+        onNodeWithText("Play").performClick()
+        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Pause"))
+        onNode(hasTestTag("playPauseButton") and hasContentDescription("Pause")).performClick()
+        waitForExactlyOne(hasTestTag("playPauseButton") and hasContentDescription("Play"))
+        onNode(hasContentDescription("Collapse")).performClick()
+        waitForExactlyOne(hasTestTag("miniPlayerPlayPause") and hasContentDescription("Play"))
+
+        // delete A from its episode detail (revealed beneath the collapsed sheet):
+        // the bar correctly swaps to a download button
+        onNodeWithText("Delete Download").performClick()
+        waitForExactlyOne(hasTestTag("miniPlayerPlayPause") and hasContentDescription("Download"))
+
+        // download episode B (Episode One) from its detail screen. navigation waits
+        // avoid the episode titles: the mini player carries "Episode Two" too
+        onNode(hasContentDescription("Back")).performClick()
+        waitForExactlyOne(hasText("A test feed")) // podcast detail header
+        onNodeWithText("Episode One").performClick()
+        waitForExactlyOne(hasText("notes one"))
+        onNodeWithText("Download").performClick()
+        waitForExactlyOne(hasText("Delete Download"))
+
+        // play B from the podcast-detail row — unlike episode detail's Play button this
+        // doesn't expand the sheet, so the mini player stays composed across the switch
+        onNode(hasContentDescription("Back")).performClick()
+        waitForExactlyOne(hasText("A test feed"))
+        waitForExactlyOne(hasContentDescription("Play") and !hasTestTag("miniPlayerPlayPause"))
+        onNode(hasContentDescription("Play") and !hasTestTag("miniPlayerPlayPause")).performClick()
+
+        // the bar's button must track episode B: playing + downloaded = a pause button
+        // (the bug left it as a download button watching deleted episode A)
+        waitForExactlyOne(hasTestTag("miniPlayerPlayPause") and hasContentDescription("Pause"))
+    }
+
     @Test
     fun subscribeViaPastedUrl_unsubscribeViaLongPress() = runComposeUiTest {
         setContent { App(testGraph()) }
