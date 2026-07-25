@@ -1,5 +1,6 @@
 package com.episode6.podcasthacker.ui.nowplaying
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -457,6 +459,11 @@ private fun AdBoundaryFilterSlider(nowPlaying: NowPlayingState, onFilterChange: 
     }
 }
 
+/**
+ * Position scrubber with a dot on the track at each skip point — the same filtered
+ * ad-boundary set the transport skip buttons step through, so the dots respond live to
+ * the confidence filter and show where those buttons would land.
+ */
 @Composable
 private fun SeekBar(nowPlaying: NowPlayingState, onSeek: (kotlin.time.Duration) -> Unit) {
     val duration = nowPlaying.duration
@@ -466,7 +473,14 @@ private fun SeekBar(nowPlaying: NowPlayingState, onSeek: (kotlin.time.Duration) 
         ?.takeIf { it.isPositive() }
         ?.let { (nowPlaying.position / it).toFloat().coerceIn(0f, 1f) }
         ?: 0f
+    val boundaryFractions = duration
+        ?.takeIf { it.isPositive() }
+        ?.let { total ->
+            nowPlaying.filteredAdBoundaries().map { (it.position / total).toFloat().coerceIn(0f, 1f) }
+        }
+        .orEmpty()
     Column(modifier = Modifier.widthIn(max = 480.dp)) {
+        val dotColor = MaterialTheme.colorScheme.onSurfaceVariant
         Slider(
             value = dragFraction ?: positionFraction,
             onValueChange = { dragFraction = it },
@@ -476,6 +490,21 @@ private fun SeekBar(nowPlaying: NowPlayingState, onSeek: (kotlin.time.Duration) 
                 dragFraction = null
             },
             enabled = duration != null,
+            track = { sliderState ->
+                Box(contentAlignment = Alignment.Center) {
+                    SliderDefaults.Track(sliderState = sliderState)
+                    Canvas(Modifier.matchParentSize().testTag("seekBarSkipDots")) {
+                        val radius = 2.dp.toPx()
+                        boundaryFractions.forEach { fraction ->
+                            drawCircle(
+                                color = dotColor,
+                                radius = radius,
+                                center = Offset(fraction * size.width, center.y),
+                            )
+                        }
+                    }
+                }
+            },
         )
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             val shownPosition = dragFraction?.let { fraction -> duration?.times(fraction.toDouble()) }
