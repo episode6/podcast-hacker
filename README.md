@@ -1,5 +1,10 @@
 # Podcast Hacker
 
+> [!WARNING]
+> Even though we're past version 1.0, this app is still very much in the early alpha
+> testing phase. The only reason we're past 1.0 is that one or more of the platforms we
+> support does not allow version names below 1.0.
+
 A vibe-coded podcast app that cuts the injected ads out of your episodes.
 
 Podcast Hacker is a Kotlin Multiplatform podcast player (Android + Desktop first-class,
