@@ -5,6 +5,7 @@
 - The Now Playing seek bar now shows a dot on the track at each skip point. The dots
   are the same filtered ad-boundary candidates the transport skip buttons step through,
   so adjusting the skips confidence filter updates them live.
+- Updated tacita to 0.0.6-SNAPSHOT (from 0.0.5).
 - Fixed the now-playing bar's play/download button getting stuck on a previous episode:
   after deleting the playing episode's file (bar correctly showing a download button)
   and then playing a different downloaded episode, the bar showed the new episode's

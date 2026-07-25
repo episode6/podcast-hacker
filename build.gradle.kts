@@ -106,7 +106,7 @@ tasks.register("printSnapshotVersionCode") {
 
 allprojects {
     configurations.all {
-        // tacita ships as a republished 0.0.3-SNAPSHOT; gradle's default 24h TTL for
+        // tacita is consumed as a republished -SNAPSHOT; gradle's default 24h TTL for
         // changing modules (plus CI's restored gradle-home cache) can otherwise pin a
         // stale snapshot and fail compilation against an outdated API
         resolutionStrategy.cacheChangingModulesFor(0, "seconds")
