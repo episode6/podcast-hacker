@@ -2,6 +2,8 @@
 
 ### v1.1.10 - Unreleased
 
+- Added a Collins project icon (`project-icon.svg` in the repo root, embedding a copy of
+  the app icon) so the project shows the app icon in Collins' sidebar.
 - The Now Playing seek bar now shows a dot on the track at each skip point. The dots
   are the same filtered ad-boundary candidates the transport skip buttons step through,
   so adjusting the skips confidence filter updates them live.
